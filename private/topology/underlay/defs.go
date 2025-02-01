@@ -47,8 +47,10 @@ const (
 	EndhostPort = 30041
 )
 
+// SIF: Branch conditions (mostly) need to be `low`
 // @ requires low(o)
-func (o Type) String() string {
+// @ ensures low(res)
+func (o Type) String() (res string) {
 	switch o {
 	case UDPIPv4:
 		return UDPIPv4Name
@@ -61,8 +63,10 @@ func (o Type) String() string {
 	}
 }
 
+// SIF: Branch conditions (mostly) need to be `low`
 // @ requires low(s)
-func TypeFromString(s string) (Type, error) {
+// @ ensures low(t) && low(err)
+func TypeFromString(s string) (t Type, err error) {
 	switch strings.ToLower(s) {
 	case strings.ToLower(UDPIPv4Name):
 		return UDPIPv4, nil
@@ -75,6 +79,8 @@ func TypeFromString(s string) (Type, error) {
 	}
 }
 
+// SIF: I am not annotating these methods (for now), as they can't be called
+// from the router anyway (cf. verification/utils/definitions/definitions.gobra)
 // @ trusted
 // @ requires Uncallable()
 func (ot *Type) UnmarshalJSON(data []byte) error {
@@ -96,8 +102,10 @@ func (ot Type) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ot.String())
 }
 
+// SIF: Branch conditions (mostly) need to be `low`
 // @ requires low(ot)
-func (ot Type) IsUDP() bool {
+// @ ensures low(res)
+func (ot Type) IsUDP() (res bool) {
 	switch ot {
 	case UDPIPv4, UDPIPv6, UDPIPv46:
 		return true
