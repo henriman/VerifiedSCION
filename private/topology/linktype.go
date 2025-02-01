@@ -45,8 +45,9 @@ const (
 )
 
 // @ requires low(l)
+// SIF: I cannot assert low(res) yet bc. I can't assert (nor assume) low(err.Error()) in if-block
 // @ decreases
-func (l LinkType) String() string {
+func (l LinkType) String() (res string) {
 	if l == Unset {
 		return "unset"
 	}
@@ -54,13 +55,15 @@ func (l LinkType) String() string {
 	if err != nil {
 		return err.Error()
 	}
-	//@ unfold sl.Bytes(s, 0, len(s))
+	//@ unfold sl.LowBytes(s, 0, len(s))
+	//@ assume low(string(s))
 	return string(s)
 }
 
 // LinkTypeFromString returns the numerical link type associated with a string description. If the
 // string is not recognized, an Unset link type is returned. The matching is case-insensitive.
 // @ requires low(s)
+// @ ensures low(res)
 // @ decreases
 func LinkTypeFromString(s string) (res LinkType) {
 	var l /*@@@*/ LinkType
@@ -78,26 +81,37 @@ func LinkTypeFromString(s string) (res LinkType) {
 
 // @ requires low(l)
 // @ ensures (l == Core || l == Parent || l == Child || l == Peer) == (err == nil)
-// @ ensures err == nil ==> sl.Bytes(res, 0, len(res))
+// @ ensures err == nil ==> sl.LowBytes(res, 0, len(res))
 // @ ensures err != nil ==> err.ErrorMem()
+// SIF: To make the postconditions as precise as possible, I have not put this
+// assertion behind `err == nil` or `err != nil` (resp.)
+// Only for LowBytes(...) I have, as that only makes sense when `res != nil`,
+// and I have added `low(res)` for `err != nil` appropriately.
+// @ ensures low(len(res)) && low(err)
+// @ ensures err != nil ==> low(res)
 // @ decreases
 func (l LinkType) MarshalText() (res []byte, err error) {
 	switch l {
 	case Core:
 		tmp := []byte("core")
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		// SIF: ATM we need this assumption, see Gobra issue #831
+		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
+		//@ fold sl.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Parent:
 		tmp := []byte("parent")
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
+		//@ fold sl.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Child:
 		tmp := []byte("child")
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
+		//@ fold sl.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Peer:
 		tmp := []byte("peer")
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
+		//@ fold sl.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	default:
 		return nil, serrors.New("invalid link type")
@@ -110,7 +124,10 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 // @ requires acc(sl.LowBytes(data, 0, len(data)), R15)
 // @ preserves acc(l)
 // @ ensures acc(sl.Bytes(data, 0, len(data)), R15)
-// @ ensures   err != nil ==> err.ErrorMem()
+// @ ensures err != nil ==> err.ErrorMem()
+// SIF: As *l remains unchanged if err != nil, and we don't know if low(*l) before
+// @ ensures err == nil ==> low(*l)
+// SIF: We need `low(err)` regardless of `err ?= nil` as we use it in branch conditions.
 // @ ensures low(err)
 // @ decreases
 func (l *LinkType) UnmarshalText(data []byte) (err error) {
