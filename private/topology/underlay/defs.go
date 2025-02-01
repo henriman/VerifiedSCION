@@ -75,6 +75,9 @@ func TypeFromString(s string) (t Type, err error) {
 	case strings.ToLower(UDPIPv46Name):
 		return UDPIPv46, nil
 	default:
+		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		//@ ghost errCtx := []interface{}{"type", s}
+		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return Invalid, serrors.New("Unknown underlay type", "type", s)
 	}
 }
