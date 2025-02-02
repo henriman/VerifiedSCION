@@ -163,8 +163,7 @@ func (_as AS) String() string {
 	return fmtAS(_as, ":")
 }
 
-//	ensures low(_as) ==> low(res)
-//
+// SIF: For pure functions, we can automatically deduce low(in) ==> low(out)
 // @ decreases
 // @ pure
 func (_as AS) inRange() (res bool) {
@@ -214,8 +213,8 @@ type IA uint64
 // is encountered. Callers must ensure that the values passed to this function
 // are valid.
 // @ requires _as.inRange()
-// @ requires low(isd) && low(_as)
-// @ ensures low(res)
+// @ requires low(_as.inRange())
+// @ ensures low(isd) && low(_as) ==> low(res)
 // @ decreases
 func MustIAFrom(isd ISD, _as AS) (res IA) {
 	ia, err := IAFrom(isd, _as)
@@ -229,7 +228,7 @@ func MustIAFrom(isd ISD, _as AS) (res IA) {
 // @ requires _as.inRange()
 // @ requires low(_as.inRange())
 // @ ensures err == nil
-// @ ensures low(isd) && low(_as) ==> low(ia) && low(err)
+// @ ensures low(isd) && low(_as) ==> low(ia)
 // @ decreases
 func IAFrom(isd ISD, _as AS) (ia IA, err error) {
 	if !_as.inRange() {
@@ -262,16 +261,15 @@ func ParseIA(ia string) (retIA IA, retErr error) {
 	return MustIAFrom(isd, _as), nil
 }
 
-// @ requires low(ia)
-// @ ensures low(res)
+// SIF: pure implies low(in) ==> low(out)
 // @ decreases
+// @ pure
 func (ia IA) ISD() (res ISD) {
 	return ISD(ia >> ASBits)
 }
 
-// @ requires low(ia)
-// @ ensures low(res)
 // @ decreases
+// @ pure
 func (ia IA) AS() (res AS) {
 	return AS(ia) & MaxAS
 }
@@ -310,24 +308,25 @@ func (ia IA) Equal(other IA) bool {
 }
 
 // IsWildcard returns whether the ia has a wildcard part (isd or as).
+// SIF: Required due to short circuit evaluation.
 // @ requires low(ia)
 // @ decreases
 func (ia IA) IsWildcard() bool {
 	return ia.ISD() == 0 || ia.AS() == 0
 }
 
+// SIF: ATM `Sprintf` requires all arguments to be low, regardless of
+// whether we need the output to be low.
 // @ requires low(ia)
 // @ decreases
 func (ia IA) String() string {
 	// (VerifiedSCION) Added casts around ia.ISD() and ia.AS() to be able to pass them to 'fmt.Sprintf'
-	isd := ia.ISD()
-	_as := ia.AS()
 	// SIF: See Gobra issue #835 for why this assumption is currently necessary
-	//@ assert low(isd)
-	//@ assert low(_as)
-	//@ ghost errCtx := []interface{}{isd, _as}
-	//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
-	return fmt.Sprintf("%d-%s", isd, _as)
+	//@ ghost v := []interface{}{ia.ISD(), ia.AS()}
+	//@ assert low(v[0])
+	//@ assert low(v[1])
+	//@ assume forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i]) && low(v[i])
+	return fmt.Sprintf("%d-%s", ia.ISD(), ia.AS())
 }
 
 // Set implements flag.Value interface

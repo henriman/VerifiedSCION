@@ -66,9 +66,8 @@ func SplitAfterN(s, sep string, n int) (res []string)
 
 // Split slices s into all substrings separated by sep and returns a slice of
 // the substrings between those separators.
-ensures forall i int :: { &res[i] } 0 <= i && i < len(res) ==> acc(&res[i])
+ensures forall i int :: { &res[i] } 0 <= i && i < len(res) ==> acc(&res[i]) && ((low(s) && low(sep)) ==> low(res[i]))
 ensures (low(s) && low(sep)) ==> low(len(res))
-ensures (low(s) && low(sep)) ==> forall i int :: { &res[i] } 0 <= i && i < len(res) ==> acc(&res[i]) && low(res[i]) 
 decreases _
 func Split(s, sep string) (res []string) //{ return genSplit(s, sep, 0, -1) }
 
@@ -107,7 +106,6 @@ func HasPrefix(s, prefix string) (ret bool) {
 // HasSuffix tests whether the string s ends with suffix.
 pure
 ensures ret == (len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix)
-ensures low(s) && low(suffix) ==> low(ret)
 decreases
 func HasSuffix(s, suffix string) (ret bool) {
 	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix

@@ -23,12 +23,9 @@ import . "github.com/scionproto/scion/verification/utils/definitions"
 // SIF: This precondition might not be complete.
 // - We might want to require low(len(v)) or something similar, tho
 // `format` should already prescribe how many values are used
-// - We might also need the order of the elements to be low
 requires low(format)
-// TODO: Maybe split preserves as now we double precondition?
-// SIF: I originally introduced `LowBytes`, a version of sl.Bytes that asserted
-// the elements to be low as well. However, I was not able to fold the predicate,
-// as the slice is implicitly created.
+// SIF: I can't use `slices.LowBytes` here, as the slice is implicitly created
+// and thus I cannot fold the predicate.
 requires forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i], R55) && low(v[i])
 ensures forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i], R55)
 // TODO:
@@ -40,10 +37,10 @@ func Sprintf(format string, v ...interface{}) (res string)
 
 type Stringer interface {
 	pred Mem()
-	pred LowMem()
+	pred LowMem()  // SIF: allows specifying sensitivity (preconditions)
 
-	requires LowMem()
-	preserves acc(Mem())
+	requires acc(Mem(), 1/2) && acc(LowMem(), 1/2)
+	ensures acc(Mem())
 	decreases
 	String() string
 }

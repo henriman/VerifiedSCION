@@ -19,19 +19,29 @@ package addr
 import (
 	"net"
 
+	. "github.com/scionproto/scion/verification/utils/definitions"
 	"github.com/scionproto/scion/verification/utils/slices"
 )
 
-pred (h HostNone) Mem() { len(h) == HostLenNone }
-pred (h HostNone) StringLow() { true }
+// SIF: Asserting h.Mem() in LowMem doesn't work well.
 
-HostNone implements HostAddr
+pred (h HostNone) Mem() { len(h) == HostLenNone }
+pred (h HostNone) LowMem() { true }
+
+HostNone implements HostAddr {
+	(h HostNone) String() (str string) {
+		unfold acc(h.Mem(), R13/2)
+		unfold acc(h.LowMem(), R13/2)
+		str = h.String()
+		fold acc(h.Mem(), R13)
+	}
+}
 
 pred (h HostIPv4) Mem() {
 	len(h) == HostLenIPv4 &&
 	slices.Bytes(h, 0, len(h))
 }
-pred (h HostIPv4) StringLow() { true }
+pred (h HostIPv4) LowMem() { slices.Bytes(h, 0, len(h)) }
 
 HostIPv4 implements HostAddr
 
@@ -39,17 +49,24 @@ pred (h HostIPv6) Mem() {
 	len(h) == HostLenIPv6 &&
 	slices.Bytes(h, 0, len(h))
 }
-pred (h HostIPv6) StringLow() { true }
+pred (h HostIPv6) LowMem() { slices.Bytes(h, 0, len(h)) }
 
 HostIPv6 implements HostAddr
 
 pred (h HostSVC) Mem() { true }
-pred (h HostSVC) StringLow() { low(h) }
+pred (h HostSVC) LowMem() { low(h) }
 
-HostSVC implements HostAddr
+HostSVC implements HostAddr {
+	(h HostSVC) String() (str string) {
+		unfold acc(h.Mem(), R13/2)
+		unfold acc(h.LowMem(), R13/2)
+		str = h.String()
+		fold acc(h.Mem(), R13)
+	}
+}
 
 pred (h *HostSVC) Mem() { acc(h) }
-pred (h *HostSVC) StringLow() { acc(h, _) && low(*h) }
+pred (h *HostSVC) LowMem() { acc(h) && low(*h) }
 
 (*HostSVC) implements HostAddr
 

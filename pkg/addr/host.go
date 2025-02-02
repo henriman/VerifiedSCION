@@ -84,6 +84,7 @@ const (
 
 type HostAddr interface {
 	//@ pred Mem()
+	//@ pred LowMem()
 
 	//@ preserves acc(Mem(), R13)
 	//@ decreases
@@ -108,10 +109,10 @@ type HostAddr interface {
 	//@ decreases
 	Copy() (res HostAddr)
 
-	// SIF: As every implementation casts `o` to its type, and casts require the
-	// argument to be low (at the moment at least), I think it's OK to require
-	// this for every implementing type.
-	//@ requires low(o)
+	// SIF: I wanted to introduce an assertion `LowEqual(HostAddr)`, but that
+	// led to a strange exception. As every implementation of `Equal` needs to
+	// cast `o` anyway, I think it's fine to assert `low(typeOf(o))` directly.
+	//@ requires low(typeOf(o))
 	//@ preserves acc(Mem(), R13) && acc(o.Mem(), R13)
 	//@ decreases
 	Equal(o HostAddr) bool
@@ -121,10 +122,8 @@ type HostAddr interface {
 	// replaced by the String() method which is the one that should be implemented
 	//fmt.Stringer
 
-	//@ pred StringLow()
-
-	//@ requires StringLow()
-	//@ preserves acc(Mem(), R13)
+	//@ requires acc(Mem(), R13/2) && acc(LowMem(), R13/2)
+	//@ ensures acc(Mem(), R13)
 	//@ decreases
 	String() string
 }
@@ -164,8 +163,8 @@ func (h HostNone) Copy() (res HostAddr) {
 	return tmp
 }
 
-// SIF: The Viper encoding contains a non-low branch condition if not `low(o)`
-// @ requires low(o)
+// SIF: The Viper encoding contains a non-low branch condition if not `low(typeOf(o))`
+// @ requires low(typeOf(o))
 // @ ensures res == (typeOf(o) == type[HostNone])
 // @ decreases
 func (h HostNone) Equal(o HostAddr) (res bool) {
@@ -173,7 +172,7 @@ func (h HostNone) Equal(o HostAddr) (res bool) {
 	return ok
 }
 
-// @decreases
+// @ decreases
 func (h HostNone) String() string {
 	return "<None>"
 }
@@ -224,8 +223,7 @@ func (h HostIPv4) Copy() (res HostAddr) {
 	return tmp
 }
 
-// SIF: Does this make sense considering HostIPv4 is byte slice underneath?
-// @ requires low(o)
+// @ requires low(typeOf(o))
 // @ preserves acc(h.Mem(), R13)
 // @ preserves acc(o.Mem(), R13)
 // @ decreases
@@ -238,10 +236,14 @@ func (h HostIPv4) Equal(o HostAddr) bool {
 	return ok && net.IP(h).Equal(net.IP(ha))
 }
 
-// @ preserves acc(h.Mem(), R13)
+// @ requires acc(h.Mem(), R13/2) && acc(h.LowMem(), R13/2)
+// @ ensures acc(h.Mem(), R13)
 // @ decreases
 func (h HostIPv4) String() string {
-	//@ assert unfolding acc(h.Mem(), R13) in len(h) == HostLenIPv4
+	//@ assert unfolding acc(h.Mem(), R13/2) in len(h) == HostLenIPv4
+	//@ unfold acc(h.Mem(), R13/2)
+	//@ unfold acc(h.LowMem(), R13/2)
+	//@ fold acc(h.Mem(), R13)
 	//@ ghost defer fold acc(h.Mem(), R13)
 	//@ ghost defer fold acc(sl.Bytes(h, 0, len(h)), R13)
 	return h.IP().String()
@@ -294,7 +296,7 @@ func (h HostIPv6) Copy() (res HostAddr) {
 	return tmp
 }
 
-// @ requires low(o)
+// @ requires low(typeOf(o))
 // @ preserves acc(h.Mem(), R13)
 // @ preserves acc(o.Mem(), R13)
 // @ decreases
@@ -307,10 +309,14 @@ func (h HostIPv6) Equal(o HostAddr) bool {
 	return ok && net.IP(h).Equal(net.IP(ha))
 }
 
-// @ preserves acc(h.Mem(), R13)
+// @ requires acc(h.Mem(), R13/2) && acc(h.LowMem(), R13/2)
+// @ ensures acc(h.Mem(), R13)
 // @ decreases
 func (h HostIPv6) String() string {
-	//@ assert unfolding acc(h.Mem(), R13) in len(h) == HostLenIPv6
+	//@ assert unfolding acc(h.Mem(), R13/2) in len(h) == HostLenIPv6
+	//@ unfold acc(h.Mem(), R13/2)
+	//@ unfold acc(h.LowMem(), R13/2)
+	//@ fold acc(h.Mem(), R13)
 	//@ ghost defer fold acc(h.Mem(), R13)
 	//@ ghost defer fold acc(sl.Bytes(h, 0, len(h)), R13)
 	return h.IP().String()
@@ -404,7 +410,7 @@ func (h HostSVC) Copy() (res HostAddr) {
 	return h
 }
 
-// @ requires low(o)
+// @ requires low(typeOf(o))
 // @ decreases
 func (h HostSVC) Equal(o HostAddr) bool {
 	ha, ok := o.(HostSVC)
@@ -423,8 +429,8 @@ func (h HostSVC) String() string {
 	//@ assert low(name)
 	//@ assert low(cast)
 	//@ assert low(uint16(h))
-	//@ ghost errCtx := []interface{}{name, cast, uint16(h)}
-	//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
+	//@ ghost v := []interface{}{name, cast, uint16(h)}
+	//@ assume forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i]) && low(v[i])
 	return fmt.Sprintf("%v %c (0x%04x)", name, cast, uint16(h))
 }
 

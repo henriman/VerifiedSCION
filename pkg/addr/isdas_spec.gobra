@@ -20,17 +20,23 @@ import (
 	"fmt"
 	"encoding"
 	"flag"
+
+	sl "github.com/scionproto/scion/verification/utils/slices"
 )
 
 pred (ia *IA) Mem() { acc(ia) }
-// SIF: Note that this leads to some repetition of `acc`, however we usually
-// don't need `LowMem` in the postconditions, so I need something separate.
-// And in other cases, we don't need any sensitivity requirements.
-pred (ia *IA) LowMem() { acc(ia, _) && low(*ia) }
+
+pred (ia *IA) LowMem() { acc(ia) && low(*ia) }
+pred (ia *IA) LowSet(s string) { low(s) }
+
+pred (*IA) LowUnmarshalText(text []byte) {
+	low(len(text)) && sl.LowBytes(text, 0, len(text))
+}
 
 (*IA) implements encoding.TextUnmarshaler {
 	(ia *IA) UnmarshalText(text []byte) (err error) {
 		unfold ia.Mem()
+		unfold ia.LowUnmarshalText(text)
 		err = ia.UnmarshalText(text)
 		fold ia.Mem()
 	}
@@ -45,17 +51,22 @@ IA implements fmt.Stringer {
 	pred Mem := MemForStringer
 	pred LowMem := LowMemForStringer
 	
-	(ia IA) String() string {
-		unfold LowMemForStringer(ia)
-		return ia.String()
+	(ia IA) String() (str string) {
+		unfold acc(LowMemForStringer(ia), 1/2)
+		str = ia.String()
+		fold acc(MemForStringer(ia))
 	}
 }
 
 pred (_as *AS) Mem() { acc(_as) }
+pred (*AS) LowUnmarshalText(text []byte) {
+	low(len(text)) && sl.LowBytes(text, 0, len(text))
+}
 
 (*AS) implements encoding.TextUnmarshaler {
 	(_as *AS) UnmarshalText(text []byte) (err error) {
 		unfold _as.Mem()
+		unfold _as.LowUnmarshalText(text)
 		err = _as.UnmarshalText(text)
 		fold _as.Mem()
 	}
@@ -63,14 +74,15 @@ pred (_as *AS) Mem() { acc(_as) }
 
 (*IA) implements flag.Value {
 	(ia *IA) String() (str string) {
-		unfold ia.Mem()
-		unfold ia.LowMem()
+		unfold acc(ia.Mem(), 1/2)
+		unfold acc(ia.LowMem(), 1/2)
 		str = ia.String()
 		fold ia.Mem()
 	}
 	
 	(ia *IA) Set(s string) (err error) {
 		unfold ia.Mem()
+		unfold ia.LowSet(s)
 		err = ia.Set(s)
 		fold ia.Mem()
 	}
