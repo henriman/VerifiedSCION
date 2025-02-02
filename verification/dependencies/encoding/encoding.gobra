@@ -16,10 +16,15 @@
 
 package encoding
 
+import sl "github.com/scionproto/scion/verification/utils/slices"
+
 type TextUnmarshaler interface {
 	pred Mem()
 	
-	preserves Mem() && acc(text)
+	// SIF: Needed e.g. for `(*AS), (*IA).UnmarshalText`
+	requires low(len(text)) && sl.LowBytes(text, 0, len(text))
+	preserves Mem()
+	ensures acc(text)
 	decreases
 	UnmarshalText(text []byte) error
 }

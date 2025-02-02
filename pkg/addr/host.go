@@ -40,6 +40,7 @@ const (
 	HostTypeSVC
 )
 
+// @ requires low(t)
 // @ requires isValidHostAddrType(t)
 // @ decreases
 func (t HostAddrType) String() string {
@@ -107,6 +108,10 @@ type HostAddr interface {
 	//@ decreases
 	Copy() (res HostAddr)
 
+	// SIF: As every implementation casts `o` to its type, and casts require the
+	// argument to be low (at the moment at least), I think it's OK to require
+	// this for every implementing type.
+	//@ requires low(o)
 	//@ preserves acc(Mem(), R13) && acc(o.Mem(), R13)
 	//@ decreases
 	Equal(o HostAddr) bool
@@ -116,6 +121,9 @@ type HostAddr interface {
 	// replaced by the String() method which is the one that should be implemented
 	//fmt.Stringer
 
+	//@ pred StringLow()
+
+	//@ requires StringLow()
 	//@ preserves acc(Mem(), R13)
 	//@ decreases
 	String() string
@@ -156,6 +164,8 @@ func (h HostNone) Copy() (res HostAddr) {
 	return tmp
 }
 
+// SIF: The Viper encoding contains a non-low branch condition if not `low(o)`
+// @ requires low(o)
 // @ ensures res == (typeOf(o) == type[HostNone])
 // @ decreases
 func (h HostNone) Equal(o HostAddr) (res bool) {
@@ -214,6 +224,8 @@ func (h HostIPv4) Copy() (res HostAddr) {
 	return tmp
 }
 
+// SIF: Does this make sense considering HostIPv4 is byte slice underneath?
+// @ requires low(o)
 // @ preserves acc(h.Mem(), R13)
 // @ preserves acc(o.Mem(), R13)
 // @ decreases
@@ -282,6 +294,7 @@ func (h HostIPv6) Copy() (res HostAddr) {
 	return tmp
 }
 
+// @ requires low(o)
 // @ preserves acc(h.Mem(), R13)
 // @ preserves acc(o.Mem(), R13)
 // @ decreases
@@ -311,6 +324,7 @@ type HostSVC uint16
 // SVC addresses, use BS_A, PS_A, CS_A, and SB_A; shorthand versions without
 // the _A suffix (e.g., PS) also return anycast SVC addresses. For multicast,
 // use BS_M, PS_M, CS_M, and SB_M.
+// @ requires low(str)
 // @ decreases
 func HostSVCFromString(str string) HostSVC {
 	var m HostSVC
@@ -366,13 +380,15 @@ func (h HostSVC) IP() (res net.IP) {
 	return nil
 }
 
+// @ ensures low(h) ==> low(res)
 // @ decreases
-func (h HostSVC) IsMulticast() bool {
+func (h HostSVC) IsMulticast() (res bool) {
 	return (h & SVCMcast) != 0
 }
 
+// @ ensures low(h) ==> low(res)
 // @ decreases
-func (h HostSVC) Base() HostSVC {
+func (h HostSVC) Base() (res HostSVC) {
 	return h & ^SVCMcast
 }
 
@@ -388,12 +404,14 @@ func (h HostSVC) Copy() (res HostAddr) {
 	return h
 }
 
+// @ requires low(o)
 // @ decreases
 func (h HostSVC) Equal(o HostAddr) bool {
 	ha, ok := o.(HostSVC)
 	return ok && h == ha
 }
 
+// @ requires low(h)
 // @ decreases
 func (h HostSVC) String() string {
 	name := h.BaseString()
@@ -401,13 +419,21 @@ func (h HostSVC) String() string {
 	if h.IsMulticast() {
 		cast = 'M'
 	}
+	// SIF: See Gobra issue #835 for why this assumption is currently necessary
+	//@ assert low(name)
+	//@ assert low(cast)
+	//@ assert low(uint16(h))
+	//@ ghost errCtx := []interface{}{name, cast, uint16(h)}
+	//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 	return fmt.Sprintf("%v %c (0x%04x)", name, cast, uint16(h))
 }
 
 // BaseString returns the upper case name of the service. For hosts or unrecognized services, it
 // returns UNKNOWN.
+// @ requires low(h)
+// @ ensures low(res)
 // @ decreases
-func (h HostSVC) BaseString() string {
+func (h HostSVC) BaseString() (res string) {
 	switch h.Base() {
 	case SvcDS:
 		return "DS"
@@ -425,6 +451,7 @@ func (h HostSVC) Network() string {
 	return ""
 }
 
+// @ requires low(htype)
 // @ requires acc(b)
 // @ requires isValidHostAddrType(htype)
 // @ requires len(b) == sizeOfHostAddrType(htype)
@@ -466,6 +493,7 @@ func HostFromRaw(b []byte, htype HostAddrType) (res HostAddr, err error) {
 	}
 }
 
+// @ requires low(len(ip))
 // @ requires acc(ip)
 // @ requires len(ip) == HostLenIPv4 || len(ip) == HostLenIPv6
 // @ ensures res.Mem()
@@ -483,6 +511,7 @@ func HostFromIP(ip net.IP) (res HostAddr) {
 	return tmp
 }
 
+// @ requires low(s)
 // @ ensures res.Mem()
 // @ decreases
 func HostFromIPStr(s string) (res HostAddr) {
@@ -495,6 +524,7 @@ func HostFromIPStr(s string) (res HostAddr) {
 	return HostFromIP(ip)
 }
 
+// @ requires low(htype)
 // @ requires isValidHostAddrType(htype)
 // @ decreases
 func HostLen(htype HostAddrType) (uint8, error) {
@@ -514,6 +544,7 @@ func HostLen(htype HostAddrType) (uint8, error) {
 	return length, nil
 }
 
+// @ requires low(t)
 // @ decreases
 func HostTypeCheck(t HostAddrType) bool {
 	switch t {

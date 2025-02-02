@@ -40,7 +40,9 @@ func Sprintf(format string, v ...interface{}) (res string)
 
 type Stringer interface {
 	pred Mem()
+	pred LowMem()
 
+	requires LowMem()
 	preserves acc(Mem())
 	decreases
 	String() string

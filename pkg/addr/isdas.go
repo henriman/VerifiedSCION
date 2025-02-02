@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/scionproto/scion/pkg/private/serrors"
+	//@ sl "github.com/scionproto/scion/verification/utils/slices"
 )
 
 const (
@@ -48,8 +49,10 @@ type ISD uint16
 
 // ParseISD parses an ISD from a decimal string. Note that ISD 0 is parsed
 // without any errors.
+// @ requires low(s)
+// @ ensures low(retISD) && low(retErr)
 // @ decreases
-func ParseISD(s string) (ISD, error) {
+func ParseISD(s string) (retISD ISD, retErr error) {
 	isd, err := strconv.ParseUint(s, 10, ISDBits)
 	if err != nil {
 		return 0, serrors.WrapStr("parsing ISD", err)
@@ -71,13 +74,17 @@ type AS uint64
 
 // ParseAS parses an AS from a decimal (in the case of the 32bit BGP AS number
 // space) or ipv6-style hex (in the case of SCION-only AS numbers) string.
+// @ requires low(_as)
 // @ ensures retErr == nil ==> retAs.inRange()
+// @ ensures low(retAs) && low(retErr)
 // @ decreases
 func ParseAS(_as string) (retAs AS, retErr error) {
 	return parseAS(_as, ":")
 }
 
+// @ requires low(_as) && low(sep)
 // @ ensures retErr == nil ==> retAs.inRange()
+// @ ensures low(retAs) && low(retErr)
 // @ decreases
 func parseAS(_as string, sep string) (retAs AS, retErr error) {
 	parts := strings.Split(_as, sep)
@@ -87,16 +94,27 @@ func parseAS(_as string, sep string) (retAs AS, retErr error) {
 	}
 
 	if len(parts) != asParts {
+		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		//@ assert low(sep)
+		//@ assert low(_as)
+		//@ ghost errCtx := []interface{}{"sep", sep, "value", _as}
+		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return 0, serrors.New("wrong number of separators", "sep", sep, "value", _as)
 	}
 	var parsed AS
 	//@ invariant 0 <= i && i <= asParts
-	//@ invariant acc(parts)
+	//@ invariant forall i int :: { &parts[i] } 0 <= i && i < len(parts) ==> acc(&parts[i]) && low(parts[i])
+	//@ invariant low(i) && low(_as) && low(parsed)
 	//@ decreases asParts - i
 	for i := 0; i < asParts; i++ {
 		parsed <<= asPartBits
 		v, err := strconv.ParseUint(parts[i], asPartBase, asPartBits)
 		if err != nil {
+			// SIF: See Gobra issue #835 for why this assumption is currently necessary
+			//@ assert low(i)
+			//@ assert low(_as)
+			//@ ghost errCtx := []interface{}{"index", i, "value", _as}
+			//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 			return 0, serrors.WrapStr("parsing AS part", err, "index", i, "value", _as)
 		}
 		parsed |= AS(v)
@@ -105,12 +123,19 @@ func parseAS(_as string, sep string) (retAs AS, retErr error) {
 	// against future refactor mistakes.
 	if !parsed.inRange() {
 		// (VerifiedSCION) Added cast around MaxAS to be able to call serrors.New
+		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		//@ assert low(uint64(MaxAS))
+		//@ assert low(_as)
+		//@ ghost errCtx := []interface{}{"max", uint64(MaxAS), "value", _as}
+		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return 0, serrors.New("AS out of range", "max", uint64(MaxAS), "value", _as)
 	}
 	return parsed, nil
 }
 
+// @ requires low(s)
 // @ ensures retErr == nil ==> retAs.inRange()
+// @ ensures low(retAs) && low(retErr)
 // @ decreases
 func asParseBGP(s string) (retAs AS, retErr error) {
 	_as, err := strconv.ParseUint(s, 10, BGPASBits)
@@ -132,30 +157,43 @@ func asParseBGP(s string) (retAs AS, retErr error) {
 }
 
 // @ requires _as.inRange()
+// @ requires low(_as)
 // @ decreases
 func (_as AS) String() string {
 	return fmtAS(_as, ":")
 }
 
+//	ensures low(_as) ==> low(res)
+//
 // @ decreases
 // @ pure
-func (_as AS) inRange() bool {
+func (_as AS) inRange() (res bool) {
 	return _as <= MaxAS
 }
 
+// @ requires low(_as)
 // @ decreases
 func (_as AS) MarshalText() ([]byte, error) {
 	if !_as.inRange() {
 		// (VerifiedSCION) Added cast around MaxAS and as to be able to call serrors.New
+		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		//@ assert low(uint64(MaxAS))
+		//@ assert low(uint64(_as))
+		//@ ghost errCtx := []interface{}{"max", uint64(MaxAS), "value", uint64(_as)}
+		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return nil, serrors.New("AS out of range", "max", uint64(MaxAS), "value", uint64(_as))
 	}
 	return []byte(_as.String()), nil
 }
 
+// @ requires sl.LowBytes(text, 0, len(text))
 // @ preserves acc(_as)
-// @ preserves forall i int :: { &text[i] } 0 <= i && i < len(text) ==> acc(&text[i])
+// @ ensures forall i int :: { &text[i] } 0 <= i && i < len(text) ==> acc(&text[i])
 // @ decreases
 func (_as *AS) UnmarshalText(text []byte) error {
+	//@ unfold sl.LowBytes(text, 0, len(text))
+	// SIF: See Gobra issue #832
+	//@ assume low(string(text))
 	parsed, err := ParseAS(string(text))
 	if err != nil {
 		return err
@@ -176,8 +214,10 @@ type IA uint64
 // is encountered. Callers must ensure that the values passed to this function
 // are valid.
 // @ requires _as.inRange()
+// @ requires low(isd) && low(_as)
+// @ ensures low(res)
 // @ decreases
-func MustIAFrom(isd ISD, _as AS) IA {
+func MustIAFrom(isd ISD, _as AS) (res IA) {
 	ia, err := IAFrom(isd, _as)
 	if err != nil {
 		panic(fmt.Sprintf("parsing ISD-AS: %s", err))
@@ -187,7 +227,9 @@ func MustIAFrom(isd ISD, _as AS) IA {
 
 // IAFrom creates an IA from the ISD and AS number.
 // @ requires _as.inRange()
+// @ requires low(_as.inRange())
 // @ ensures err == nil
+// @ ensures low(isd) && low(_as) ==> low(ia) && low(err)
 // @ decreases
 func IAFrom(isd ISD, _as AS) (ia IA, err error) {
 	if !_as.inRange() {
@@ -197,10 +239,16 @@ func IAFrom(isd ISD, _as AS) (ia IA, err error) {
 }
 
 // ParseIA parses an IA from a string of the format 'isd-as'.
+// @ requires low(ia)
+// @ ensures low(retErr)
 // @ decreases
-func ParseIA(ia string) (IA, error) {
+func ParseIA(ia string) (retIA IA, retErr error) {
 	parts := strings.Split(ia, "-")
 	if len(parts) != 2 {
+		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		//@ assert low(ia)
+		//@ ghost errCtx := []interface{}{"value", ia}
+		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return 0, serrors.New("invalid ISD-AS", "value", ia)
 	}
 	isd, err := ParseISD(parts[0])
@@ -214,25 +262,34 @@ func ParseIA(ia string) (IA, error) {
 	return MustIAFrom(isd, _as), nil
 }
 
+// @ requires low(ia)
+// @ ensures low(res)
 // @ decreases
-func (ia IA) ISD() ISD {
+func (ia IA) ISD() (res ISD) {
 	return ISD(ia >> ASBits)
 }
 
+// @ requires low(ia)
+// @ ensures low(res)
 // @ decreases
-func (ia IA) AS() AS {
+func (ia IA) AS() (res AS) {
 	return AS(ia) & MaxAS
 }
 
+// @ requires low(ia)
 // @ decreases
 func (ia IA) MarshalText() ([]byte, error) {
 	return []byte(ia.String()), nil
 }
 
+// @ requires low(len(b)) && sl.LowBytes(b, 0, len(b))
 // @ preserves acc(ia)
-// @ preserves forall i int :: { &b[i] } 0 <= i && i < len(b) ==> acc(&b[i])
+// @ ensures forall i int :: { &b[i] } 0 <= i && i < len(b) ==> acc(&b[i])
 // @ decreases
 func (ia *IA) UnmarshalText(b []byte) error {
+	//@ unfold sl.LowBytes(b, 0, len(b))
+	// SIF: See Gobra issue #832
+	//@ assume low(string(b))
 	parsed, err := ParseIA(string(b))
 	if err != nil {
 		return err
@@ -253,18 +310,28 @@ func (ia IA) Equal(other IA) bool {
 }
 
 // IsWildcard returns whether the ia has a wildcard part (isd or as).
+// @ requires low(ia)
 // @ decreases
 func (ia IA) IsWildcard() bool {
 	return ia.ISD() == 0 || ia.AS() == 0
 }
 
+// @ requires low(ia)
 // @ decreases
 func (ia IA) String() string {
 	// (VerifiedSCION) Added casts around ia.ISD() and ia.AS() to be able to pass them to 'fmt.Sprintf'
-	return fmt.Sprintf("%d-%s", ia.ISD(), ia.AS())
+	isd := ia.ISD()
+	_as := ia.AS()
+	// SIF: See Gobra issue #835 for why this assumption is currently necessary
+	//@ assert low(isd)
+	//@ assert low(_as)
+	//@ ghost errCtx := []interface{}{isd, _as}
+	//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
+	return fmt.Sprintf("%d-%s", isd, _as)
 }
 
 // Set implements flag.Value interface
+// @ requires low(s)
 // @ preserves acc(ia)
 // @ decreases
 func (ia *IA) Set(s string) error {

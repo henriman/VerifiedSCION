@@ -18,12 +18,19 @@ package flag
 
 type Value interface {
 	pred Mem()
+	// SIF: For sensitivity requirements
+	pred LowMem()
 
+	// `LowMem` should always only contain read permissions, so no `acc` necessary
+	requires LowMem()
 	preserves acc(Mem())
 	decreases
 	String() string
 
+	// SIF: This is necessary e.g. for `*IA` bc. `(*IA).Set`
+	// uses `s` in a branch condition.
+	requires low(s)
 	preserves acc(Mem())
 	decreases
-	Set(string) error
+	Set(s string) error
 }

@@ -23,6 +23,7 @@ import (
 )
 
 pred (h HostNone) Mem() { len(h) == HostLenNone }
+pred (h HostNone) StringLow() { true }
 
 HostNone implements HostAddr
 
@@ -30,6 +31,7 @@ pred (h HostIPv4) Mem() {
 	len(h) == HostLenIPv4 &&
 	slices.Bytes(h, 0, len(h))
 }
+pred (h HostIPv4) StringLow() { true }
 
 HostIPv4 implements HostAddr
 
@@ -37,14 +39,17 @@ pred (h HostIPv6) Mem() {
 	len(h) == HostLenIPv6 &&
 	slices.Bytes(h, 0, len(h))
 }
+pred (h HostIPv6) StringLow() { true }
 
 HostIPv6 implements HostAddr
 
 pred (h HostSVC) Mem() { true }
+pred (h HostSVC) StringLow() { low(h) }
 
 HostSVC implements HostAddr
 
 pred (h *HostSVC) Mem() { acc(h) }
+pred (h *HostSVC) StringLow() { acc(h, _) && low(*h) }
 
 (*HostSVC) implements HostAddr
 

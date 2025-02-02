@@ -23,6 +23,10 @@ import (
 )
 
 pred (ia *IA) Mem() { acc(ia) }
+// SIF: Note that this leads to some repetition of `acc`, however we usually
+// don't need `LowMem` in the postconditions, so I need something separate.
+// And in other cases, we don't need any sensitivity requirements.
+pred (ia *IA) LowMem() { acc(ia, _) && low(*ia) }
 
 (*IA) implements encoding.TextUnmarshaler {
 	(ia *IA) UnmarshalText(text []byte) (err error) {
@@ -35,11 +39,14 @@ pred (ia *IA) Mem() { acc(ia) }
 // Implementation proof would confuse the two predicates named Mem for IA and *IA
 // Issue: https://github.com/viperproject/gobra/issues/449
 pred MemForStringer(ia IA) { true }
+pred LowMemForStringer(ia IA) { low(ia) }
 
 IA implements fmt.Stringer {
 	pred Mem := MemForStringer
+	pred LowMem := LowMemForStringer
 	
 	(ia IA) String() string {
+		unfold LowMemForStringer(ia)
 		return ia.String()
 	}
 }
@@ -57,6 +64,7 @@ pred (_as *AS) Mem() { acc(_as) }
 (*IA) implements flag.Value {
 	(ia *IA) String() (str string) {
 		unfold ia.Mem()
+		unfold ia.LowMem()
 		str = ia.String()
 		fold ia.Mem()
 	}
