@@ -18,25 +18,30 @@ type Builder struct {
 }
 
 pred (b *Builder) Mem()
+pred (b *Builder) LowMem(ghost isLow bool)
 
 // String returns the accumulated string.
-preserves b.Mem()
+preserves acc(b.Mem(), 1/2) && acc(b.LowMem(isLow), 1/2)
+ensures isLow ==> low(str)
 decreases _
-func (b *Builder) String() string
+func (b *Builder) String(ghost isLow bool) (str string)
 
 requires  0 <= n
-preserves b.Mem()
+preserves acc(b.Mem(), 1/2) && acc(b.LowMem(isLow), 1/2)
 decreases _
-func (b *Builder) Grow(n int)
+func (b *Builder) Grow(n int, ghost isLow bool)
 
-preserves b.Mem()
+requires acc(b.Mem(), 1/2) && acc(b.LowMem(isLowB), 1/2)
+requires isLowS ==> low(s)
 ensures   err == nil
+ensures acc(b.Mem(), 1/2) && acc(b.LowMem(isLowS && isLowB), 1/2)
+ensures isLowS && isLowB ==> low(n)
 decreases _
-func (b *Builder) WriteString(s string) (n int, err error)
+func (b *Builder) WriteString(s string, ghost isLowB, isLowS bool) (n int, err error)
 
 ghost
 requires acc(b)
 requires *b === Builder{}
-ensures  b.Mem()
+ensures acc(b.Mem(), 1/2) && acc(b.LowMem(true), 1/2)
 decreases _
 func (b *Builder) ZeroBuilderIsReadyToUse()
