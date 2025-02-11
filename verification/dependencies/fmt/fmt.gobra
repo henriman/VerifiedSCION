@@ -18,23 +18,16 @@ package fmt
 
 import . "github.com/scionproto/scion/verification/utils/definitions"
 
-// SIF: I couldn't encode low(format) && forall i :: low(v[i]) ==> low(res),
-// so (at least for now) this uses pre- and postcondition.
-// SIF: This precondition might not be complete.
-// - We might want to require low(len(v)) or something similar, tho
-// `format` should already prescribe how many values are used
-// - We might also need the order of the elements to be low
-requires low(format)
-// TODO: Maybe split preserves as now we double precondition?
-// SIF: I originally introduced `LowBytes`, a version of sl.Bytes that asserted
-// the elements to be low as well. However, I was not able to fold the predicate,
-// as the slice is implicitly created.
-requires forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i], R55) && low(v[i])
-ensures forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i], R55)
+preserves forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i], R55)
 // TODO:
 // The following precondition cannot be adequately captured in Gobra.
 // preserves forall i int :: 0 <= i && i < len(v) ==> definitions.IsOfPrimitiveType(v[i])
-ensures low(res)
+// SIF: This implication might not be sound.
+// - We might want to require low(len(v)) or something similar, tho
+// `format` should already prescribe how many values are used
+// - We might also need the order of the elements to be low
+// SIF: TODO: capture (part of) this using a pure Boolean function
+ensures (low(format) && forall i int :: { &v[i] } 0 <= i && i < len(v) ==> low(v[i])) ==> low(res)
 decreases _
 func Sprintf(format string, v ...interface{}) (res string)
 
