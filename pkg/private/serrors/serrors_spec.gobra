@@ -90,12 +90,10 @@ func WrapStr(msg string, cause error, errCtx ...interface{}) (res error)
 // Elements of errCtx are limited to "primitive types" at the moment.
 // This is a safe but strict under-approximation of what can be done
 // with this method.
-// SIF: See verification/utils/fmt/fmt.gobra for concerns regarding this spec.
-requires low(msg) && low(len(errCtx))
-requires forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i], R15) && low(errCtx[i])
-ensures forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i], R15)
+preserves forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i], R15)
 ensures   res != nil && res.ErrorMem()
 ensures   res.IsDuplicableMem()
-ensures low(res)
+// SIF: TODO: capture (part of) this using a pure Boolean function
+ensures (low(msg) && low(len(errCtx)) && forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> low(errCtx[i])) ==> low(res)
 decreases
 func New(msg string, errCtx ...interface{}) (res error)
