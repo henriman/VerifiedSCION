@@ -23,6 +23,7 @@ import (
 	"github.com/scionproto/scion/pkg/private/serrors"
 	//@ . "github.com/scionproto/scion/verification/utils/definitions"
 	//@ sl "github.com/scionproto/scion/verification/utils/slices"
+	//@ "github.com/scionproto/scion/verification/utils/sif"
 )
 
 // LinkType describes inter-AS links.
@@ -45,7 +46,8 @@ const (
 )
 
 // @ requires low(l)
-// SIF: I cannot assert low(res) yet bc. I can't assert (nor assume) low(err.Error()) in if-block
+// SIF: If I wanted to assert `low(res)`, I would need to annotate `error.Error`
+// in `builtin.gobra`.
 // @ decreases
 func (l LinkType) String() (res string) {
 	if l == Unset {
@@ -55,8 +57,8 @@ func (l LinkType) String() (res string) {
 	if err != nil {
 		return err.Error()
 	}
-	//@ unfold sl.LowBytes(s, 0, len(s))
-	//@ assume low(string(s))
+	//@ unfold sif.LowBytes(s, 0, len(s))
+	//@ sif.AssumeLowSliceToLowString(s, 1/1)
 	return string(s)
 }
 
@@ -71,8 +73,8 @@ func LinkTypeFromString(s string) (res LinkType) {
 	// SIF: For now I have to make this assumption, see Gobra issue #831
 	// Note that we can already infer low(len(tmp)), as the lengths are related
 	// in the Viper encoding, but not the contents.
-	//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-	//@ fold sl.LowBytes(tmp, 0, len(tmp))
+	//@ assume forall i int :: { &tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
+	//@ fold sif.LowBytes(tmp, 0, len(tmp))
 	if err := l.UnmarshalText(tmp); err != nil {
 		return Unset
 	}
@@ -81,7 +83,7 @@ func LinkTypeFromString(s string) (res LinkType) {
 
 // @ requires low(l)
 // @ ensures (l == Core || l == Parent || l == Child || l == Peer) == (err == nil)
-// @ ensures err == nil ==> sl.LowBytes(res, 0, len(res))
+// @ ensures err == nil ==> sif.LowBytes(res, 0, len(res))
 // @ ensures err != nil ==> err.ErrorMem()
 // SIF: To make the postconditions as precise as possible, I have not put this
 // assertion behind `err == nil` or `err != nil` (resp.)
@@ -96,32 +98,30 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 		tmp := []byte("core")
 		// SIF: ATM we need this assumption, see Gobra issue #831
 		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.LowBytes(tmp, 0, len(tmp))
+		//@ fold sif.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Parent:
 		tmp := []byte("parent")
 		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.LowBytes(tmp, 0, len(tmp))
+		//@ fold sif.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Child:
 		tmp := []byte("child")
 		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.LowBytes(tmp, 0, len(tmp))
+		//@ fold sif.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Peer:
 		tmp := []byte("peer")
 		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.LowBytes(tmp, 0, len(tmp))
+		//@ fold sif.LowBytes(tmp, 0, len(tmp))
 		return tmp, nil
 	default:
 		return nil, serrors.New("invalid link type")
 	}
 }
 
-// SIF: For now I assume that low(len(data)) and sl.LowBytes... suffice to infer
-// that string(data) is low. See Gobra issue #832
 // @ requires low(len(data))
-// @ requires acc(sl.LowBytes(data, 0, len(data)), R15)
+// @ requires acc(sif.LowBytes(data, 0, len(data)), R15)
 // @ preserves acc(l)
 // @ ensures acc(sl.Bytes(data, 0, len(data)), R15)
 // @ ensures err != nil ==> err.ErrorMem()
@@ -131,10 +131,9 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 // @ ensures low(err)
 // @ decreases
 func (l *LinkType) UnmarshalText(data []byte) (err error) {
-	//@ unfold acc(sl.LowBytes(data, 0, len(data)), R15)
+	//@ unfold acc(sif.LowBytes(data, 0, len(data)), R15)
 	//@ ghost defer fold acc(sl.Bytes(data, 0, len(data)), R15)
-	// SIF: For now I have to make this assumption, see Gobra issue #832
-	//@ assume low(string(data))
+	//@ sif.AssumeLowSliceToLowString(data, R15)
 	switch strings.ToLower(string(data)) {
 	case "core":
 		*l = Core
