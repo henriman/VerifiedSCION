@@ -32,16 +32,6 @@ pred Bytes(s []byte, start int, end int) {
 	forall i int :: { &s[i] } start <= i && i < end ==> acc(&s[i])
 }
 
-// SIF: `Bytes` with the addition of asserting the elements to be low.
-pred LowBytes(s []byte, start int, end int) {
-	// start inclusive
-	0 <= start &&
-	start <= end &&
-	// end exclusive
-	end <= cap(s) &&
-	forall i int :: { &s[i] } start <= i && i < end ==> acc(&s[i]) && low(s[i])
-}
-
 pure
 requires acc(Bytes(s, start, end), _)
 requires start <= i && i < end
