@@ -81,7 +81,7 @@ func TypeFromString(s string) (t Type, err error) {
 }
 
 // @ trusted
-// @ requires Uncallable()
+// @ requires false
 func (ot *Type) UnmarshalJSON(data []byte) error {
 	var strVal string
 	if err := json.Unmarshal(data, &strVal); err != nil {
@@ -96,7 +96,7 @@ func (ot *Type) UnmarshalJSON(data []byte) error {
 }
 
 // @ trusted
-// @ requires Uncallable()
+// @ requires false
 func (ot Type) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ot.String())
 }
