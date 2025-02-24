@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/scionproto/scion/pkg/private/serrors"
-	//@ sl "github.com/scionproto/scion/verification/utils/slices"
+	//@ "github.com/scionproto/scion/verification/utils/sif"
 )
 
 const (
@@ -185,12 +185,12 @@ func (_as AS) MarshalText() ([]byte, error) {
 	return []byte(_as.String()), nil
 }
 
-// @ requires sl.LowBytes(text, 0, len(text))
+// @ requires sif.LowBytes(text, 0, len(text))
 // @ preserves acc(_as)
 // @ ensures forall i int :: { &text[i] } 0 <= i && i < len(text) ==> acc(&text[i])
 // @ decreases
 func (_as *AS) UnmarshalText(text []byte) error {
-	//@ unfold sl.LowBytes(text, 0, len(text))
+	//@ unfold sif.LowBytes(text, 0, len(text))
 	// SIF: See Gobra issue #832
 	//@ assume low(string(text))
 	parsed, err := ParseAS(string(text))
@@ -280,12 +280,12 @@ func (ia IA) MarshalText() ([]byte, error) {
 	return []byte(ia.String()), nil
 }
 
-// @ requires low(len(b)) && sl.LowBytes(b, 0, len(b))
+// @ requires low(len(b)) && sif.LowBytes(b, 0, len(b))
 // @ preserves acc(ia)
 // @ ensures forall i int :: { &b[i] } 0 <= i && i < len(b) ==> acc(&b[i])
 // @ decreases
 func (ia *IA) UnmarshalText(b []byte) error {
-	//@ unfold sl.LowBytes(b, 0, len(b))
+	//@ unfold sif.LowBytes(b, 0, len(b))
 	// SIF: See Gobra issue #832
 	//@ assume low(string(b))
 	parsed, err := ParseIA(string(b))

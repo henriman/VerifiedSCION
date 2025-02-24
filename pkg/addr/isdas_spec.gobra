@@ -21,7 +21,7 @@ import (
 	"encoding"
 	"flag"
 
-	sl "github.com/scionproto/scion/verification/utils/slices"
+	"github.com/scionproto/scion/verification/utils/sif"
 )
 
 pred (ia *IA) Mem() { acc(ia) }
@@ -30,7 +30,7 @@ pred (ia *IA) LowMem() { acc(ia) && low(*ia) }
 pred (ia *IA) LowSet(s string) { low(s) }
 
 pred (*IA) LowUnmarshalText(text []byte) {
-	low(len(text)) && sl.LowBytes(text, 0, len(text))
+	low(len(text)) && sif.LowBytes(text, 0, len(text))
 }
 
 (*IA) implements encoding.TextUnmarshaler {
@@ -60,7 +60,7 @@ IA implements fmt.Stringer {
 
 pred (_as *AS) Mem() { acc(_as) }
 pred (*AS) LowUnmarshalText(text []byte) {
-	low(len(text)) && sl.LowBytes(text, 0, len(text))
+	low(len(text)) && sif.LowBytes(text, 0, len(text))
 }
 
 (*AS) implements encoding.TextUnmarshaler {
