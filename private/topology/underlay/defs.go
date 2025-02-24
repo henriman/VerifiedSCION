@@ -48,7 +48,7 @@ const (
 )
 
 // @ requires low(o)
-// @ ensures low(res)
+// @ ensures  low(res)
 func (o Type) String() (res string) {
 	switch o {
 	case UDPIPv4:
@@ -63,7 +63,7 @@ func (o Type) String() (res string) {
 }
 
 // @ requires low(s)
-// @ ensures low(t) && low(err)
+// @ ensures  low(t) && low(err)
 func TypeFromString(s string) (t Type, err error) {
 	switch strings.ToLower(s) {
 	case strings.ToLower(UDPIPv4Name):
@@ -102,7 +102,7 @@ func (ot Type) MarshalJSON() ([]byte, error) {
 }
 
 // @ requires low(ot)
-// @ ensures low(res)
+// @ ensures  low(res)
 func (ot Type) IsUDP() (res bool) {
 	switch ot {
 	case UDPIPv4, UDPIPv6, UDPIPv46:

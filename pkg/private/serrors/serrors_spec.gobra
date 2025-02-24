@@ -95,7 +95,7 @@ ensures   res != nil && res.ErrorMem()
 ensures   res.IsDuplicableMem()
 // TODO: Once Gobra issue #846 is resolved, capture the sensitivity of `errCtx`
 // using a pure Boolean function.
-ensures (low(msg) && low(len(errCtx)) && 
+ensures   (low(msg) && low(len(errCtx)) && 
 	forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> 
 	low(errCtx[i])) ==> low(res)
 decreases
