@@ -47,7 +47,6 @@ const (
 	EndhostPort = 30041
 )
 
-// SIF: Branch conditions (mostly) need to be `low`
 // @ requires low(o)
 // @ ensures low(res)
 func (o Type) String() (res string) {
@@ -63,7 +62,6 @@ func (o Type) String() (res string) {
 	}
 }
 
-// SIF: Branch conditions (mostly) need to be `low`
 // @ requires low(s)
 // @ ensures low(t) && low(err)
 func TypeFromString(s string) (t Type, err error) {
@@ -75,15 +73,13 @@ func TypeFromString(s string) (t Type, err error) {
 	case strings.ToLower(UDPIPv46Name):
 		return UDPIPv46, nil
 	default:
-		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		// TODO: Once Gobra issue #835 is resolved, remove this assumption.
 		//@ ghost errCtx := []interface{}{"type", s}
 		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return Invalid, serrors.New("Unknown underlay type", "type", s)
 	}
 }
 
-// SIF: I am not annotating these methods (for now), as they can't be called
-// from the router anyway (cf. verification/utils/definitions/definitions.gobra)
 // @ trusted
 // @ requires Uncallable()
 func (ot *Type) UnmarshalJSON(data []byte) error {
@@ -105,7 +101,6 @@ func (ot Type) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ot.String())
 }
 
-// SIF: Branch conditions (mostly) need to be `low`
 // @ requires low(ot)
 // @ ensures low(res)
 func (ot Type) IsUDP() (res bool) {
