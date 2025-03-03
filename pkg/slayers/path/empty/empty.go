@@ -57,12 +57,17 @@ func RegisterPath() {
 // bytes on the wire and is used for AS internal communication.
 type Path struct{}
 
+// @ requires low(len(r))
 // @ ensures  len(r) == 0 ==> (e == nil && o.Mem(r))
 // @ ensures  len(r) != 0 ==> (e != nil && e.ErrorMem() && o.NonInitMem())
 // @ decreases
 func (o Path) DecodeFromBytes(r []byte) (e error) {
 	if len(r) != 0 {
 		//@ fold o.NonInitMem()
+		// SIF: See Gobra issue #835 for why this assumption is currently necessary
+		//@ assert low(len(r))
+		//@ ghost errCtx := []interface{}{"len", len(r)}
+		//@ assume forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errCtx[i]) && low(errCtx[i])
 		return serrors.New("decoding an empty path", "len", len(r))
 	}
 	//@ fold o.Mem(r)
