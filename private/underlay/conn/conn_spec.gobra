@@ -34,8 +34,23 @@ pred (c *connUDPBase) Mem() {
 	(c.Remote != nil ==> acc(c.Remote.Mem(), _))
 }
 
+pred (c *connUDPBase) Low() {
+	acc(c) && low(c.closed) &&
+	low(c.Remote) &&
+	c.conn.Mem() &&
+	(c.Listen != nil ==> acc(c.Listen.Mem(), _)) &&
+	(c.Remote != nil ==> acc(c.Remote.Mem(), _))
+}
+
 pred (c *connUDPBase) MemWithoutConn() {
 	acc(c) &&
+	(c.Listen != nil ==> acc(c.Listen.Mem(), _)) &&
+	(c.Remote != nil ==> acc(c.Remote.Mem(), _))
+}
+
+pred (c *connUDPBase) LowWithoutConn() {
+	acc(c) && low(c.closed) &&
+	low(c.Remote) &&
 	(c.Listen != nil ==> acc(c.Listen.Mem(), _)) &&
 	(c.Remote != nil ==> acc(c.Remote.Mem(), _))
 }
@@ -48,6 +63,12 @@ pred (c *connUDPIPv4) Mem() {
 	c.pconn.GetUnderlyingConn() == (unfolding c.connUDPBase.MemWithoutConn() in c.conn)
 }
 
+pred (c *connUDPIPv4) Low() {
+	acc(&c.pconn) &&
+	c.pconn.Mem() &&
+	c.connUDPBase.LowWithoutConn()
+}
+
 // Shown to be satisfiable in newConnUDPIPv6
 pred (c *connUDPIPv6) Mem() {
 	acc(&c.pconn) &&
@@ -56,10 +77,20 @@ pred (c *connUDPIPv6) Mem() {
 	c.pconn.GetUnderlyingConn() == (unfolding c.connUDPBase.MemWithoutConn() in c.conn)
 }
 
+pred (c *connUDPIPv6) Low() {
+	acc(&c.pconn) &&
+	c.pconn.Mem() &&
+	c.connUDPBase.LowWithoutConn()
+}
+
 pred (c *Config) Mem() {
 	acc(c) &&
 	0 <= c.SendBufferSize &&
 	0 <= c.ReceiveBufferSize
+}
+
+pred (c *Config) Low() {
+	acc(c) && low(*c)
 }
 
 /** Lift methods in *connUDPBase to *connUDPIPv4 **/
@@ -100,19 +131,22 @@ func (c *connUDPIPv4) Write(b []byte) (n int, err error) {
 }
 
 requires  acc(dst.Mem(), _)
-preserves acc(c.Mem(), _)
+preserves acc(c.Mem(), _) && acc(c.Low(), _)
 preserves acc(sl.Bytes(b, 0, len(b)), R15)
 ensures   err == nil ==> 0 <= n && n <= len(b)
 ensures   err != nil ==> err.ErrorMem()
 func (c *connUDPIPv4) WriteTo(b []byte, dst *net.UDPAddr) (n int, err error) {
 	unfold acc(c.Mem(), _)
 	unfold acc(c.connUDPBase.MemWithoutConn(), _)
+	unfold acc(c.Low(), _)
+	unfold acc(c.connUDPBase.LowWithoutConn(), _)
 	assert c.pconn.GetUnderlyingConn() == c.conn
 	tmpImpl := c.conn
 	tmpItf := c.pconn.ExchangeWildcardPerm()
 	var packetconn *ipv4.PacketConn = c.pconn
 	assert tmpItf == c.conn
 	fold acc(c.connUDPBase.Mem(), _)
+	fold acc(c.connUDPBase.Low(), _)
 	n1, err1 := c.connUDPBase.WriteTo(b, dst, tmpImpl)
 	return n1, err1
 }
@@ -135,14 +169,17 @@ func (c *connUDPIPv4) RemoteAddr() (u *net.UDPAddr) {
 	return c.connUDPBase.RemoteAddr()
 }
 
-requires c.Mem()
+requires acc(c.Mem(), 1/2) && acc(c.Low(), 1/2)
 ensures  err != nil ==> err.ErrorMem()
 decreases
 func (c *connUDPIPv4) Close() (err error) {
-	unfold c.Mem()
-	unfold c.connUDPBase.MemWithoutConn()
+	unfold acc(c.Mem(), 1/2)
+	unfold acc(c.connUDPBase.MemWithoutConn(), 1/2)
+	unfold acc(c.Low(), 1/2)
+	unfold acc(c.connUDPBase.LowWithoutConn(), 1/2)
 	c.pconn.ExchangePerm()
-	fold c.connUDPBase.Mem()
+	fold acc(c.connUDPBase.Mem(), 1/2)
+	fold acc(c.connUDPBase.Low(), 1/2)
 	c.connUDPBase.Close()
 }
 /** End of Lift methods in *connUDPBase to *connUDPIPv4 **/
@@ -186,19 +223,22 @@ func (c *connUDPIPv6) Write(b []byte) (n int, err error) {
 }
 
 requires  acc(dst.Mem(), _)
-preserves acc(c.Mem(), _)
+preserves acc(c.Mem(), _) && acc(c.Low(), _)
 preserves acc(sl.Bytes(b, 0, len(b)), R15)
 ensures   err == nil ==> 0 <= n && n <= len(b)
 ensures   err != nil ==> err.ErrorMem()
 func (c *connUDPIPv6) WriteTo(b []byte, dst *net.UDPAddr) (n int, err error) {
 	unfold acc(c.Mem(), _)
 	unfold acc(c.connUDPBase.MemWithoutConn(), _)
+	unfold acc(c.Low(), _)
+	unfold acc(c.connUDPBase.LowWithoutConn(), _)
 	assert c.pconn.GetUnderlyingConn() == c.conn
 	tmpImpl := c.conn
 	tmpItf := c.pconn.ExchangeWildcardPerm()
 	var packetconn *ipv6.PacketConn = c.pconn
 	assert tmpItf == c.conn
 	fold acc(c.connUDPBase.Mem(), _)
+	fold acc(c.connUDPBase.Low(), _)
 	n1, err1 := c.connUDPBase.WriteTo(b, dst, tmpImpl)
 	return n1, err1
 }
@@ -221,14 +261,17 @@ func (c *connUDPIPv6) RemoteAddr() (u *net.UDPAddr) {
 	return c.connUDPBase.RemoteAddr()
 }
 
-requires c.Mem()
+requires acc(c.Mem(), 1/2) && acc(c.Low(), 1/2)
 ensures  err != nil ==> err.ErrorMem()
 decreases
 func (c *connUDPIPv6) Close() (err error) {
-	unfold c.Mem()
-	unfold c.connUDPBase.MemWithoutConn()
+	unfold acc(c.Mem(), 1/2)
+	unfold acc(c.connUDPBase.MemWithoutConn(), 1/2)
+	unfold acc(c.Low(), 1/2)
+	unfold acc(c.connUDPBase.LowWithoutConn(), 1/2)
 	c.pconn.ExchangePerm()
-	fold c.connUDPBase.Mem()
+	fold acc(c.connUDPBase.Mem(), 1/2)
+	fold acc(c.connUDPBase.Low(), 1/2)
 	c.connUDPBase.Close()
 }
 /** End of Lift methods in *connUDPBase to *connUDPIPv6 **/

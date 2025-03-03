@@ -13,6 +13,7 @@ import "time"
 
 import . "github.com/scionproto/scion/verification/utils/definitions"
 import sl "github.com/scionproto/scion/verification/utils/slices"
+import "github.com/scionproto/scion/verification/utils/sif"
 
 // UDPAddr represents the address of a UDP end point.
 type UDPAddr struct {
@@ -25,6 +26,10 @@ pred (a *UDPAddr) Mem() {
 	// The second conjunct should be eventually replaced by a.IP.Mem().
 	// However, doing this at the moment requires changes in the VerifiedSCION codebase.
 	acc(a, R5) && sl.Bytes(a.IP, 0, len(a.IP))
+}
+
+pred (a *UDPAddr) Low() {
+	acc(a, R5) && low(len(a.IP)) && sif.LowBytes(a.IP, 0, len(a.IP))
 }
 
 (*UDPAddr) implements Addr {
@@ -54,6 +59,10 @@ type UDPConn struct {
 
 pred (u *UDPConn) Mem() {
 	acc(u)
+}
+
+pred (u *UDPConn) Low() {
+	acc(u) && low(*u)
 }
 
 // ReadFromUDP acts like ReadFrom but returns a UDPAddr.
@@ -112,25 +121,33 @@ ensures  err != nil ==> err.ErrorMem()
 decreases
 func (c *UDPConn) Close() (err error)
 
-requires acc(laddr.Mem(), _)
-ensures  err == nil ==> conn.Mem()
+requires acc(laddr.Mem(), _) && acc(laddr.Low(), _)
+requires low(network)
+ensures  err == nil ==> acc(conn.Mem(), 1/2) && acc(conn.Low(), 1/2)
 ensures  err != nil ==> err.ErrorMem()
+ensures low(err)
 decreases _
 func ListenUDP(network string, laddr *UDPAddr) (conn *UDPConn, err error)
 
-requires acc(laddr.Mem(), _)
-requires acc(raddr.Mem(), _)
-ensures  err == nil ==> conn.Mem()
+requires low(network)
+requires acc(laddr.Mem(), _) && acc(laddr.Low(), _)
+requires acc(raddr.Mem(), _) && acc(raddr.Low(), _)
+ensures  err == nil ==> acc(conn.Mem(), 1/2) && acc(conn.Low(), 1/2)
 ensures  err != nil ==> err.ErrorMem()
+ensures low(err)
 decreases _
 func DialUDP(network string, laddr, raddr *UDPAddr) (conn *UDPConn, err error)
 
-preserves c.Mem()
+requires low(bytes)
+preserves acc(c.Mem(), 1/2) && acc(c.Low(), 1/2)
 ensures   err != nil ==> err.ErrorMem()
+ensures low(err)
 decreases _
 func (c *UDPConn) SetWriteBuffer(bytes int) (err error)
 
-preserves c.Mem()
+requires low(bytes)
+preserves acc(c.Mem(), 1/2) && acc(c.Low(), 1/2)
+ensures low(err)
 ensures   err != nil ==> err.ErrorMem()
 decreases _
 func (c *UDPConn) SetReadBuffer(bytes int) (err error)

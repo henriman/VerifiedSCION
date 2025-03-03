@@ -21,10 +21,12 @@ import (
 	"syscall"
 )
 
-//@ trusted
-//@ preserves c.Mem()
-//@ ensures   e != nil ==> e.ErrorMem()
-//@ decreases _
+// @ trusted
+// @ requires low(level) && low(opt)
+// @ preserves acc(c.Mem(), 1/2) && acc(c.Low(), 1/2)
+// @ ensures   e != nil ==> e.ErrorMem()
+// @ ensures low(r) && low(e)
+// @ decreases _
 func GetsockoptInt(c *net.UDPConn, level, opt int) (r int, e error) {
 	var val int
 	err := SockControl(c, func(fd int) error {
@@ -35,10 +37,10 @@ func GetsockoptInt(c *net.UDPConn, level, opt int) (r int, e error) {
 	return val, err
 }
 
-//@ trusted
-//@ preserves c.Mem()
-//@ ensures   e != nil ==> e.ErrorMem()
-//@ decreases _
+// @ trusted
+// @ preserves c.Mem()
+// @ ensures   e != nil ==> e.ErrorMem()
+// @ decreases _
 func SetsockoptInt(c *net.UDPConn, level, opt, value int) (e error) {
 	return SockControl(c, func(fd int) error {
 		return syscall.SetsockoptInt(fd, level, opt, value)
