@@ -158,19 +158,21 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 }
 
 // IncPath increases the currHF index and currINF index if appropriate.
-// @ requires s.Mem()
+// @ requires acc(s.Mem(), 1/2) && acc(s.Low(), 1/2)
 // @ ensures  (e != nil) == (
 // @ 	old(s.GetNumINF()) == 0 ||
 // @ 	old(int(s.GetCurrHF()) >= s.GetNumHops()-1))
 // @ ensures  e == nil ==> (
-// @ 	s.Mem() &&
+// @ 	acc(s.Mem(), 1/2) && acc(s.Low(), 1/2) &&
 // @ 	let oldBase := old(s.GetBase()) in
 // @ 	let newBase := s.GetBase() in
 // @ 	newBase == oldBase.IncPathSpec())
 // @ ensures  e != nil ==> (s.NonInitMem() && e.ErrorMem())
+// @ ensures low(e)
 // @ decreases
 func (s *Base) IncPath() (e error) {
-	//@ unfold s.Mem()
+	//@ unfold acc(s.Mem(), 1/2)
+	//@ unfold acc(s.Low(), 1/2)
 	if s.NumINF == 0 {
 		//@ fold s.NonInitMem()
 		return serrors.New("empty path cannot be increased")
@@ -183,7 +185,8 @@ func (s *Base) IncPath() (e error) {
 	s.PathMeta.CurrHF++
 	// Update CurrINF
 	s.PathMeta.CurrINF = s.infIndexForHF(s.PathMeta.CurrHF)
-	//@ fold s.Mem()
+	//@ fold acc(s.Mem(), 1/2)
+	//@ fold acc(s.Low(), 1/2)
 	return nil
 }
 

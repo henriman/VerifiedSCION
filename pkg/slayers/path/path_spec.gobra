@@ -28,6 +28,11 @@ pred (r *rawPath) NonInitMem() {
 	acc(r)
 }
 
+// TODO: implement correctly
+pred (r *rawPath) Low(underlyingBuf []byte) {
+	true
+}
+
 ghost
 requires p.Mem(buf)
 ensures  p.NonInitMem()

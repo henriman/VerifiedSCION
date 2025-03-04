@@ -40,6 +40,10 @@ pred (b *Base) Mem() {
 	(0 < b.NumINF ==> 0 < b.NumHops)
 }
 
+pred (b *Base) Low() {
+	acc(b) && low(*b)
+}
+
 ghost
 decreases
 pure func (b Base) ValidCurrInfSpec() bool {

@@ -99,7 +99,7 @@ func (s *Raw) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 }
 
 // Reverse reverses the path such that it can be used in the reverse direction.
-// @ requires  s.Mem(ubuf)
+// @ requires  acc(s.Mem(ubuf), 1/2) && acc(s.Low(ubuf), 1/2)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   err == nil ==> typeOf(p) == type[*Raw]
 // @ ensures   err == nil ==> p != nil && p != (*Raw)(nil)
@@ -118,7 +118,8 @@ func (s *Raw) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, err error) {
 	if err != nil {
 		return nil, err
 	}
-	//@ unfold s.Mem(ubuf)
+	//@ unfold acc(s.Mem(ubuf), 1/2)
+	//@ unfold acc(s.Low(ubuf), 1/2)
 	//@ sl.SplitRange_Bytes(ubuf, 0, len(s.Raw), writePerm)
 	if err := reversed. /*@ (*Decoded). @*/ SerializeTo(s.Raw /*@, s.Raw @*/); err != nil {
 		//@ sl.CombineRange_Bytes(ubuf, 0, len(s.Raw), writePerm)

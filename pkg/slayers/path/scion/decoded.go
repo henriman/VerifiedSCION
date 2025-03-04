@@ -207,7 +207,7 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 }
 
 // Reverse reverses a SCION path.
-// @ requires s.Mem(ubuf)
+// @ requires acc(s.Mem(ubuf), 1/2) && acc(s.Low(ubuf), 1/2)
 // @ ensures  r == nil ==> (
 // @	p != nil                    &&
 // @	p.Mem(ubuf)                 &&
@@ -229,7 +229,8 @@ func (s *Decoded) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, r error) {
 	//@ 	NumINF:   base.NumINF,
 	//@ 	NumHops:  base.NumHops,
 	//@ }
-	//@ unfold s.Mem(ubuf)
+	//@ unfold acc(s.Mem(ubuf), 1/2)
+	//@ unfold acc(s.Low(ubuf), 1/2)
 	//@ unfold s.Base.Mem()
 	if s.NumINF == 0 {
 		//@ fold s.Base.Mem()

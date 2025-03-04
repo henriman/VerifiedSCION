@@ -27,6 +27,10 @@ pred (h *HopField) Mem() {
 	acc(h) && h.ConsIngress >= 0 && h.ConsEgress >= 0
 }
 
+pred (h *HopField) Low() {
+	acc(h) && low(*h)
+}
+
 
 ghost
 decreases

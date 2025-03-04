@@ -66,6 +66,7 @@ type Path struct {
 }
 
 // @ requires  o.NonInitMem()
+// @ requires low(len(data))
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R42)
 // @ ensures   (len(data) >= PathLen) == (r == nil)
 // @ ensures   r == nil ==> o.Mem(data)
@@ -100,6 +101,7 @@ func (o *Path) DecodeFromBytes(data []byte) (r error) {
 	return r
 }
 
+// @ requires low(len(b))
 // @ preserves acc(o.Mem(ubuf), R1)
 // @ preserves acc(sl.Bytes(ubuf, 0, len(ubuf)), R1)
 // @ preserves sl.Bytes(b, 0, len(b))
@@ -137,20 +139,26 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 
 // ToSCIONDecoded converts the one hop path in to a normal SCION path in the
 // decoded format.
-// @ preserves o.Mem(ubuf)
+// @ requires acc(o.Mem(ubuf), 1/2) && acc(o.Low(ubuf), 1/2)
+// @ ensures o.Mem(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
-// @ ensures   err == nil ==> (sd != nil && sd.Mem(ubuf))
+// @ ensures   err == nil ==> (sd != nil && acc(sd.Mem(ubuf), 1/2) && acc(sd.Low(ubuf), 1/2))
 // @ ensures   err != nil ==> err.ErrorMem()
+// @ ensures low(err)
 // @ decreases
 func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, err error) {
-	//@ unfold acc(o.Mem(ubuf), R1)
-	//@ unfold acc(o.SecondHop.Mem(), R10)
+	//@ unfold acc(o.Mem(ubuf), R1/2)
+	//@ unfold acc(o.SecondHop.Mem(), R10/2)
+	//@ unfold acc(o.FirstHop.Mem(), R10/2)
+	//@ unfold acc(o.Low(ubuf), 1/2)
+	//@ unfold acc(o.SecondHop.Low(), 1/2)
+	//@ unfold acc(o.FirstHop.Low(), 1/2)
 	if o.SecondHop.ConsIngress == 0 {
-		//@ fold acc(o.SecondHop.Mem(), R10)
-		//@ fold acc(o.Mem(ubuf), R1)
+		//@ fold acc(o.SecondHop.Mem(), R10/2 + 1/2)
+		//@ fold acc(o.FirstHop.Mem(), R10/2 + 1/2)
+		//@ fold acc(o.Mem(ubuf), R1/2 + 1/2)
 		return nil, serrors.New("incomplete path can't be converted")
 	}
-	//@ unfold acc(o.FirstHop.Mem(), R10)
 	p := &scion.Decoded{
 		Base: scion.Base{
 			PathMeta: scion.MetaHdr{
@@ -185,9 +193,9 @@ func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, e
 			},
 		},
 	}
-	//@ fold acc(o.FirstHop.Mem(), R10)
-	//@ fold acc(o.SecondHop.Mem(), R10)
-	//@ fold acc(o.Mem(ubuf), R1)
+	//@ fold acc(o.FirstHop.Mem(), R10/2 + 1/2)
+	//@ fold acc(o.SecondHop.Mem(), R10/2 + 1/2)
+	//@ fold acc(o.Mem(ubuf), R1/2 + 1/2)
 	//@ assert forall i int :: { &p.InfoFields[i] } 0 <= i && i < len(p.InfoFields) ==> acc(&p.InfoFields[i])
 	//@ assert forall i int :: { &p.HopFields[i] } 0 <= i && i < len(p.HopFields) ==> acc(&p.HopFields[i])
 	//@ fold p.Base.Mem()
@@ -195,12 +203,13 @@ func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, e
 	//@ fold p.HopFields[1].Mem()
 	//@ assert forall i int :: { &p.InfoFields[i] } 0 <= i && i < len(p.InfoFields) ==> acc(&p.InfoFields[i])
 	//@ assert forall i int :: { &p.HopFields[i] } 0 <= i && i < len(p.HopFields) ==> p.HopFields[i].Mem()
-	//@ fold p.Mem(ubuf)
+	//@ fold acc(p.Mem(ubuf), 1/2)
+	//@ fold acc(p.Low(ubuf), 1/2)
 	return p, nil
 }
 
 // Reverse a OneHop path that returns a reversed SCION path.
-// @ requires o.Mem(ubuf)
+// @ requires acc(o.Mem(ubuf), 1/2) && acc(o.Low(ubuf), 1/2)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures err == nil ==> p != nil
 // @ ensures err == nil ==> p.Mem(ubuf)

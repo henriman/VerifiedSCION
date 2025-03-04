@@ -64,12 +64,14 @@ func (t Type) String() string {
 type Path interface {
 	// (VerifiedSCION) Must hold for every valid Path.
 	//@ pred Mem(ub []byte)
+	//@ pred Low(ub []byte)
 	// (VerifiedSCION) Must imply the resources required to initialize
 	// a new instance of a predicate.
 	//@ pred NonInitMem()
 	// SerializeTo serializes the path into the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface that modify the underlying
 	// structure when serializing (e.g. scion.Raw)
+	//@ requires low(len(b))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ preserves acc(Mem(ub), R1)
 	//@ preserves sl.Bytes(b, 0, len(b))
@@ -96,7 +98,7 @@ type Path interface {
 	//@ IsValidResultOfDecoding(b []byte) bool
 	// Reverse reverses a path such that it can be used in the reversed direction.
 	// XXX(shitz): This method should possibly be moved to a higher-level path manipulation package.
-	//@ requires  Mem(ub)
+	//@ requires  acc(Mem(ub), 1/2) && acc(Low(ub), 1/2)
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)

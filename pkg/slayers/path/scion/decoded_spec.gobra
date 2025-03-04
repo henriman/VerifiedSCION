@@ -47,6 +47,14 @@ pred (d *Decoded) Mem(ubuf []byte) {
 	(forall i int :: { &d.HopFields[i] } 0 <= i && i < len(d.HopFields) ==> d.HopFields[i].Mem())
 }
 
+pred (d *Decoded) Low(ubuf []byte) {
+	d.Base.Low() &&
+	acc(&d.InfoFields) &&
+	(forall i int :: { &d.InfoFields[i] } 0 <= i && i < len(d.InfoFields) ==> acc(&d.InfoFields[i])) &&
+	acc(&d.HopFields) &&
+	(forall i int :: { &d.HopFields[i] } 0 <= i && i < len(d.HopFields) ==> d.HopFields[i].Mem())
+}
+
 /**** End of Predicates ****/
 
 /**** Stubs ****/
@@ -106,18 +114,21 @@ func (d *Decoded) IsXover(ghost ubuf []byte) bool {
   * on d.Base. Without this, one would need to unfold d.Mem() to call `IncPath`,
   * which can be extremely cumbersome.
   */
-requires d.Mem(ubuf)
+requires acc(d.Mem(ubuf), 1/2) && acc(d.Low(ubuf), 1/2)
 ensures  e == nil ==> (
-	d.Mem(ubuf) &&
+	acc(d.Mem(ubuf), 1/2) && acc(d.Low(ubuf), 1/2) &&
 	d.LenSpec(ubuf) == old(d.LenSpec(ubuf)) &&
 	(old(d.GetBase(ubuf).Valid()) ==> d.GetBase(ubuf).Valid()))
 ensures  e != nil ==> d.NonInitMem() && e.ErrorMem()
+ensures low(e)
 decreases
 func (d *Decoded) IncPath(ghost ubuf []byte) (e error) {
-	unfold d.Mem(ubuf)
+	unfold acc(d.Mem(ubuf), 1/2)
+	unfold acc(d.Low(ubuf), 1/2)
 	e = d.Base.IncPath()
 	if e == nil {
-		fold d.Mem(ubuf)
+		fold acc(d.Mem(ubuf), 1/2)
+		fold acc(d.Low(ubuf), 1/2)
 	} else {
 		fold d.NonInitMem()
 	}
