@@ -139,7 +139,10 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 
 // ToSCIONDecoded converts the one hop path in to a normal SCION path in the
 // decoded format.
-// @ requires acc(o.Mem(ubuf), 1/2) && acc(o.Low(ubuf), 1/2)
+//
+//	requires acc(o.Mem(ubuf), 1/2) && acc(o.Low(ubuf), 1/2)
+//
+// @ requires o.Mem(ubuf)
 // @ ensures o.Mem(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   err == nil ==> (sd != nil && acc(sd.Mem(ubuf), 1/2) && acc(sd.Low(ubuf), 1/2))

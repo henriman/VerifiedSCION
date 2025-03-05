@@ -29,15 +29,16 @@ pred (o *Path) Mem(ubuf []byte) {
 	acc(&o.Info) &&
 	o.FirstHop.Mem() &&
 	o.SecondHop.Mem() &&
-	PathLen <= len(ubuf)
-}
-
-pred (o *Path) Low(ubuf []byte) {
-	acc(&o.Info) &&
-	o.FirstHop.Low() &&
-	o.SecondHop.Low() &&
+	PathLen <= len(ubuf) &&
 	low(o.Info)
 }
+
+// pred (o *Path) Low(ubuf []byte) {
+// 	acc(&o.Info) &&
+// 	o.FirstHop.Low() &&
+// 	o.SecondHop.Low() &&
+// 	low(o.Info)
+// }
 
 ghost
 requires p.Mem(buf)

@@ -78,7 +78,11 @@ type Base struct {
 	NumHops int
 }
 
-// @ requires  s.NonInitMem()
+// SIF
+//
+//	requires  acc(s.NonInitMem(), 1/2) && acc(s.Low(), 1/2)
+//
+// @ requires s.NonInitMem()
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R50)
 // @ ensures   r != nil ==>
 // @ 	s.NonInitMem() && r.ErrorMem()
@@ -89,6 +93,10 @@ type Base struct {
 // @ ensures   len(data) < MetaLen ==> r != nil
 // posts for IO:
 // @ ensures   r == nil ==> s.GetBase().EqAbsHeader(data)
+// SIF
+//
+//	ensures low(r)
+//
 // @ decreases
 func (s *Base) DecodeFromBytes(data []byte) (r error) {
 	// PathMeta takes care of bounds check.
@@ -158,12 +166,18 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 }
 
 // IncPath increases the currHF index and currINF index if appropriate.
-// @ requires acc(s.Mem(), 1/2) && acc(s.Low(), 1/2)
+//
+//	requires acc(s.Mem(), 1/2) && acc(s.Low(), 1/2)
+//
+// @ requires s.Mem()
 // @ ensures  (e != nil) == (
 // @ 	old(s.GetNumINF()) == 0 ||
 // @ 	old(int(s.GetCurrHF()) >= s.GetNumHops()-1))
 // @ ensures  e == nil ==> (
-// @ 	acc(s.Mem(), 1/2) && acc(s.Low(), 1/2) &&
+//
+//	acc(s.Mem(), 1/2) && acc(s.Low(), 1/2) &&
+//
+// @ 	s.Mem() &&
 // @ 	let oldBase := old(s.GetBase()) in
 // @ 	let newBase := s.GetBase() in
 // @ 	newBase == oldBase.IncPathSpec())
@@ -230,10 +244,17 @@ func (s *Base) infIndexForHF(hf uint8) (r uint8) {
 // store it, based on the metadata. The actual number of bytes available to contain it
 // can be inferred from the common header field HdrLen. It may or may not be consistent.
 // @ pure
+//
+//	requires acc(s.Mem(), 1/2) && acc(s.Low(), 1/2)
+//
 // @ requires s.Mem()
 // @ ensures  r >= MetaLen
+//
+//	ensures low(r)
+//
 // @ decreases
 func (s *Base) Len() (r int) {
+	// return /*@ unfolding acc(s.Mem(), 1/2) in unfolding acc(s.Low(), 1/2) in @*/ MetaLen + s.NumINF*path.InfoLen + s.NumHops*path.HopLen
 	return /*@ unfolding s.Mem() in @*/ MetaLen + s.NumINF*path.InfoLen + s.NumHops*path.HopLen
 }
 

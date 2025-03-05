@@ -34,16 +34,24 @@ type Raw struct {
 
 // DecodeFromBytes only decodes the PathMetaHeader. Otherwise the nothing is decoded and simply kept
 // as raw bytes.
-// @ requires  s.NonInitMem()
+// SIF
+//
+//	requires  acc(s.NonInitMem(), 1/2) && acc(s.Low(), 1/2)
+//
+// @ requires s.NonInitMem()
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R42)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res == nil ==>
 // @ 	s.GetBase(data).WeaklyValid() &&
 // @ 	s.GetBase(data).EqAbsHeader(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
+// @ ensures low(res)
 // @ decreases
 func (s *Raw) DecodeFromBytes(data []byte) (res error) {
+	// SIF
 	//@ unfold s.NonInitMem()
+	// unfold acc(s.NonInitMem(), 1/2)
+	// unfold acc(s.Low(), 1/2)
 	if err := s.Base.DecodeFromBytes(data); err != nil {
 		//@ fold s.NonInitMem()
 		return err
@@ -99,7 +107,13 @@ func (s *Raw) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 }
 
 // Reverse reverses the path such that it can be used in the reverse direction.
-// @ requires  acc(s.Mem(ubuf), 1/2) && acc(s.Low(ubuf), 1/2)
+// SIF
+//
+//		requires  acc(s.Mem(ubuf), 1/2) && acc(s.Low(), 1/2)
+//
+//	 requires  acc(s.Mem(ubuf), 1/2) && acc(s.Low(ubuf), 1/2)
+//
+// @ requires s.Mem(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   err == nil ==> typeOf(p) == type[*Raw]
 // @ ensures   err == nil ==> p != nil && p != (*Raw)(nil)
@@ -119,7 +133,9 @@ func (s *Raw) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, err error) {
 		return nil, err
 	}
 	//@ unfold acc(s.Mem(ubuf), 1/2)
+	// SIF
 	//@ unfold acc(s.Low(ubuf), 1/2)
+	// unfold acc(s.Low(), 1/2)
 	//@ sl.SplitRange_Bytes(ubuf, 0, len(s.Raw), writePerm)
 	if err := reversed. /*@ (*Decoded). @*/ SerializeTo(s.Raw /*@, s.Raw @*/); err != nil {
 		//@ sl.CombineRange_Bytes(ubuf, 0, len(s.Raw), writePerm)

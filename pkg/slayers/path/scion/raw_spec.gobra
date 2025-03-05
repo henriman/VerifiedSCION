@@ -35,13 +35,16 @@ pred (s *Raw) Mem(buf []byte) {
 	acc(&s.Raw) &&
 	len(s.Raw) <= len(buf) &&
 	s.Raw === buf[:len(s.Raw)] &&
+	// SIF: Problem: In contract of Len, I require s.Base.Low(),
+	// but I obviously don't have that here
 	len(s.Raw) == s.Base.Len()
+	// SIF: insert any lowness here
 }
 
-// TODO: implement correctly
-pred (s *Raw) Low(buf []byte) {
-	true
-}
+// pred (s *Raw) Low(buf []byte) {
+// 	s.Base.Low() &&
+// 	acc(&s.Raw)
+// }
 
 /**** End of Predicates ****/
 

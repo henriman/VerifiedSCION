@@ -45,15 +45,16 @@ pred (d *Decoded) Mem(ubuf []byte) {
 	acc(&d.HopFields) &&
 	len(d.HopFields) == d.Base.GetNumHops() &&
 	(forall i int :: { &d.HopFields[i] } 0 <= i && i < len(d.HopFields) ==> d.HopFields[i].Mem())
+	// SIF: insert other lowness here
 }
 
-pred (d *Decoded) Low(ubuf []byte) {
-	d.Base.Low() &&
-	acc(&d.InfoFields) &&
-	(forall i int :: { &d.InfoFields[i] } 0 <= i && i < len(d.InfoFields) ==> acc(&d.InfoFields[i])) &&
-	acc(&d.HopFields) &&
-	(forall i int :: { &d.HopFields[i] } 0 <= i && i < len(d.HopFields) ==> d.HopFields[i].Mem())
-}
+// pred (d *Decoded) Low(ubuf []byte) {
+// 	d.Base.Low() &&
+// 	acc(&d.InfoFields) &&
+// 	(forall i int :: { &d.InfoFields[i] } 0 <= i && i < len(d.InfoFields) ==> acc(&d.InfoFields[i])) &&
+// 	acc(&d.HopFields) &&
+// 	(forall i int :: { &d.HopFields[i] } 0 <= i && i < len(d.HopFields) ==> d.HopFields[i].Mem())
+// }
 
 /**** End of Predicates ****/
 
@@ -114,9 +115,11 @@ func (d *Decoded) IsXover(ghost ubuf []byte) bool {
   * on d.Base. Without this, one would need to unfold d.Mem() to call `IncPath`,
   * which can be extremely cumbersome.
   */
-requires acc(d.Mem(ubuf), 1/2) && acc(d.Low(ubuf), 1/2)
+// requires acc(d.Mem(ubuf), 1/2) && acc(d.Low(ubuf), 1/2)
+requires d.Mem(ubuf)
 ensures  e == nil ==> (
-	acc(d.Mem(ubuf), 1/2) && acc(d.Low(ubuf), 1/2) &&
+	// acc(d.Mem(ubuf), 1/2) && acc(d.Low(ubuf), 1/2) &&
+	d.Mem(ubuf) &&
 	d.LenSpec(ubuf) == old(d.LenSpec(ubuf)) &&
 	(old(d.GetBase(ubuf).Valid()) ==> d.GetBase(ubuf).Valid()))
 ensures  e != nil ==> d.NonInitMem() && e.ErrorMem()

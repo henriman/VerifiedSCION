@@ -80,7 +80,12 @@ type Path struct {
 
 // SerializeTo serializes the Path into buffer b. On failure, an error is returned, otherwise
 // SerializeTo will return nil.
-// @ preserves acc(p.Mem(ubuf), R1)
+// @ requires low(len(b))
+//
+//	requires acc(p.Mem(ubuf), R1/2) && acc(p.Low(ubuf), R1/2)
+//
+// @ requires acc(p.Mem(ubuf), R1)
+// @ ensures acc(p.Mem(ubuf), R1)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ preserves sl.Bytes(b, 0, len(b))
 // @ ensures   r != nil ==> r.ErrorMem()
@@ -94,6 +99,8 @@ func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 		return serrors.New("buffer too small to serialize path.", "expected", int(p.Len( /*@ ubuf @*/ )),
 			"actual", len(b))
 	}
+	// unfold acc(p.Mem(ubuf), R1/2)
+	// unfold acc(p.Low(ubuf), R1/2)
 	//@ unfold acc(p.Mem(ubuf), R1)
 	//@ defer fold acc(p.Mem(ubuf), R1)
 	if len(p.PHVF) != HVFLen {
@@ -138,6 +145,7 @@ func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 // DecodeFromBytes deserializes the buffer b into the Path. On failure, an error is returned,
 // otherwise SerializeTo will return nil.
 // @ requires  p.NonInitMem()
+// @ requires low(len(b))
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 // @ ensures   len(b) < MetadataLen ==> r != nil
 // @ ensures   r == nil ==> p.Mem(b)
@@ -181,6 +189,9 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 
 // Reverse reverses the EPIC path. In particular, this means that the SCION path type subheader
 // is reversed.
+//
+//	requires acc(p.Mem(ubuf), 1/2) && acc(p.Low(ubuf), 1/2)
+//
 // @ requires p.Mem(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures  r == nil ==> ret != nil
@@ -189,6 +200,8 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 // @ ensures  r != nil ==> r.ErrorMem()
 // @ decreases
 func (p *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (ret path.Path, r error) {
+	// unfold acc(p.Mem(ubuf), 1/2)
+	// unfold acc(p.Low(ubuf), 1/2)
 	//@ unfold p.Mem(ubuf)
 	if p.ScionPath == nil {
 		//@ fold p.Mem(ubuf)
@@ -211,15 +224,26 @@ func (p *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (ret path.Path, r error) {
 }
 
 // Len returns the length of the EPIC path in bytes.
-// @ preserves acc(p.Mem(ubuf), R50)
+//
+//	requires acc(p.Mem(ubuf), R50/2) && acc(p.Low(ubuf), R50/2)
+//
+// @ requires acc(p.Mem(ubuf), R50)
+// @ ensures acc(p.Mem(ubuf), R50)
 // @ ensures   l == p.LenSpec(ubuf)
+// @ ensures low(l)
 // @ decreases
 func (p *Path) Len( /*@ ghost ubuf []byte @*/ ) (l int) {
+	// SIF
+	// unfold acc(p.Mem(ubuf), R50/2)
+	//  unfold acc(p.Low(ubuf), R50/2)
 	// @ unfold acc(p.Mem(ubuf), R50)
 	// @ defer fold acc(p.Mem(ubuf), R50)
 	if p.ScionPath == nil {
 		return MetadataLen
 	}
+	// SIF
+	//  unfold acc(p.ScionPath.Low(), R50/2)
+	//  fold acc(p.ScionPath.Mem(ubuf), R50)
 	return MetadataLen + p.ScionPath.Len( /*@ ubuf[MetadataLen:] @*/ )
 }
 

@@ -37,12 +37,14 @@ pred (b *Base) Mem() {
 	// knowledge that WeaklyValid holds between methods.
 	0 <= b.NumINF  && b.NumINF <= MaxINFs  &&
 	0 <= b.NumHops && b.NumHops <= MaxHops &&
-	(0 < b.NumINF ==> 0 < b.NumHops)
+	(0 < b.NumINF ==> 0 < b.NumHops) &&
+	// SIF
+	low(*b)
 }
 
-pred (b *Base) Low() {
-	acc(b) && low(*b)
-}
+// pred (b *Base) Low() {
+// 	acc(b) && low(*b)
+// }
 
 ghost
 decreases

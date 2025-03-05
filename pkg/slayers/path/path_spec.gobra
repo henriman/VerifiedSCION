@@ -22,6 +22,7 @@ import "github.com/scionproto/scion/verification/utils/slices"
 pred (r *rawPath) Mem(underlyingBuf []byte) {
 	acc(r) &&
 	r.raw === underlyingBuf
+	// SIF: insert any lowness here
 }
 
 pred (r *rawPath) NonInitMem() {
@@ -29,9 +30,9 @@ pred (r *rawPath) NonInitMem() {
 }
 
 // TODO: implement correctly
-pred (r *rawPath) Low(underlyingBuf []byte) {
-	true
-}
+// pred (r *rawPath) Low(underlyingBuf []byte) {
+// 	true
+// }
 
 ghost
 requires p.Mem(buf)

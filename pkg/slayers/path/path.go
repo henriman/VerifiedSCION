@@ -64,7 +64,7 @@ func (t Type) String() string {
 type Path interface {
 	// (VerifiedSCION) Must hold for every valid Path.
 	//@ pred Mem(ub []byte)
-	//@ pred Low(ub []byte)
+	// pred Low(ub []byte)
 	// (VerifiedSCION) Must imply the resources required to initialize
 	// a new instance of a predicate.
 	//@ pred NonInitMem()
@@ -98,7 +98,8 @@ type Path interface {
 	//@ IsValidResultOfDecoding(b []byte) bool
 	// Reverse reverses a path such that it can be used in the reversed direction.
 	// XXX(shitz): This method should possibly be moved to a higher-level path manipulation package.
-	//@ requires  acc(Mem(ub), 1/2) && acc(Low(ub), 1/2)
+	// requires  acc(Mem(ub), 1/2) && acc(Low(ub), 1/2)
+	//@ requires Mem(ub)
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)
