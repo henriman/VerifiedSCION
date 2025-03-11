@@ -47,6 +47,8 @@ pred (d *Decoded) Mem(ubuf []byte) {
 	(forall i int :: { &d.HopFields[i] } 0 <= i && i < len(d.HopFields) ==> d.HopFields[i].Mem())
 }
 
+pred (*Decoded) LowSerializeTo()
+
 /**** End of Predicates ****/
 
 /**** Stubs ****/

@@ -28,6 +28,8 @@ pred (r *rawPath) NonInitMem() {
 	acc(r)
 }
 
+pred (*rawPath) LowSerializeTo()
+
 ghost
 requires p.Mem(buf)
 ensures  p.NonInitMem()

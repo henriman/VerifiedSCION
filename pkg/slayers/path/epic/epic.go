@@ -41,6 +41,8 @@ const (
 )
 
 // RegisterPath registers the EPIC path type globally.
+// TODO: Once Gobra issue 878 is resolved, remove `truested`.
+// @ trusted
 // @ requires path.PathPackageMem()
 // @ requires !path.Registered(PathType)
 // @ ensures  path.PathPackageMem()
@@ -80,6 +82,8 @@ type Path struct {
 
 // SerializeTo serializes the Path into buffer b. On failure, an error is returned, otherwise
 // SerializeTo will return nil.
+// @ requires  p.LowSerializeTo()
+// @ requires  low(len(b))
 // @ preserves acc(p.Mem(ubuf), R1)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ preserves sl.Bytes(b, 0, len(b))
@@ -90,6 +94,7 @@ type Path struct {
 // @ ensures   old(p.getLHVFLen(ubuf)) != HVFLen ==> r != nil
 // @ decreases
 func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
+	// @ p.GetLowSerializeTo(ubuf, R1/2)
 	if len(b) < p.Len( /*@ ubuf @*/ ) {
 		return serrors.New("buffer too small to serialize path.", "expected", int(p.Len( /*@ ubuf @*/ )),
 			"actual", len(b))
@@ -138,6 +143,7 @@ func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 // DecodeFromBytes deserializes the buffer b into the Path. On failure, an error is returned,
 // otherwise SerializeTo will return nil.
 // @ requires  p.NonInitMem()
+// @ requires  low(len(b) < MetadataLen)
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 // @ ensures   len(b) < MetadataLen ==> r != nil
 // @ ensures   r == nil ==> p.Mem(b)
@@ -213,6 +219,7 @@ func (p *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (ret path.Path, r error) {
 // Len returns the length of the EPIC path in bytes.
 // @ preserves acc(p.Mem(ubuf), R50)
 // @ ensures   l == p.LenSpec(ubuf)
+// @ ensures   low(l)
 // @ decreases
 func (p *Path) Len( /*@ ghost ubuf []byte @*/ ) (l int) {
 	// @ unfold acc(p.Mem(ubuf), R50)

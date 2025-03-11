@@ -72,6 +72,13 @@ type Path interface {
 	// SerializeTo serializes the path into the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface that modify the underlying
 	// structure when serializing (e.g. scion.Raw)
+	// TODO: Once Gobra issue 846 is resolved, rework this.
+	// Predicate containing sensitivity information. Intended to be implemented
+	// as an abstract predicate, alongside an abstract function requiring
+	// `LowSerializeTo()`, and ensuring the corresponding sensitivity.
+	//@ pred LowSerializeTo()
+	//@ requires  LowSerializeTo()
+	//@ requires  low(len(b))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ preserves acc(Mem(ub), R1)
 	//@ preserves sl.Bytes(b, 0, len(b))
