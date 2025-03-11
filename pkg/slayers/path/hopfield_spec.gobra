@@ -115,3 +115,18 @@ pure func (h HopField) ToIO_HF() (io.IO_HF) {
 		HVF: AbsMac(h.Mac),
 	}
 }
+// TODO: Once Gobra issue 883 is removed, these could be removed in favor of 
+// unfolding permissions directly in the contract.
+ghost
+requires h.Mem()
+decreases
+pure func (h *HopField) GetEgressRouterAlert() bool {
+	return unfolding h.Mem() in h.EgressRouterAlert
+}
+
+ghost
+requires h.Mem()
+decreases
+pure func (h *HopField) GetIngressRouterAlert() bool {
+	return unfolding h.Mem() in h.IngressRouterAlert
+}

@@ -48,7 +48,9 @@ func init() {
 type Type uint8
 
 // @ requires 0 <= t && t < maxPathType
-// @ preserves acc(PathPackageMem(), R20)
+// @ requires acc(PathPackageMem(), R20)
+// @ requires low(Registered(t))
+// @ ensures  acc(PathPackageMem(), R20)
 // @ decreases
 func (t Type) String() string {
 	//@ unfold acc(PathPackageMem(), R20)
@@ -183,6 +185,7 @@ func StrictDecoding(strict bool) {
 // NewPath returns a new path object of pathType.
 // @ requires 0 <= pathType && pathType < maxPathType
 // @ requires acc(PathPackageMem(), _)
+// @ requires low(Registered(pathType)) && low(IsStrictDecoding())
 // @ ensures  e != nil ==> e.ErrorMem()
 // @ ensures  e == nil ==> p != nil && p.NonInitMem()
 // @ decreases
