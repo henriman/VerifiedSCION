@@ -31,6 +31,7 @@ import (
 	"github.com/scionproto/scion/pkg/slayers/path/epic"
 	// @ . "github.com/scionproto/scion/verification/utils/definitions"
 	// @ sl "github.com/scionproto/scion/verification/utils/slices"
+	// @ "github.com/scionproto/scion/verification/utils/sif"
 )
 
 const (
@@ -58,6 +59,7 @@ var zeroInitVector /*@@@*/ [16]byte
 // input timestamp. The input timestamp must not be in the future (compared to the current time),
 // otherwise an error is returned. An error is also returned if the current time is more than 1 day
 // and 63 minutes after the input timestamp.
+// @ requires low(input) && low(now)
 // @ ensures err != nil ==> err.ErrorMem()
 // @ decreases
 func CreateTimestamp(input time.Time, now time.Time) (res uint32, err error) {
@@ -80,7 +82,8 @@ func CreateTimestamp(input time.Time, now time.Time) (res uint32, err error) {
 // does not date back more than the maximal packet lifetime of two seconds. The function also takes
 // a possible clock drift between the packet source and the verifier of up to one second into
 // account.
-// @ ensures err != nil ==> err.ErrorMem()
+// @ requires low(timestamp) && low(epicTS) && low(now)
+// @ ensures  err != nil ==> err.ErrorMem()
 // @ decreases
 func VerifyTimestamp(timestamp time.Time, epicTS uint32, now time.Time) (err error) {
 	diff := (time.Duration(epicTS) + 1) * TimestampResolution
@@ -107,6 +110,7 @@ func VerifyTimestamp(timestamp time.Time, epicTS uint32, now time.Time) (err err
 // valid.
 // @ requires  len(auth) == 16
 // @ requires  sl.Bytes(buffer, 0, len(buffer))
+// @ requires  low(len(buffer) < MACBufferSize) && low(s == nil)
 // @ preserves acc(s.Mem(ub), R20)
 // @ preserves acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ preserves acc(sl.Bytes(auth, 0, len(auth)), R30)
@@ -114,6 +118,7 @@ func VerifyTimestamp(timestamp time.Time, epicTS uint32, now time.Time) (err err
 // @ ensures   reserr == nil ==> (sl.Bytes(res, 0, len(res)) --* sl.Bytes(buffer, 0, len(buffer)))
 // @ ensures   reserr != nil ==> reserr.ErrorMem()
 // @ ensures   reserr != nil ==> sl.Bytes(buffer, 0, len(buffer))
+// @ ensures   low(reserr != nil)
 // @ decreases
 func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	timestamp uint32, buffer []byte /*@ , ghost ub []byte @*/) (res []byte, reserr error) {
@@ -145,14 +150,16 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	// @ ghost end   := start + 4
 	result := input[len(input)-f.BlockSize() : len(input)-f.BlockSize()+4]
 	// @ sl.SplitRange_Bytes(input, start, end, writePerm)
-	// @ package (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer))) {
-	// @ 	ghost if !allocatesNewBuffer {
-	// @ 		assert oldBuffer === buffer
-	// @ 		sl.CombineRange_Bytes(input, start, end, writePerm)
-	// @ 		sl.CombineRange_Bytes(oldBuffer, 0, inputLength, writePerm)
-	// @ 	}
-	// @ }
-	// @ assert (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
+	//  package (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer))) {
+	//  	ghost if !allocatesNewBuffer {
+	//  		assert oldBuffer === buffer
+	//  		sl.CombineRange_Bytes(input, start, end, writePerm)
+	//  		sl.CombineRange_Bytes(oldBuffer, 0, inputLength, writePerm)
+	//  	}
+	//  }
+	//  assert (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
+	// TODO: Once Gobra issue 881 is resolved, remove this assumption.
+	// @ assume (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
 	return result, nil
 }
 
@@ -161,11 +168,18 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 // bytes of the SCION path type MAC, has invalid length, or if the MAC calculation gives an error,
 // also VerifyHVF returns an error. The verification was successful if and only if VerifyHVF
 // returns nil.
+// @ requires  acc(sl.Bytes(auth, 0, len(auth)), R30)
+// @ requires  acc(sl.Bytes(hvf, 0, len(hvf)), R50)
+// @ requires  low(s == nil) && low(len(auth) != AuthLen)
+// @ requires  low(len(buffer) < MACBufferSize)
+// @ requires  low(len(hvf))
+// @ requires  forall i int :: { sl.GetByte(hvf, 0, len(hvf), i) } 0 <= i && i < len(hvf) ==>
+// @  	low(sl.GetByte(hvf, 0, len(hvf), i))
 // @ preserves sl.Bytes(buffer, 0, len(buffer))
 // @ preserves acc(s.Mem(ub), R20)
-// @ preserves acc(sl.Bytes(hvf, 0, len(hvf)), R50)
 // @ preserves acc(sl.Bytes(ub, 0, len(ub)), R20)
-// @ preserves acc(sl.Bytes(auth, 0, len(auth)), R30)
+// @ ensures   acc(sl.Bytes(hvf, 0, len(hvf)), R50)
+// @ ensures   acc(sl.Bytes(auth, 0, len(auth)), R30)
 // @ ensures   reserr != nil ==> reserr.ErrorMem()
 // @ decreases
 func VerifyHVF(auth []byte, pktID epic.PktID, s *slayers.SCION,
@@ -180,6 +194,7 @@ func VerifyHVF(auth []byte, pktID epic.PktID, s *slayers.SCION,
 		return err
 	}
 
+	// @ sif.LowSlicesImplyLowConstantTimeCompare(hvf, mac, R50/2)
 	if subtle.ConstantTimeCompare(hvf, mac) == 0 {
 		// @ apply sl.Bytes(mac, 0, len(mac)) --* sl.Bytes(buffer, 0, len(buffer))
 		return serrors.New("epic hop validation field verification failed",
@@ -208,6 +223,7 @@ func CoreFromPktCounter(counter uint32) (uint8, uint32) {
 // @ ensures   reserr == nil ==>
 // @ 	res != nil && res.Mem() && res.BlockSize() == 16
 // @ ensures   reserr != nil ==> reserr.ErrorMem()
+// @ ensures   low(reserr != nil)
 // @ decreases
 func initEpicMac(key []byte) (res cipher.BlockMode, reserr error) {
 	block, err := aes.NewCipher(key)
@@ -223,11 +239,13 @@ func initEpicMac(key []byte) (res cipher.BlockMode, reserr error) {
 }
 
 // @ requires  MACBufferSize <= len(inputBuffer)
+// @ requires  low(s == nil)
 // @ preserves acc(s.Mem(ub), R20)
 // @ preserves acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ preserves sl.Bytes(inputBuffer, 0, len(inputBuffer))
 // @ ensures   reserr == nil ==> 16 <= res && res <= len(inputBuffer)
 // @ ensures   reserr != nil ==> reserr.ErrorMem()
+// @ ensures   low(reserr != nil)
 // @ decreases
 func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	inputBuffer []byte /*@ , ghost ub []byte @*/) (res int, reserr error) {

@@ -17,6 +17,12 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 trusted
 requires sl.Bytes(x, 0, len(x))
 requires sl.Bytes(y, 0, len(y))
+// requires low(len(x)) && low(len(y))
+// requires forall i int :: { sl.GetByte(x, 0, len(x), i) } 0 <= i && i < len(x) ==>
+//     low(sl.GetByte(x, 0, len(x), i))
+// requires forall i int :: { sl.GetByte(y, 0, len(y), i) } 0 <= i && i < len(y) ==>
+//     low(sl.GetByte(y, 0, len(y), i))
 ensures  len(x) != len(y) ==> res == 0
+// ensures  low(res)
 decreases
 pure func ConstantTimeCompare(x, y []byte) (res int)

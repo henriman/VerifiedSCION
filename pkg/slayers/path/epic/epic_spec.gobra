@@ -37,6 +37,8 @@ pred (p *Path) Mem(ubuf []byte) {
 	p.ScionPath.Mem(ubuf[MetadataLen:])
 }
 
+pred (*Path) LowReverse()
+
 ghost
 requires p.Mem(ub)
 decreases

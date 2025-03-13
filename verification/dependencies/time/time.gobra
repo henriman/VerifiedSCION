@@ -16,8 +16,9 @@ type Time struct {
 }
 
 // After reports whether the time instant t is after u.
+ensures low(t) && low(u) ==> low(res)
 decreases
-pure func (t Time) After(u Time) bool
+pure func (t Time) After(u Time) (res bool)
 
 // Before reports whether the time instant t is before u.
 decreases
@@ -188,12 +189,15 @@ decreases
 pure func (d Duration) Round(m Duration) Duration
 
 // Add returns the time t+d.
+ensures low(t) && low(d) ==> low(res)
 decreases
-func (t Time) Add(d Duration) Time
+func (t Time) Add(d Duration) (res Time)
 
 // Sub returns the duration t-u.
+// TODO: could potentially made pure?
+ensures low(t) && low(u) ==> low(res)
 decreases
-func (t Time) Sub(u Time) Duration
+func (t Time) Sub(u Time) (res Duration)
 
 // Since returns the time elapsed since t.
 // It is shorthand for time.Now().Sub(t).
