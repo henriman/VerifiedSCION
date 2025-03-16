@@ -158,7 +158,10 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	//  	}
 	//  }
 	//  assert (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
-	// TODO: Once Gobra issue 881 is resolved, remove this assumption.
+	// TODO: Once Gobra issue 881 is resolved, reintroduce the package block instead.
+	// Inhaling/exhaling would be safer here, but I don't think it's worth the
+	// time to figure this out, considering it's a workaround anway. Also,
+	// this assumption doesn't introduce an inconsistency.
 	// @ assume (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
 	return result, nil
 }
@@ -194,6 +197,9 @@ func VerifyHVF(auth []byte, pktID epic.PktID, s *slayers.SCION,
 		return err
 	}
 
+	// @ assume low(len(mac))
+	// @ assume forall i int :: { sl.GetByte(mac, 0, len(mac), i) } 0 <= i && i < len(mac) ==>
+	// @ 	low(sl.GetByte(mac, 0, len(mac), i))
 	// @ sif.LowSlicesImplyLowConstantTimeCompare(hvf, mac, R50/2)
 	if subtle.ConstantTimeCompare(hvf, mac) == 0 {
 		// @ apply sl.Bytes(mac, 0, len(mac)) --* sl.Bytes(buffer, 0, len(buffer))

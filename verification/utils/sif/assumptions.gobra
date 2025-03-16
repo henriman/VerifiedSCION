@@ -15,7 +15,8 @@ ensures acc(b, p) && low(string(b))
 decreases
 func AssumeLowSliceToLowString(b []byte, p perm)
 
-// TODO: open issue
+// We need this assumption due to a combination of problems.
+// TODO: Explain
 ghost
 requires p > 0 && acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
 requires low(len(x)) && low(len(y))
