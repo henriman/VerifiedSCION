@@ -67,6 +67,13 @@ type SerializeBuffer interface {
 	ensures   err == nil ==> old(View()) == View()[num:]
 	ensures   err != nil ==> UBuf() === old(UBuf())
 	ensures   err != nil ==> err.ErrorMem()
+	// TODO: Check if we should add additional preconditions for this
+	ensures   low(err != nil)
+	// TODO: Format properly and rewrite comment
+	// If all bytes were low before, now all except the prepended bytes are low.
+	ensures   (err == nil && forall i int :: { old(sl.GetByte(UBuf(), 0, len(UBuf()), i)) } 0 <= i && i < len(old(UBuf())) ==> low(old(sl.GetByte(UBuf(), 0, len(UBuf()), i)))) ==>
+		forall i int :: { sl.GetByte(UBuf(), 0, len(UBuf()), i) } num <= i && i < len(UBuf()) ==>
+		low(sl.GetByte(UBuf(), 0, len(UBuf()), i))
 	decreases
 	PrependBytes(num int) (res []byte, err error)
 

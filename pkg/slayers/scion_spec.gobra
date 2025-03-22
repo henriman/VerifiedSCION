@@ -111,6 +111,14 @@ pure func (s *SCION) PathPoolInitializedNonInitMem() bool {
 }
 
 ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) PathPoolInitializedMem(ghost ub []byte) bool {
+	return unfolding s.Mem(ub) in
+		s.pathPool != nil
+}
+
+ghost
 requires 0 <= pathType && pathType < path.MaxPathType
 requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
 requires s.pathPool != nil
@@ -183,7 +191,10 @@ pred (s *SCION) Mem(ubuf []byte) {
 	// helpful facts for other methods:
 	// - for router::updateScionLayer:
 	(typeOf(s.Path) == type[*onehop.Path] ==>
-		s.ValidSizeOhpUbOpenInv(ubuf))
+		s.ValidSizeOhpUbOpenInv(ubuf)) // &&
+	// TODO: Once Gobra issue 846 is resolved, rework this.
+	// Sensitivity information.
+	// s.Path.LowLen()
 }
 
 ghost
@@ -223,6 +234,7 @@ pred (s *SCION) HeaderMem(ubuf []byte) {
 
 ghost
 requires s.Mem(ub)
+requires low(s.PathPoolInitializedMem(ub))
 ensures  s.NonInitMem()
 decreases
 func (s *SCION) DowngradePerm(ghost ub []byte) {
@@ -691,6 +703,7 @@ requires  s.pathPoolInitialized() ==> (
 	PathPoolMemExceptOne(s.pathPool, s.pathPoolRaw, pathType) &&
 	p === s.getPathPure(pathType))
 requires !s.pathPoolInitialized() ==> PathPoolMem(s.pathPool, s.pathPoolRaw)
+requires low(s.pathPoolInitialized())
 ensures  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
 ensures  PathPoolMem(s.pathPool, s.pathPoolRaw)
 decreases
@@ -752,6 +765,8 @@ pure func isHostSVC(a net.Addr) bool {
 ghost
 trusted // TODO: drop this line after the static init PR
 ensures acc(path.PathPackageMem(), _)
+ensures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+	low(path.Registered(t))
 decreases
 func EstablishPathPkgMem()
 
@@ -811,4 +826,29 @@ decreases
 pure func (s *SCION) ValidSizeOhpUb(ub []byte) (b bool) {
 	return unfolding s.Mem(ub) in
 		s.ValidSizeOhpUbOpenInv(ub)
+}
+
+ghost
+requires fullMem  ==> s.Mem(ub)
+requires !fullMem ==> s.HeaderMem(ub)
+decreases
+pure func (s *SCION) GetDstAddrType(ub []byte, fullMem bool) AddrType {
+	return fullMem ? (unfolding s.Mem(ub) in s.DstAddrType) : (unfolding s.HeaderMem(ub) in s.DstAddrType)
+	// return unfolding s.Mem(ub) in s.DstAddrType
+}
+
+ghost
+requires fullMem  ==> s.Mem(ub)
+requires !fullMem ==> s.HeaderMem(ub)
+decreases
+pure func (s *SCION) GetSrcAddrType(ub []byte, fullMem bool) AddrType {
+	return fullMem ? (unfolding s.Mem(ub) in s.SrcAddrType) : (unfolding s.HeaderMem(ub) in s.SrcAddrType)
+	// return unfolding s.Mem(ub) in s.SrcAddrType
+}
+
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetNextHdr(ub []byte) L4ProtocolType {
+	return unfolding s.Mem(ub) in s.NextHdr
 }

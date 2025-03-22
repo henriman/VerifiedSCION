@@ -26,7 +26,7 @@ const PathLen = 0
 
 const PathType path.Type = 0
 
-// TODO: Once Gobra issue 878 is resolved, remove `truested`.
+// TODO: Once Gobra issue 878 is resolved, remove `trusted`.
 // @ trusted
 // @ requires path.PathPackageMem()
 // @ requires !path.Registered(PathType)

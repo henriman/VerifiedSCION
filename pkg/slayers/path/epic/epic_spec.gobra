@@ -37,6 +37,17 @@ pred (p *Path) Mem(ubuf []byte) {
 	p.ScionPath.Mem(ubuf[MetadataLen:])
 }
 
+pred (*Path) LowSerializeTo()
+
+ghost
+requires  ep.LowSerializeTo() && p > 0
+preserves acc(ep.Mem(buf), p)
+ensures   low(ep.getPHVFLen(buf) != HVFLen) && low(ep.getLHVFLen(buf) != HVFLen)
+decreases
+func (ep *Path) GetLowSerializeTo(buf []byte, ghost p perm)
+
+pred (*Path) LowLen()
+
 ghost
 requires p.Mem(ub)
 decreases
@@ -103,12 +114,3 @@ pure func (p *Path) IsValidResultOfDecoding(b []byte) (res bool) {
 }
 
 (*Path) implements path.Path
-
-pred (*Path) LowSerializeTo()
-
-ghost
-requires  ep.LowSerializeTo() && p > 0
-preserves acc(ep.Mem(buf), p)
-ensures   low(ep.getPHVFLen(buf) != HVFLen) && low(ep.getLHVFLen(buf) != HVFLen)
-decreases
-func (ep *Path) GetLowSerializeTo(buf []byte, ghost p perm)

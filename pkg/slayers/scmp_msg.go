@@ -65,10 +65,12 @@ func (i *SCMPExternalInterfaceDown) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPExternalInterfaceDown) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -142,6 +144,7 @@ func (i *SCMPExternalInterfaceDown) SerializeTo(b gopacket.SerializeBuffer, opts
 }
 
 // @ requires pb != nil
+// @ requires low(len(data))
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
 // @ ensures res != nil ==> res.ErrorMem()
@@ -203,10 +206,12 @@ func (*SCMPInternalConnectivityDown) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPInternalConnectivityDown) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -294,10 +299,11 @@ func (i *SCMPInternalConnectivityDown) SerializeTo(b gopacket.SerializeBuffer, o
 	return nil
 }
 
-// @ requires pb != nil
+// @ requires  pb != nil
+// @ requires  low(len(data))
 // @ preserves pb.Mem()
-// @ requires sl.Bytes(data, 0, len(data))
-// @ ensures err != nil ==> err.ErrorMem()
+// @ requires  sl.Bytes(data, 0, len(data))
+// @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPInternalConnectivityDown(data []byte, pb gopacket.PacketBuilder) (err error) {
 	s := &SCMPInternalConnectivityDown{}
@@ -343,10 +349,12 @@ func (*SCMPEcho) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data) < 4)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPEcho) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 4
@@ -452,6 +460,7 @@ func (i *SCMPEcho) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.Seriali
 }
 
 // @ requires pb != nil
+// @ requires low(len(data) < 4)
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
 // @ ensures err != nil ==> err.ErrorMem()
@@ -496,10 +505,12 @@ func (*SCMPParameterProblem) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data) < 4)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPParameterProblem) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2
@@ -581,6 +592,7 @@ func (i *SCMPParameterProblem) SerializeTo(b gopacket.SerializeBuffer, opts gopa
 }
 
 // @ requires  pb != nil
+// @ requires  low(len(data) < 4)
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -638,11 +650,13 @@ func (*SCMPTraceroute) NextLayerType() gopacket.LayerType {
 // DecodeFromBytes decodes the given bytes into this layer.
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data) < 4 + addr.IABytes + scmpRawInterfaceLen)
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> i.NonInitMem()
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPTraceroute) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2 + addr.IABytes + scmpRawInterfaceLen
@@ -781,6 +795,7 @@ func (i *SCMPTraceroute) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.S
 }
 
 // @ requires  pb != nil
+// @ requires  low(len(data) < 4 + addr.IABytes + scmpRawInterfaceLen)
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -827,10 +842,12 @@ func (*SCMPDestinationUnreachable) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data) < 4)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPDestinationUnreachable) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -883,6 +900,7 @@ func (i *SCMPDestinationUnreachable) SerializeTo(b gopacket.SerializeBuffer, opt
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data) < 4)
 // @ preserves pb.Mem()
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
@@ -927,10 +945,12 @@ func (*SCMPPacketTooBig) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data) < 4)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPPacketTooBig) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2
@@ -1012,6 +1032,7 @@ func (i *SCMPPacketTooBig) SerializeTo(b gopacket.SerializeBuffer, opts gopacket
 }
 
 // @ requires  pb != nil
+// @ requires  low(len(data) < 4)
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ ensures   err != nil ==> err.ErrorMem()

@@ -72,6 +72,15 @@ func (s *HopByHopExtn) DowngradePerm(ghost ub []byte) {
 (*HopByHopExtn) implements gopacket.Layer
 (*HopByHopExtn) implements gopacket.DecodingLayer
 
+ghost
+requires initMem  ==> h.Mem(ub)
+requires !initMem ==> h.NonInitMem()
+decreases
+pure func (h *HopByHopExtn) GetNextHdr(ub []byte, initMem bool) L4ProtocolType {
+	// return unfolding h.NonInitMem() in h.NextHdr
+	return initMem ? (unfolding h.Mem(ub) in unfolding h.extnBase.Mem(ub) in h.NextHdr) : (unfolding h.NonInitMem() in h.NextHdr)
+}
+
 /** end of HopByHopExtn **/
 
 /** start of HopByHopExtnSkipper **/
@@ -124,6 +133,15 @@ func (s *HopByHopExtnSkipper) DowngradePerm(ghost ub []byte) {
 (*HopByHopExtnSkipper) implements gopacket.Layer
 (*HopByHopExtnSkipper) implements gopacket.DecodingLayer
 
+ghost
+requires initMem  ==> h.Mem(ub)
+requires !initMem ==> h.NonInitMem()
+decreases
+pure func (h *HopByHopExtnSkipper) GetNextHdr(ub []byte, initMem bool) L4ProtocolType {
+	// return unfolding h.NonInitMem() in h.NextHdr
+	return initMem ? (unfolding h.Mem(ub) in unfolding h.extnBase.Mem(ub) in h.NextHdr) : (unfolding h.NonInitMem() in h.NextHdr)
+}
+
 /** end of HopByHopExtnSkipper **/
 
 /** Currently Axiomatized - EndToEndExtn **/
@@ -161,6 +179,15 @@ func (s *EndToEndExtn) DowngradePerm(ghost ub []byte) {
 (*EndToEndExtn) implements gopacket.DecodingLayer
 // May not be necessary, but helpful
 // (*EndToEndExtn) implements gopacket.SerializableLayer
+
+ghost
+requires initMem  ==> e.Mem(ub)
+requires !initMem ==> e.NonInitMem()
+decreases
+pure func (e *EndToEndExtn) GetNextHdr(ub []byte, initMem bool) L4ProtocolType {
+	// return unfolding e.NonInitMem() in e.NextHdr
+	return initMem ? (unfolding e.Mem(ub) in unfolding e.extnBase.Mem(ub) in e.NextHdr) : (unfolding e.NonInitMem() in e.NextHdr)
+}
 
 /** End of EndToEndExtn (Axiomatization) **/
 
@@ -213,6 +240,15 @@ func (s *EndToEndExtnSkipper) DowngradePerm(ghost ub []byte) {
 
 (*EndToEndExtnSkipper) implements gopacket.Layer
 (*EndToEndExtnSkipper) implements gopacket.DecodingLayer
+
+ghost
+requires initMem  ==> e.Mem(ub)
+requires !initMem ==> e.NonInitMem()
+decreases
+pure func (e *EndToEndExtnSkipper) GetNextHdr(ub []byte, initMem bool) L4ProtocolType {
+	// return unfolding e.NonInitMem() in e.NextHdr
+	return initMem ? (unfolding e.Mem(ub) in unfolding e.extnBase.Mem(ub) in e.NextHdr) : (unfolding e.NonInitMem() in e.NextHdr)
+}
 
 /** end of EndToEndExtnSkipper **/
 

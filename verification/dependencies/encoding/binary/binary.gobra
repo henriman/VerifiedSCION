@@ -30,7 +30,7 @@ type ByteOrder interface {
 
 	preserves acc(&b[0]) && acc(&b[1])
 	decreases
-	PutUint16(b []byte, uint16)
+	PutUint16(b []byte, x uint16)
 
 	preserves acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 	decreases
@@ -39,7 +39,7 @@ type ByteOrder interface {
 	preserves acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 	preserves acc(&b[4]) && acc(&b[5]) && acc(&b[6]) && acc(&b[7])
 	decreases
-	PutUint64(b []byte, uint64)
+	PutUint64(b []byte, x uint64)
 
 	decreases
 	pure String() string
@@ -153,6 +153,8 @@ trusted
 preserves acc(&b[0]) && acc(&b[1])
 ensures   BigEndian.PutUint16Spec(b[0], b[1], v)
 ensures   BigEndian.Uint16Spec(b[0], b[1]) == v
+// TODO: Possibly replace by low(b[0]) && low(b[1]) for now
+ensures   low(v) ==> forall i int :: { b[i] } 0 <= i && i < 2 ==> low(b[i])
 decreases
 func (e bigEndian) PutUint16(b []byte, v uint16) {
 	b[0] = byte(v >> 8)
@@ -208,6 +210,7 @@ pure func (e bigEndian) Uint64(b []byte) (res uint64) {
 
 preserves acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 preserves acc(&b[4]) && acc(&b[5]) && acc(&b[6]) && acc(&b[7])
+ensures   low(v) ==> forall i int :: { b[i] } 0 <= i && i < 8 ==> low(b[i])
 decreases
 func (e bigEndian) PutUint64(b []byte, v uint64) {
 	b[0] = byte(v >> 56)

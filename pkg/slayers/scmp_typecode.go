@@ -111,7 +111,14 @@ func (a SCMPTypeCode) InfoMsg() bool {
 	return a.Type() > 127
 }
 
-// @ preserves acc(SCMPTypeCodeMem(), R10)
+// @ requires acc(SCMPTypeCodeMem(), R10)
+// @ requires low(a.Code())
+// @ requires low(InSCMPTypeCodeInfo(a.Type()))
+// @ requires InSCMPTypeCodeInfo(a.Type()) ==>
+// @ 	low(SCMPTypeCodeInfoCodes(a.Type()) == nil)
+// @ requires InSCMPTypeCodeInfo(a.Type()) && SCMPTypeCodeInfoCodes(a.Type()) != nil ==>
+// @ 	low(InSCMPTypeCodeInfoCodes(a.Type(), a.Code()))
+// @ ensures  acc(SCMPTypeCodeMem(), R10)
 // @ decreases
 func (a SCMPTypeCode) String() string {
 	t, c := a.Type(), a.Code()
@@ -133,7 +140,9 @@ func (a SCMPTypeCode) String() string {
 
 // SerializeTo writes the SCMPTypeCode value to the buffer.
 // @ requires len(bytes) >= 2
+// @ requires  low(a)
 // @ preserves sl.Bytes(bytes, 0, 2)
+// @ ensures   low(sl.GetByte(bytes, 0, 2, 0)) && low(sl.GetByte(bytes, 0, 2, 1))
 // @ decreases
 func (a SCMPTypeCode) SerializeTo(bytes []byte) {
 	//@ unfold sl.Bytes(bytes, 0, 2)
@@ -142,9 +151,16 @@ func (a SCMPTypeCode) SerializeTo(bytes []byte) {
 }
 
 // CreateSCMPTypeCode is a convenience function to create an SCMPTypeCode
+// @ requires low(typ) && low(code)
+// @ ensures  low(res)
 // @ decreases
-func CreateSCMPTypeCode(typ SCMPType, code SCMPCode) SCMPTypeCode {
-	return SCMPTypeCode(binary.BigEndian.Uint16([]byte{uint8(typ), uint8(code)}))
+func CreateSCMPTypeCode(typ SCMPType, code SCMPCode) (res SCMPTypeCode) {
+	slce := []byte{uint8(typ), uint8(code)}
+	bigEndian := binary.BigEndian.Uint16(slce)
+	// @ assert low(bigEndian)
+	return SCMPTypeCode(bigEndian)
+	// TODO: Use this again:
+	// return SCMPTypeCode(binary.BigEndian.Uint16([]byte{uint8(typ), uint8(code)}))
 }
 
 var scmpTypeCodeInfo = map[SCMPType]struct {

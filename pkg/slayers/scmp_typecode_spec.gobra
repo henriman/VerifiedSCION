@@ -20,7 +20,11 @@ pred SCMPTypeCodeMem() {
 	// We don't use a trigger here since triggers of the form scmpTypeCodeInfo[i].codes would generate a ternary expression
 	// The default trigger generated is: { (i_V0 in domain((getMap(scmpTypeCodeInfo_e8d3837_G().underlyingMapField): Map[Int,Tuple2[Int, Ref]]))) }
 	acc(scmpTypeCodeInfo) &&
-	forall i SCMPType :: { scmpTypeCodeInfo[i] } i in domain(scmpTypeCodeInfo) ==> scmpTypeCodeInfo[i].codes != nil ==> acc(scmpTypeCodeInfo[i].codes)
+	(forall i SCMPType :: { scmpTypeCodeInfo[i] } i in domain(scmpTypeCodeInfo) ==> scmpTypeCodeInfo[i].codes != nil ==> acc(scmpTypeCodeInfo[i].codes)) // &&
+	// SIF: As `scmpTypeCodeInfo` is a global (constant?), I think it makes sense to put this here.
+	// (forall i SCMPType :: { i in domain(scmpTypeCodeInfo) } low(i in domain(scmpTypeCodeInfo))) &&
+	// (forall i SCMPType :: { i in domain(scmpTypeCodeInfo) } i in domain(scmpTypeCodeInfo) ==>
+	// 	low(scmpTypeCodeInfo[i].codes != nil) && (scmpTypeCodeInfo[i].codes != nil ==> low(i in domain(scmpTypeCodeInfo[i].codes))))	
 }
 
 requires acc(scmpTypeCodeInfo)
@@ -30,4 +34,36 @@ decreases
 func satisfyInitEnsures() int {
 	fold SCMPTypeCodeMem()
 	return 1
+}
+
+ghost
+requires SCMPTypeCodeMem()
+decreases
+pure func GetSCMPTypeCodeInfoAt(t SCMPType) struct { name string; codes map[SCMPCode]string } {
+	return unfolding SCMPTypeCodeMem() in scmpTypeCodeInfo[t]
+}
+
+ghost
+requires SCMPTypeCodeMem()
+decreases
+pure func InSCMPTypeCodeInfo(t SCMPType) bool {
+    return unfolding SCMPTypeCodeMem() in (t in domain(scmpTypeCodeInfo))
+}
+
+ghost
+requires SCMPTypeCodeMem()
+requires InSCMPTypeCodeInfo(t)
+decreases
+pure func SCMPTypeCodeInfoCodes(t SCMPType) map[SCMPCode]string {
+    return unfolding SCMPTypeCodeMem() in scmpTypeCodeInfo[t].codes
+}
+
+ghost
+requires SCMPTypeCodeMem()
+requires InSCMPTypeCodeInfo(t)
+requires SCMPTypeCodeInfoCodes(t) != nil
+decreases
+pure func InSCMPTypeCodeInfoCodes(t SCMPType, c SCMPCode) bool {
+    return unfolding SCMPTypeCodeMem() in 
+        (c in domain(scmpTypeCodeInfo[t].codes))
 }

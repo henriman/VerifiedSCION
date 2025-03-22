@@ -84,7 +84,9 @@ func (s *SCMP) CanDecode() (res gopacket.LayerClass) {
 // NextLayerType use the typecode to select the right next decoder.
 // If the SCMP type is unknown, the next layer is gopacket.LayerTypePayload.
 // NextLayerType returns the layer type contained by this DecodingLayer.
-// @ preserves acc(s.Mem(ub), R20)
+// @ requires acc(s.Mem(ub), R20)
+// @ requires low(s.GetTypeCodeType(ub))
+// @ ensures  acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 	switch /*@unfolding acc(s.Mem(ub), R20) in @*/ s.TypeCode.Type() {
@@ -109,9 +111,17 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // SerializeTo writes the serialized form of this layer into the
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
+// @ requires  b.Mem()
+// @ requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ requires  s.Mem(ubufMem)
-// @ preserves b.Mem()
-// @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
+// @ requires  low(opts.ComputeChecksums) && low(s.GetSCN(ubufMem) == nil)
+// @ requires  s.GetSCN(ubufMem) != nil ==> low(s.GetSCNRawSrcAddrLen(ubufMem)) && low(s.GetSCNRawDstAddrLen(ubufMem))
+// @ requires  low(len(b.UBuf()))
+// @ requires  forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) ==>
+// @ 	low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+// @ requires  low(s.TypeCode)
+// @ ensures   b.Mem()
+// @ ensures   sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> s.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
@@ -131,6 +141,16 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 	// @ fold sl.Bytes(underlyingBufRes, 0, 2)
 	// @ sl.CombineAtIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 2, writePerm)
 
+	// @ assert low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), 0))
+	// @ assert low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), 1))
+
+	// @ assert forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) }  4 <= i && i < len(b.UBuf()) ==>
+	// @ 	low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+
+	// TODO: Once Gobra issue 835/890 is resolved, remove assumption.
+	// @ assume forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } (0 <= i && i < 2) || (4 <= i && i < len(b.UBuf())) ==>
+	// @ 	low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+
 	if opts.ComputeChecksums {
 		if s.scn == nil {
 			// @ fold s.Mem(ubufMem)
@@ -144,6 +164,18 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 		bytes[3] = 0
 		// @ fold sl.Bytes(underlyingBufRes, 0, 4)
 		// @ sl.CombineAtIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 4, writePerm)
+
+		// @ assert low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), 0))
+		// @ assert low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), 1))
+		// @ assert low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), 2))
+		// @ assert low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), 3))
+		// @ assert forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) }  4 <= i && i < len(b.UBuf()) ==>
+		// @     low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+
+		// TODO: Once Gobra issue 835/890 is resolved, remove assumption.
+		// @ assume forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) ==>
+		// @ 	low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+
 		verScionTmp := b.Bytes()
 		// @ unfold s.scn.ChecksumMem()
 		s.Checksum, err = s.scn.computeChecksum(verScionTmp, uint8(L4SCMP))
@@ -167,11 +199,17 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 
 // DecodeFromBytes decodes the given bytes into this layer.
 // @ requires  df != nil
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// @ requires  low(len(data) < 4)
+// @ requires  len(data) >= 4 ==>
+// @ 	low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1))
 // @ requires  s.NonInitMem()
 // @ preserves df.Mem()
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
+// @ ensures   low(res != nil)
+// @ ensures   res == nil ==> low(s.GetTypeCodeType(data))
 // @ decreases
 func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	if size := len(data); size < 4 {
@@ -181,13 +219,20 @@ func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res err
 	// @ unfold s.NonInitMem()
 	// @ requires len(data) >= 4
 	// @ requires acc(sl.Bytes(data, 0, len(data)), R40)
+	// @ requires low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1))
 	// @ preserves acc(&s.TypeCode)
 	// @ ensures acc(sl.Bytes(data, 2, len(data)), R40)
 	// @ ensures acc(sl.Bytes(data, 0, 2), R40)
+	// @ ensures low(s.TypeCode)
 	// @ decreases
 	// @ outline (
 	// @ sl.SplitByIndex_Bytes(data, 0, len(data), 2, R40)
 	// @ unfold acc(sl.Bytes(data, 0, 2), R40)
+	// TODO: remove assertion
+	// @ assert low(data[0])
+	// @ assert low(SCMPType(data[0]))
+	// @ assert low(data[1])
+	// @ assert low(SCMPType(data[1]))
 	s.TypeCode = CreateSCMPTypeCode(SCMPType(data[0]), SCMPCode(data[1]))
 	// @ fold acc(sl.Bytes(data, 0, 2), R40)
 	// @ )
@@ -230,6 +275,9 @@ func (s *SCMP) SetNetworkLayerForChecksum(scn *SCION) {
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data) < 4)
+// @ requires  len(data) >= 4 ==>
+// @ 	low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1))
 // @ preserves pb.Mem()
 // @ ensures   res != nil ==> res.ErrorMem()
 // @ decreases

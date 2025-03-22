@@ -72,3 +72,31 @@ func (b *SCMP) LayerPayload(ghost ub []byte) (res []byte, ghost start int, ghost
 (*SCMP) implements gopacket.Layer
 (*SCMP) implements gopacket.SerializableLayer
 (*SCMP) implements gopacket.DecodingLayer
+
+ghost
+requires b.Mem(ub)
+decreases
+pure func (b *SCMP) GetTypeCodeType(ub []byte) SCMPType {
+	return unfolding b.Mem(ub) in b.TypeCode.Type()
+}
+
+ghost
+requires b.Mem(ub)
+decreases
+pure func (b *SCMP) GetSCN(ub []byte) *SCION {
+	return unfolding b.Mem(ub) in b.scn
+}
+
+ghost
+requires b.Mem(ub) && b.GetSCN(ub) != nil
+decreases 
+pure func (b *SCMP) GetSCNRawSrcAddrLen(ub []byte) int {
+	return unfolding b.Mem(ub) in unfolding b.scn.ChecksumMem() in len(b.scn.RawSrcAddr)
+}
+
+ghost
+requires b.Mem(ub) && b.GetSCN(ub) != nil
+decreases 
+pure func (b *SCMP) GetSCNRawDstAddrLen(ub []byte) int {
+	return unfolding b.Mem(ub) in unfolding b.scn.ChecksumMem() in len(b.scn.RawDstAddr)
+}

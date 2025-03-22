@@ -45,10 +45,15 @@ requires acc(Bytes(s, start, end), p)
 requires start <= idx && idx <= end
 ensures  acc(Bytes(s, start, idx), p)
 ensures  acc(Bytes(s, idx, end), p)
-ensures  forall i int :: { GetByte(s, start, idx, i + start) }{ old(GetByte(s, start, end, i + start)) } 0 <= i && i < idx - start ==> 
-    GetByte(s, start, idx, i + start) == old(GetByte(s, start, end, i + start))
-ensures  forall i int :: { GetByte(s, idx, end, i + idx) }{ old(GetByte(s, start, end, i + idx)) } 0 <= i && i < end - idx ==> 
-    GetByte(s, idx, end, i + idx) == old(GetByte(s, start, end, i + idx))
+// TODO: I think these triggers just didn't work (Viper also complains about them?). Try to verify again
+// ensures  forall i int :: { GetByte(s, start, idx, i + start) }{ old(GetByte(s, start, end, i + start)) } 0 <= i && i < idx - start ==> 
+//     GetByte(s, start, idx, i + start) == old(GetByte(s, start, end, i + start))
+// ensures  forall i int :: { GetByte(s, idx, end, i + idx) }{ old(GetByte(s, start, end, i + idx)) } 0 <= i && i < end - idx ==> 
+//     GetByte(s, idx, end, i + idx) == old(GetByte(s, start, end, i + idx))
+ensures  forall i int :: { GetByte(s, start, idx, i) }{ old(GetByte(s, start, end, i)) } start <= i && i < idx ==> 
+    GetByte(s, start, idx, i) == old(GetByte(s, start, end, i))
+ensures  forall i int :: { GetByte(s, idx, end, i) }{ old(GetByte(s, start, end, i)) } idx <= i && i < end ==> 
+    GetByte(s, idx, end, i) == old(GetByte(s, start, end, i))
 decreases
 func SplitByIndex_Bytes(s []byte, start int, end int, idx int, p perm) {
 	unfold acc(Bytes(s, start, end), p)
@@ -58,9 +63,14 @@ func SplitByIndex_Bytes(s []byte, start int, end int, idx int, p perm) {
 
 ghost
 requires 0 < p
+requires start <= idx && idx <= end
 requires acc(Bytes(s, start, idx), p)
 requires acc(Bytes(s, idx,   end), p)
 ensures  acc(Bytes(s, start, end), p)
+ensures  forall i int :: { GetByte(s, start, end, i) }{ old(GetByte(s, start, idx, i)) } start <= i && i < idx ==>
+    GetByte(s, start, end, i) == old(GetByte(s, start, idx, i))
+ensures  forall i int :: { GetByte(s, start, end, i) }{ old(GetByte(s, idx, end, i)) } idx <= i && i < end ==>
+    GetByte(s, start, end, i) == old(GetByte(s, idx, end, i))
 decreases
 func CombineAtIndex_Bytes(s []byte, start int, end int, idx int, p perm) {
 	unfold acc(Bytes(s, start, idx), p)

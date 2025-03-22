@@ -19,6 +19,9 @@
 // initEnsures forall t Type :: 0 <= t && t < maxPathType ==> !Registered(t)
 // Instead, we have:
 // @ initEnsures !Registered(0) && !Registered(1) && !Registered(2) && !Registered(3)
+// TODO: Once Gobra issue 883 is resolved, move this into `PathPackageMem`
+// @ initEnsures forall t Type :: { Registered(t) } 0 <= t && t < maxPathType ==> low(Registered(t))
+// @ initEnsures low(IsStrictDecoding())
 package path
 
 import (
@@ -89,7 +92,8 @@ type Path interface {
 	// (VerifiedSCION) There are implementations of this interface (e.g., scion.Raw) that
 	// store b and use it as internal data.
 	//@ requires  NonInitMem()
-	//@ requires low(len(b))
+	//@ requires  LowLen()
+	//@ requires  low(len(b))
 	//@ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 	//@ ensures   err == nil ==> Mem(b)
 	//@ ensures   err == nil ==> IsValidResultOfDecoding(b)
@@ -106,6 +110,9 @@ type Path interface {
 	// Reverse reverses a path such that it can be used in the reversed direction.
 	// XXX(shitz): This method should possibly be moved to a higher-level path manipulation package.
 	//@ requires  Mem(ub)
+	// TODO: Watch out if I made a similar mistake somewhere: We need to require
+	// `Low...` predicates anywhere the underlying data may be changed
+	//@ requires  LowLen()
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)
@@ -120,8 +127,12 @@ type Path interface {
 	//@ LenSpec(ghost ub []byte) (l int)
 
 	// Len returns the length of a path in bytes.
+	// TODO: Once Gobra issue 846 is resolved, rework this.
+	//@ pred LowLen()
+	//@ requires  LowLen()
 	//@ preserves acc(Mem(ub), R50)
 	//@ ensures   l == LenSpec(ub)
+	//@ ensures   low(l)
 	//@ decreases
 	Len( /*@ ghost ub []byte @*/ ) (l int)
 	// Type returns the type of a path.
@@ -259,10 +270,13 @@ func (p *rawPath) Reverse( /*@ ghost ub []byte @*/ ) (r Path, e error) {
 	return nil, serrors.New("not supported")
 }
 
+// @ requires  p.LowLen()
 // @ preserves acc(p.Mem(ub), R50)
 // @ ensures   l == p.LenSpec(ub)
+// @ ensures   low(l)
 // @ decreases
 func (p *rawPath) Len( /*@ ghost ub []byte @*/ ) (l int) {
+	//@ p.UnfoldLowLen(ub, R50/2)
 	return /*@ unfolding acc(p.Mem(ub), R50) in @*/ len(p.raw)
 }
 

@@ -37,3 +37,9 @@ func (a *IPAddr) Network() (res string) { return "ip" }
 
 preserves a != nil ==> acc(a.Mem(), 1/1000)
 func (a *IPAddr) String() string
+
+requires a.Mem()
+decreases
+pure func (a *IPAddr) GetIPLen() int {
+	return unfolding a.Mem() in len(a.IP)
+}

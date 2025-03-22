@@ -19,6 +19,9 @@
 // @ initEnsures path.Registered(scion.PathType)
 // @ initEnsures path.Registered(onehop.PathType)
 // @ initEnsures path.Registered(epic.PathType)
+// @ initEnsures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+// @ 	low(path.Registered(t))
+// @ initEnsures low(path.IsStrictDecoding())
 package slayers
 
 import (
@@ -33,6 +36,9 @@ import (
 	// @ importRequires path.PathPackageMem()
 	// @ importRequires !path.Registered(0) && !path.Registered(1)
 	// @ importRequires !path.Registered(2) && !path.Registered(3)
+	// @ importRequires forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+	// @ 	low(path.Registered(t))
+	// @ importRequires low(path.IsStrictDecoding())
 	"github.com/scionproto/scion/pkg/slayers/path"
 	"github.com/scionproto/scion/pkg/slayers/path/empty"
 	"github.com/scionproto/scion/pkg/slayers/path/epic"
@@ -56,7 +62,14 @@ const (
 )
 
 func init() {
+	// @ assert forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+	// @ 	low(path.Registered(t))
 	empty.RegisterPath()
+	// @ assert forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+	// @ 	t != empty.PathType ==> low(path.Registered(t))
+	// @ assert low(path.Registered(empty.PathType))
+	// @ assert forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+	// @ 	low(path.Registered(t))
 	scion.RegisterPath()
 	onehop.RegisterPath()
 	epic.RegisterPath()
@@ -187,7 +200,9 @@ func (s *SCION) CanDecode() (res gopacket.LayerClass) {
 	return res
 }
 
-// @ preserves acc(s.Mem(ub), R20)
+// @ requires acc(s.Mem(ub), R20)
+// @ requires low(s.GetNextHdr(ub))
+// @ ensures  acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCION) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 	return scionNextLayerType( /*@ unfolding acc(s.Mem(ub), R20) in @*/ s.NextHdr)
@@ -219,6 +234,9 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 // @ requires  acc(s.Mem(ubuf), R0)
 // @ requires  sl.Bytes(ubuf, 0, len(ubuf))
 // @ requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
+// @ requires  low(s.GetDstAddrType(ubuf, true)) && low(s.GetSrcAddrType(ubuf, true))
+// @ requires  low(s.PathEndIdx(ubuf))
+// @ requires  s.GetScionPath(ubuf).LowLen()
 // @ ensures   b.Mem()
 // @ ensures   acc(s.Mem(ubuf), R0)
 // @ ensures   sl.Bytes(ubuf, 0, len(ubuf))
@@ -234,6 +252,8 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 	// @ unfold acc(s.Mem(ubuf), R1)
 	// @ defer fold acc(s.Mem(ubuf), R1)
 	// @ sl.SplitRange_Bytes(ubuf, int(CmnHdrLen+s.AddrHdrLen(nil, true)), int(s.HdrLen*LineLen), R10)
+	// @ assert s.GetScionPath(ubuf).LowLen()
+	// @ assert s.Path.LowLen()
 	scnLen := CmnHdrLen + s.AddrHdrLen( /*@ nil, true @*/ ) + s.Path.Len( /*@ ubuf[CmnHdrLen+s.AddrHdrLen(nil, true) : s.HdrLen*LineLen] @*/ )
 	// @ sl.CombineRange_Bytes(ubuf, int(CmnHdrLen+s.AddrHdrLenSpecInternal()), int(s.HdrLen*LineLen), R10)
 	if scnLen > MaxHdrLen {
@@ -325,13 +345,21 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 // data, so care should be taken to copy it first should later modification of data be required
 // before the SCION layer is discarded.
 // @ requires  s.NonInitMem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// @ requires  low(len(data))
+// @ requires  len(data) >= CmnHdrLen ==>
+// @ 	low(sl.GetByte(data, 0, len(data), 4)) && low(sl.GetByte(data, 0, len(data), 5)) &&
+// @ 	low(sl.GetByte(data, 0, len(data), 8)) && low(sl.GetByte(data, 0, len(data), 9))
+// @ requires  low(s.PathPoolInitializedNonInitMem())
 // @ preserves df != nil && df.Mem()
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res == nil && typeOf(s.GetPath(data)) == *scion.Raw ==>
 // @ 	s.EqAbsHeader(data) && s.ValidScionInitSpec(data)
 // @ ensures   res == nil ==> s.EqPathType(data)
 // @ ensures   res != nil ==> s.NonInitMem() && res.ErrorMem()
+// @ ensures   low(res != nil)
+// @ ensures   res == nil ==> low(s.GetNextHdr(data))
 // @ decreases
 func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	// Decode common header.
@@ -353,9 +381,15 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 	s.Version = uint8(firstLine >> 28)
 	s.TrafficClass = uint8((firstLine >> 20) & 0xFF)
 	s.FlowID = firstLine & 0xFFFFF
+	// @ requires  acc(&s.DstAddrType) && acc(&s.SrcAddrType)
+	// @ requires  acc(sl.Bytes(data, 0, len(data)), R41)
+	// @ requires  len(data) >= CmnHdrLen ==>
+	// @ 	low(sl.GetByte(data, 0, len(data), 4)) && low(sl.GetByte(data, 0, len(data), 5)) &&
+	// @ 	low(sl.GetByte(data, 0, len(data), 8)) && low(sl.GetByte(data, 0, len(data), 9))
 	// @ preserves acc(&s.NextHdr) && acc(&s.HdrLen) && acc(&s.PayloadLen) && acc(&s.PathType)
-	// @ preserves acc(&s.DstAddrType) && acc(&s.SrcAddrType)
-	// @ preserves CmnHdrLen <= len(data) && acc(sl.Bytes(data, 0, len(data)), R41)
+	// @ preserves CmnHdrLen <= len(data)
+	// @ ensures   acc(&s.DstAddrType) && acc(&s.SrcAddrType)
+	// @ ensures   acc(sl.Bytes(data, 0, len(data)), R41)
 	// @ ensures   s.DstAddrType.Has3Bits() && s.SrcAddrType.Has3Bits()
 	// @ ensures   0 <= s.PathType && s.PathType < 256
 	// @ ensures   path.Type(GetPathType(data)) == s.PathType
@@ -363,6 +397,9 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 	// @ ensures   GetLength(data) == int(s.HdrLen * LineLen)
 	// @ ensures   GetAddressOffset(data) ==
 	// @	CmnHdrLen + 2*addr.IABytes + s.DstAddrType.Length() + s.SrcAddrType.Length()
+	// @ ensures   low(s.DstAddrType) && low(s.SrcAddrType)
+	// @ ensures   low(s.NextHdr)
+	// @ ensures   low(s.PathType)
 	// @ decreases
 	// @ outline(
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R41)
@@ -420,6 +457,8 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 		// @ fold s.NonInitMem()
 		return err
 	}
+	// TODO: Rework `LowLen` and then remove this assumption
+	// @ assume s.Path.LowLen()
 	// @ sl.SplitRange_Bytes(data, offset, offset+pathLen, R41)
 	err = s.Path.DecodeFromBytes(data[offset : offset+pathLen])
 	if err != nil {
@@ -459,9 +498,12 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 // When this is enabled, the Path instance may be overwritten in
 // DecodeFromBytes. No references to Path should be kept in use between
 // invocations of DecodeFromBytes.
-// @ preserves acc(&s.pathPool) && acc(&s.pathPoolRaw)
-// @ preserves PathPoolMem(s.pathPool, s.pathPoolRaw)
-// @ ensures   s.pathPoolInitialized()
+// @ requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
+// @ requires PathPoolMem(s.pathPool, s.pathPoolRaw)
+// @ requires low(s.pathPool == nil)
+// @ ensures  acc(&s.pathPool) && acc(&s.pathPoolRaw)
+// @ ensures  PathPoolMem(s.pathPool, s.pathPoolRaw)
+// @ ensures  s.pathPoolInitialized()
 // @ decreases
 func (s *SCION) RecyclePaths() {
 	// @ unfold PathPoolMem(s.pathPool, s.pathPoolRaw)
@@ -482,17 +524,18 @@ func (s *SCION) RecyclePaths() {
 }
 
 // getPath returns a new or recycled path for pathType
-// @ requires  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
-// @ requires  PathPoolMem(s.pathPool, s.pathPoolRaw)
-// @ requires  0 <= pathType && pathType < path.MaxPathType
-// @ ensures   acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
-// @ ensures   err == nil ==> res != nil
-// @ ensures   err == nil ==> res.NonInitMem()
-// @ ensures   (err == nil && !s.pathPoolInitialized()) ==> PathPoolMem(s.pathPool, s.pathPoolRaw)
-// @ ensures   (err == nil && s.pathPoolInitialized())  ==> (
+// @ requires acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
+// @ requires PathPoolMem(s.pathPool, s.pathPoolRaw)
+// @ requires 0 <= pathType && pathType < path.MaxPathType
+// @ requires low(pathType) && low(s.pathPool == nil) && low(len(s.pathPool))
+// @ ensures  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
+// @ ensures  err == nil ==> res != nil
+// @ ensures  err == nil ==> res.NonInitMem()
+// @ ensures  (err == nil && !s.pathPoolInitialized()) ==> PathPoolMem(s.pathPool, s.pathPoolRaw)
+// @ ensures  (err == nil && s.pathPoolInitialized())  ==> (
 // @ 	PathPoolMemExceptOne(s.pathPool, s.pathPoolRaw, pathType) &&
 // @    res === s.getPathPure(pathType))
-// @ ensures   err != nil ==> (PathPoolMem(s.pathPool, s.pathPoolRaw) && err.ErrorMem())
+// @ ensures  err != nil ==> (PathPoolMem(s.pathPool, s.pathPoolRaw) && err.ErrorMem())
 // @ decreases
 func (s *SCION) getPath(pathType path.Type) (res path.Path, err error) {
 	// @ unfold PathPoolMem(s.pathPool, s.pathPoolRaw)
@@ -520,6 +563,10 @@ func (s *SCION) getPath(pathType path.Type) (res path.Path, err error) {
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
+// @ requires  len(data) >= CmnHdrLen ==>
+// @ 	low(sl.GetByte(data, 0, len(data), 4)) && low(sl.GetByte(data, 0, len(data), 5)) &&
+// @ 	low(sl.GetByte(data, 0, len(data), 8)) && low(sl.GetByte(data, 0, len(data), 9))
 // @ preserves pb.Mem()
 // @ ensures   res != nil ==> res.ErrorMem()
 // @ decreases
@@ -540,6 +587,7 @@ func decodeSCION(data []byte, pb gopacket.PacketBuilder) (res error) {
 
 // scionNextLayerType returns the layer type for the given protocol identifier
 // in a SCION base header.
+// @ requires low(t)
 // @ decreases
 func scionNextLayerType(t L4ProtocolType) gopacket.LayerType {
 	switch t {
@@ -555,6 +603,7 @@ func scionNextLayerType(t L4ProtocolType) gopacket.LayerType {
 // scionNextLayerTypeAfterHBH returns the layer type for the given protocol
 // identifier in a SCION hop-by-hop extension, excluding (repeated) hop-by-hop
 // extensions.
+// @ requires low(t)
 // @ decreases
 func scionNextLayerTypeAfterHBH(t L4ProtocolType) gopacket.LayerType {
 	switch t {
@@ -570,6 +619,7 @@ func scionNextLayerTypeAfterHBH(t L4ProtocolType) gopacket.LayerType {
 // scionNextLayerTypeAfterE2E returns the layer type for the given protocol
 // identifier, in a SCION end-to-end extension, excluding (repeated or
 // misordered) hop-by-hop extensions or (repeated) end-to-end extensions.
+// @ requires low(t)
 // @ decreases
 func scionNextLayerTypeAfterE2E(t L4ProtocolType) gopacket.LayerType {
 	switch t {
@@ -584,6 +634,7 @@ func scionNextLayerTypeAfterE2E(t L4ProtocolType) gopacket.LayerType {
 
 // scionNextLayerTypeL4 returns the layer type for the given layer-4 protocol identifier.
 // Does not handle extension header classes.
+// @ requires low(t)
 // @ decreases
 func scionNextLayerTypeL4(t L4ProtocolType) gopacket.LayerType {
 	switch t {
@@ -605,6 +656,7 @@ func scionNextLayerTypeL4(t L4ProtocolType) gopacket.LayerType {
 // @ requires acc(&s.DstAddrType, R20) && acc(&s.RawDstAddr, R20)
 // @ requires s.DstAddrType == T4Svc ==> len(s.RawDstAddr) >= addr.HostLenSVC
 // @ requires acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R15)
+// @ requires low(s.DstAddrType)
 // @ ensures  acc(&s.DstAddrType, R20) && acc(&s.RawDstAddr, R20)
 // @ ensures  err == nil ==> acc(res.Mem(), R15)
 // @ ensures  err == nil ==> typeOf(res) == *net.IPAddr || typeOf(res) == addr.HostSVC
@@ -626,9 +678,10 @@ func (s *SCION) DstAddr() (res net.Addr, err error) {
 // @ requires  acc(&s.SrcAddrType, R20) && acc(&s.RawSrcAddr, R20)
 // @ requires  s.SrcAddrType == T4Svc ==> len(s.RawSrcAddr) >= addr.HostLenSVC
 // @ requires  acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R15)
+// @ requires  low(s.SrcAddrType)
 // @ ensures   acc(&s.SrcAddrType, R20) && acc(&s.RawSrcAddr, R20)
 // @ ensures   err == nil ==> acc(res.Mem(), R15)
-// @ ensures  err == nil ==> typeOf(res) == *net.IPAddr || typeOf(res) == addr.HostSVC
+// @ ensures   err == nil ==> typeOf(res) == *net.IPAddr || typeOf(res) == addr.HostSVC
 // @ ensures   err == nil ==>
 // @ 	let rawSrcAddr := s.RawSrcAddr in
 // @ 	(acc(res.Mem(), R15) --* acc(sl.Bytes(rawSrcAddr, 0, len(rawSrcAddr)), R15))
@@ -647,6 +700,8 @@ func (s *SCION) SrcAddr() (res net.Addr, err error) {
 // @ requires  acc(&s.DstAddrType)
 // @ requires  wildcard ==> acc(dst.Mem(), _)
 // @ requires  !wildcard ==> acc(dst.Mem(), R18)
+// @ requires  low(typeOf(dst)) && low(wildcard)
+// @ requires  typeOf(dst) == type[*net.IPAddr] ==> low(dst.(*net.IPAddr).GetIPLen())
 // @ ensures   isIP(dst) ==> res == nil
 // @ ensures   isHostSVC(dst) ==> res == nil
 // @ ensures   acc(&s.RawDstAddr) && acc(&s.DstAddrType)
@@ -684,6 +739,8 @@ func (s *SCION) SetDstAddr(dst net.Addr /*@ , ghost wildcard bool @*/) (res erro
 // @ requires  acc(&s.SrcAddrType)
 // @ requires  wildcard ==> acc(src.Mem(), _)
 // @ requires  !wildcard ==> acc(src.Mem(), R18)
+// @ requires  low(typeOf(src)) && low(wildcard)
+// @ requires  typeOf(src) == type[*net.IPAddr] ==> low(src.(*net.IPAddr).GetIPLen())
 // @ ensures   isIP(src) ==> res == nil
 // @ ensures   isHostSVC(src) ==> res == nil
 // @ ensures   acc(&s.RawSrcAddr) && acc(&s.SrcAddrType)
@@ -716,6 +773,7 @@ func (s *SCION) SetSrcAddr(src net.Addr /*@, ghost wildcard bool @*/) (res error
 
 // @ requires addrType == T4Svc ==> len(raw) >= addr.HostLenSVC
 // @ requires acc(sl.Bytes(raw, 0, len(raw)), R15)
+// @ requires low(addrType)
 // @ ensures  err == nil ==> acc(res.Mem(), R15)
 // @ ensures  err == nil ==> typeOf(res) == *net.IPAddr || typeOf(res) == addr.HostSVC
 // @ ensures  err == nil ==>
@@ -759,6 +817,8 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 
 // @ requires  wildcard ==> acc(hostAddr.Mem(), _)
 // @ requires  !wildcard ==> acc(hostAddr.Mem(), R19)
+// @ requires  low(typeOf(hostAddr)) && low(wildcard)
+// @ requires  typeOf(hostAddr) == type[*net.IPAddr] ==> low(hostAddr.(*net.IPAddr).GetIPLen())
 // @ ensures   !wildcard ==> acc(hostAddr.Mem(), R20)
 // @ ensures   hostAddr === old(hostAddr)
 // @ ensures   isIP(hostAddr) ==> err == nil
@@ -837,12 +897,19 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 //	This hack will not be needed when we introduce support for
 //	multiple contracts per method.
 //
-// @ preserves insideSlayers  ==> acc(&s.DstAddrType, R50) && acc(&s.SrcAddrType, R50)
-// @ preserves insideSlayers  ==> (s.DstAddrType.Has3Bits() && s.SrcAddrType.Has3Bits())
-// @ preserves !insideSlayers ==> acc(s.Mem(ubuf), R50)
-// @ ensures   insideSlayers  ==> res == s.AddrHdrLenSpecInternal()
-// @ ensures   !insideSlayers ==> res == s.AddrHdrLenSpec(ubuf)
-// @ ensures   0 <= res
+// @ requires insideSlayers  ==> acc(&s.DstAddrType, R50) && acc(&s.SrcAddrType, R50)
+// @ requires insideSlayers  ==> (s.DstAddrType.Has3Bits() && s.SrcAddrType.Has3Bits())
+// @ requires !insideSlayers ==> acc(s.Mem(ubuf), R50)
+// @ requires insideSlayers  ==> low(s.DstAddrType) && low(s.SrcAddrType)
+// @ requires !insideSlayers ==> low(s.GetDstAddrType(ubuf, true)) && low(s.GetSrcAddrType(ubuf, true))
+// @ requires low(insideSlayers)
+// @ ensures  insideSlayers  ==> acc(&s.DstAddrType, R50) && acc(&s.SrcAddrType, R50)
+// @ ensures  insideSlayers  ==> (s.DstAddrType.Has3Bits() && s.SrcAddrType.Has3Bits())
+// @ ensures  !insideSlayers ==> acc(s.Mem(ubuf), R50)
+// @ ensures  insideSlayers  ==> res == s.AddrHdrLenSpecInternal()
+// @ ensures  !insideSlayers ==> res == s.AddrHdrLenSpec(ubuf)
+// @ ensures  0 <= res
+// @ ensures  low(res)
 // @ decreases
 func (s *SCION) AddrHdrLen( /*@ ghost ubuf []byte, ghost insideSlayers bool @*/ ) (res int) {
 	// @ ghost if !insideSlayers {
@@ -863,9 +930,12 @@ func (s *SCION) AddrHdrLen( /*@ ghost ubuf []byte, ghost insideSlayers bool @*/ 
 // SerializeAddrHdr serializes destination and source ISD-AS-Host address triples into the provided
 // buffer. The caller must ensure that the correct address types and lengths are set in the SCION
 // layer, otherwise the results of this method are undefined.
-// @ preserves acc(s.HeaderMem(ubuf), R10)
+// @ requires  acc(s.HeaderMem(ubuf), R10)
+// @ requires  low(len(buf))
+// @ requires  low(s.GetDstAddrType(ubuf, false)) && low(s.GetSrcAddrType(ubuf, false))
 // @ preserves sl.Bytes(buf, 0, len(buf))
 // @ preserves acc(sl.Bytes(ubuf, 0, len(ubuf)), R10)
+// @ ensures   acc(s.HeaderMem(ubuf), R10)
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func (s *SCION) SerializeAddrHdr(buf []byte /*@ , ghost ubuf []byte @*/) (err error) {
@@ -925,6 +995,8 @@ func (s *SCION) SerializeAddrHdr(buf []byte /*@ , ghost ubuf []byte @*/) (err er
 // @ requires  acc(&s.SrcAddrType, HalfPerm) && s.SrcAddrType.Has3Bits()
 // @ requires  acc(&s.DstAddrType, HalfPerm) && s.DstAddrType.Has3Bits()
 // @ requires  acc(&s.RawSrcAddr) && acc(&s.RawDstAddr)
+// @ requires  low(len(data))
+// @ requires  low(s.SrcAddrType) && low(s.DstAddrType)
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R41)
 // @ ensures   res == nil ==> s.HeaderMem(data)
 // @ ensures   res != nil ==> res.ErrorMem()
@@ -932,6 +1004,7 @@ func (s *SCION) SerializeAddrHdr(buf []byte /*@ , ghost ubuf []byte @*/) (err er
 // @	acc(&s.SrcIA) && acc(&s.DstIA) &&
 // @ 	acc(&s.SrcAddrType, HalfPerm) && acc(&s.DstAddrType, HalfPerm) &&
 // @ 	acc(&s.RawSrcAddr) && acc(&s.RawDstAddr))
+// @ ensures   low(res != nil)
 // @ decreases
 func (s *SCION) DecodeAddrHdr(data []byte) (res error) {
 	// @ ghost l := s.AddrHdrLenSpecInternal()
@@ -964,7 +1037,17 @@ func (s *SCION) DecodeAddrHdr(data []byte) (res error) {
 // @ requires  acc(&s.SrcIA, R20) && acc(&s.DstIA, R20)
 // @ requires  acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 // @ requires  acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
-// @ preserves acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
+// @ requires  acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
+// @ requires  low(len(s.RawSrcAddr)) && low(len(s.RawDstAddr))
+// @ requires  forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) ==>
+// @ 	low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))
+// @ requires  forall i int :: { sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i) } 0 <= i && i < len(s.RawDstAddr) ==>
+// @ 	low(sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i))
+// @ requires  low(len(upperLayer))
+// @ requires  forall i int :: { sl.GetByte(upperLayer, 0, len(upperLayer), i) } 0 <= i && i < len(upperLayer) ==>
+// @ 	low(sl.GetByte(upperLayer, 0, len(upperLayer), i))
+// @ requires  low(protocol)
+// @ ensures   acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
 // @ ensures   acc(&s.RawSrcAddr, R20) && acc(&s.RawDstAddr, R20)
 // @ ensures   acc(&s.SrcIA, R20) && acc(&s.DstIA, R20)
 // @ ensures   acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
@@ -974,6 +1057,8 @@ func (s *SCION) DecodeAddrHdr(data []byte) (res error) {
 // @ ensures   len(s.RawSrcAddr) == 0 ==> err != nil
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ ensures   len(s.RawDstAddr) > 0 && len(s.RawSrcAddr) > 0 ==> err == nil
+// TODO: probably implied now:
+// @ ensures   low(err != nil)
 // @ decreases
 func (s *SCION) computeChecksum(upperLayer []byte, protocol uint8) (res uint16, err error) {
 	if s == nil {
@@ -993,6 +1078,13 @@ func (s *SCION) computeChecksum(upperLayer []byte, protocol uint8) (res uint16, 
 // @ requires acc(&s.SrcIA, R20) && acc(&s.DstIA, R20)
 // @ requires acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 // @ requires acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
+// @ requires low(len(s.RawSrcAddr)) && low(len(s.RawDstAddr))
+// @ requires forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) ==>
+// @ 	low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))
+// @ requires forall i int :: { sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i) } 0 <= i && i < len(s.RawDstAddr) ==>
+// @ 	low(sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i))
+// @ requires low(s.SrcIA) && low(s.DstIA)
+// @ requires low(length) && low(protocol)
 // @ ensures  acc(&s.RawSrcAddr, R20) && acc(&s.RawDstAddr, R20)
 // @ ensures  acc(&s.SrcIA, R20) && acc(&s.DstIA, R20)
 // @ ensures  acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
@@ -1001,6 +1093,8 @@ func (s *SCION) computeChecksum(upperLayer []byte, protocol uint8) (res uint16, 
 // @ ensures  len(s.RawSrcAddr) == 0 ==> err != nil
 // @ ensures  err != nil ==> err.ErrorMem()
 // @ ensures  len(s.RawDstAddr) > 0 && len(s.RawSrcAddr) > 0 ==> err == nil
+// @ ensures  low(err != nil)
+// @ ensures  low(res)
 // @ decreases
 func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, err error) {
 	if len(s.RawDstAddr) == 0 {
@@ -1017,6 +1111,10 @@ func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, er
 	// @ invariant forall j int :: { &dstIA[j] } 0 <= j && j < 8 ==> acc(&dstIA[j])
 	// @ invariant i % 2 == 0
 	// @ invariant 0 <= i && i <= 8
+	// @ invariant forall j int :: { srcIA[j] } 0 <= j && j < 8 ==> low(srcIA[j])
+	// @ invariant forall j int :: { dstIA[j] } 0 <= j && j < 8 ==> low(dstIA[j])
+	// @ invariant low(csum)
+	// @ invariant low(i)
 	// @ decreases 8 - i
 	for i := 0; i < 8; i += 2 {
 		csum += uint32(srcIA[i]) << 8
@@ -1024,20 +1122,32 @@ func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, er
 		csum += uint32(dstIA[i]) << 8
 		csum += uint32(dstIA[i+1])
 	}
+
+	// TODO: Once Gobra issue 888 is resolved, move this back into loop condition
+	rawSrcAddrLen := len(s.RawSrcAddr)
+
 	// Address length is guaranteed to be a multiple of 2 by the protocol.
-	// @ ghost var rawSrcAddrLen int = len(s.RawSrcAddr)
+	//  ghost var rawSrcAddrLen int = len(s.RawSrcAddr)
 	// @ invariant acc(&s.RawSrcAddr, R20) && acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 	// @ invariant len(s.RawSrcAddr) == rawSrcAddrLen
 	// @ invariant len(s.RawSrcAddr) % 2 == 0
 	// @ invariant i % 2 == 0
 	// @ invariant 0 <= i && i <= len(s.RawSrcAddr)
-	// @ decreases len(s.RawSrcAddr) - i
-	for i := 0; i < len(s.RawSrcAddr); i += 2 {
+	// @ invariant forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) ==>
+	// @ 	low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))
+	// @ invariant low(csum)
+	// @ invariant low(i)
+	// @ decreases rawSrcAddrLen - i
+	for i := 0; i < rawSrcAddrLen; i += 2 {
 		// @ preserves err == nil
 		// @ requires acc(&s.RawSrcAddr, R20) && acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 		// @ requires 0 <= i && i < len(s.RawSrcAddr) && i % 2 == 0 && len(s.RawSrcAddr) % 2 == 0
+		// @ requires low(csum)
+		// @ requires forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) ==>
+		// @ 	low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))
 		// @ ensures acc(&s.RawSrcAddr, R20) && acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 		// @ ensures s.RawSrcAddr === before(s.RawSrcAddr)
+		// @ ensures low(csum)
 		// @ decreases
 		// @ outline(
 		// @ unfold acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
@@ -1046,19 +1156,31 @@ func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, er
 		// @ fold acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 		// @ )
 	}
-	// @ ghost var rawDstAddrLen int = len(s.RawDstAddr)
+
+	// TODO: Once Gobra issue 888 is resolved, move this back into loop condition
+	rawDstAddrLen := len(s.RawDstAddr)
+
+	//  ghost var rawDstAddrLen int = len(s.RawDstAddr)
 	// @ invariant acc(&s.RawDstAddr, R20) && acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
 	// @ invariant len(s.RawDstAddr) == rawDstAddrLen
 	// @ invariant len(s.RawDstAddr) % 2 == 0
 	// @ invariant i % 2 == 0
 	// @ invariant 0 <= i && i <= len(s.RawDstAddr)
-	// @ decreases len(s.RawDstAddr) - i
-	for i := 0; i < len(s.RawDstAddr); i += 2 {
+	// @ invariant forall i int :: { sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i) } 0 <= i && i < len(s.RawDstAddr) ==>
+	// @ 	low(sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i))
+	// @ invariant low(csum)
+	// @ invariant low(i)
+	// @ decreases rawDstAddrLen - i
+	for i := 0; i < rawDstAddrLen; i += 2 {
 		// @ preserves err == nil
 		// @ requires acc(&s.RawDstAddr, R20) && acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
 		// @ requires 0 <= i && i < len(s.RawDstAddr) && i % 2 == 0 && len(s.RawDstAddr) % 2 == 0
+		// @ requires low(csum)
+		// @ requires forall i int :: { sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i) } 0 <= i && i < len(s.RawDstAddr) ==>
+		// @ 	low(sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i))
 		// @ ensures acc(&s.RawDstAddr, R20) && acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
 		// @ ensures s.RawDstAddr === before(s.RawDstAddr)
+		// @ ensures low(csum)
 		// @ decreases
 		// @ outline(
 		// @ unfold acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
@@ -1073,9 +1195,15 @@ func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, er
 	return csum, nil
 }
 
-// @ preserves acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
+// @ requires acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
+// @ requires low(len(upperLayer))
+// @ requires forall i int :: { sl.GetByte(upperLayer, 0, len(upperLayer), i) } 0 <= i && i < len(upperLayer) ==>
+// @ 	low(sl.GetByte(upperLayer, 0, len(upperLayer), i))
+// @ requires low(csum)
+// @ ensures  acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
+// @ ensures  low(res)
 // @ decreases
-func (s *SCION) upperLayerChecksum(upperLayer []byte, csum uint32) uint32 {
+func (s *SCION) upperLayerChecksum(upperLayer []byte, csum uint32) (res uint32) {
 	// Compute safe boundary to ensure we do not access out of bounds.
 	// Odd lengths are handled at the end.
 	safeBoundary := len(upperLayer) - 1
@@ -1083,6 +1211,9 @@ func (s *SCION) upperLayerChecksum(upperLayer []byte, csum uint32) uint32 {
 	// @ invariant 0 <= i && i < safeBoundary + 2
 	// @ invariant i % 2 == 0
 	// @ invariant forall i int :: { &upperLayer[i] } 0 <= i && i < len(upperLayer) ==> acc(&upperLayer[i], R20)
+	// @ invariant forall i int :: { upperLayer[i] } 0 <= i && i < len(upperLayer) ==> low(upperLayer[i])
+	// @ invariant low(csum)
+	// @ invariant low(i)
 	// @ decreases safeBoundary - i
 	for i := 0; i < safeBoundary; i += 2 {
 		csum += uint32(upperLayer[i]) << 8
@@ -1097,8 +1228,10 @@ func (s *SCION) upperLayerChecksum(upperLayer []byte, csum uint32) uint32 {
 
 // (VerifiedSCION) The following function terminates but Gobra can't
 // deduce that because of limited support of bitwise operations.
+// @ requires low(csum)
 // @ decreases
 func (s *SCION) foldChecksum(csum uint32) (res uint16) {
+	// @ invariant low(csum)
 	// @ decreases csum
 	for csum > 0xffff {
 		// @ b.FoldChecksumLemma(csum)

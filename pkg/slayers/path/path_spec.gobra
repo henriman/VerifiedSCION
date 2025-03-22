@@ -29,6 +29,13 @@ pred (r *rawPath) NonInitMem() {
 }
 
 pred (*rawPath) LowSerializeTo()
+pred (*rawPath) LowLen()
+
+ghost
+requires p > 0 && acc(r.Mem(ub), p) && r.LowLen()
+ensures  acc(r.Mem(ub), p) && low(r.LenSpec(ub))
+decreases
+func (r *rawPath) UnfoldLowLen(ghost ub []byte, ghost p perm)
 
 ghost
 requires p.Mem(buf)

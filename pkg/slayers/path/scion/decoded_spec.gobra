@@ -48,6 +48,7 @@ pred (d *Decoded) Mem(ubuf []byte) {
 }
 
 pred (*Decoded) LowSerializeTo()
+pred (*Decoded) LowLen()
 
 /**** End of Predicates ****/
 
