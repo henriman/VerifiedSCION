@@ -94,7 +94,10 @@ pure func (s *Raw) LenSpec(ghost ub []byte) int {
   * Unfortunately, Gobra does not fully support them yet, so we
   * introduced this wrapper method which acts as a wrapper.
   */
-preserves acc(s.Mem(ub), R18)
+requires  acc(s.Mem(ub), R18)
+requires  low(s.GetCurrHF(ub)) && low(s.GetCurrINF(ub) > 0)
+requires  low(s.GetBase(ub).PathMeta.SegLen[0]) && low(s.GetBase(ub).PathMeta.SegLen[1])
+ensures   acc(s.Mem(ub), R18)
 ensures   res ==> 0 < s.GetCurrINF(ub) && 0 < s.GetCurrHF(ub)
 decreases
 func (s *Raw) IsFirstHopAfterXover(ghost ub []byte) (res bool) {
@@ -109,7 +112,10 @@ func (s *Raw) IsFirstHopAfterXover(ghost ub []byte) (res bool) {
   * Unfortunately, Gobra does not fully support them yet, so we
   * introduced this wrapper method which acts as a wrapper.
   */
-preserves acc(s.Mem(ub), R9)
+requires acc(s.Mem(ub), R9)
+requires low(s.GetCurrHF(ub)) && low(s.GetNumHops(ub))
+requires low(s.GetBase(ub).PathMeta.SegLen[0]) && low(s.GetBase(ub).PathMeta.SegLen[1])
+ensures  acc(s.Mem(ub), R9)
 ensures res == s.GetBase(ub).IsXoverSpec()
 decreases
 func (s *Raw) IsXover(ghost ub []byte) (res bool) {
@@ -164,12 +170,29 @@ pure func (r *Raw) GetNumINF(ghost ub []byte) int {
 		(unfolding r.Base.Mem() in r.NumINF)
 }
 
+// TODO: Combine with above eventually maybe (by introducing bool ...)
+ghost
+requires r.NonInitMem()
+decreases
+pure func (r *Raw) GetNumINFNonInit() int {
+	return unfolding r.NonInitMem() in
+		(unfolding r.Base.NonInitMem() in r.NumINF)
+}
+
 ghost
 requires r.Mem(ub)
 decreases
 pure func (r *Raw) GetNumHops(ghost ub []byte) int {
 	return unfolding r.Mem(ub) in
 		(unfolding r.Base.Mem() in r.NumHops)
+}
+
+ghost
+requires r.NonInitMem()
+decreases
+pure func (r *Raw) GetNumHopsNonInit() int {
+	return unfolding r.NonInitMem() in
+		(unfolding r.Base.NonInitMem() in r.NumHops)
 }
 
 ghost
@@ -186,6 +209,14 @@ decreases
 pure func (r *Raw) GetCurrHF(ghost ub []byte) uint8 {
 	return unfolding r.Mem(ub) in
 		(unfolding r.Base.Mem() in r.PathMeta.CurrHF)
+}
+
+ghost
+requires r.Mem(ub)
+decreases
+pure func (r *Raw) GetSegLen(ghost ub []byte) [3]uint8 {
+	return unfolding r.Mem(ub) in
+		(unfolding r.Base.Mem() in r.PathMeta.SegLen)
 }
 
 ghost
@@ -675,6 +706,10 @@ ghost
 preserves acc(s.Mem(ubuf), R53)
 preserves acc(sl.Bytes(ubuf, 0, len(ubuf)), R53)
 preserves validPktMetaHdr(ubuf)
+// TODO: Maybe only use ensures, but then a lot of these preserves would have to be split up
+preserves len(ubuf) >= MetaLen ==> 
+	low(sl.GetByte(ubuf, 0, len(ubuf), 0)) && low(sl.GetByte(ubuf, 0, len(ubuf), 1)) &&
+	low(sl.GetByte(ubuf, 0, len(ubuf), 2)) && low(sl.GetByte(ubuf, 0, len(ubuf), 3))
 preserves s.GetBase(ubuf).EqAbsHeader(ubuf)
 preserves s.absPkt(ubuf).PathNotFullyTraversed()
 preserves s.GetBase(ubuf).ValidCurrInfSpec()
@@ -877,6 +912,7 @@ requires  0 <= offset
 requires  0 <= currHfIdx && currHfIdx <= end
 requires  end <= segLen
 requires  offset + path.HopLen * segLen <= len(raw)
+requires  low(currHfIdx) && low(end)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R54)
 ensures   hopFields(raw, offset, currHfIdx, segLen)[:end - currHfIdx] ==
 	hopFields(raw, offset, currHfIdx, end)
@@ -891,6 +927,7 @@ requires  0 <= offset
 requires  0 <= currHfIdx && currHfIdx <= end
 requires  end <= segLen
 requires  offset + path.HopLen * segLen <= len(raw)
+requires  low(currHfIdx) && low(end)
 preserves acc(sl.Bytes(raw, 0, len(raw)), p)
 ensures   hopFields(raw, offset, currHfIdx, segLen)[:end - currHfIdx] ==
 	hopFields(raw, offset, currHfIdx, end)
@@ -907,6 +944,7 @@ requires  0 <= offset
 requires  0 <= start
 requires  0 <= currHfIdx && currHfIdx <= segLen - start
 requires  offset + path.HopLen * segLen <= len(raw)
+requires  low(start)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R54)
 ensures   hopFields(raw, offset, currHfIdx, segLen)[start:] ==
  	hopFields(raw, offset, currHfIdx + start, segLen)
@@ -921,6 +959,7 @@ requires  0 <= offset
 requires  0 <= start
 requires  0 <= currHfIdx && currHfIdx <= segLen - start
 requires  offset + path.HopLen * segLen <= len(raw)
+requires  low(start)
 preserves acc(sl.Bytes(raw, 0, len(raw)), p)
 ensures   hopFields(raw, offset, currHfIdx, segLen)[start:] ==
  	hopFields(raw, offset, currHfIdx + start, segLen)
@@ -937,6 +976,7 @@ requires  0 <= offset
 requires  0 <= start && start <= currHfIdx
 requires  0 <= currHfIdx && currHfIdx <= segLen
 requires  offset + path.HopLen * segLen <= len(raw)
+requires  low(currHfIdx) && low(segLen)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R54)
 ensures   hopFields(raw, offset, currHfIdx, segLen) ==
  	hopFields(raw, offset + start * path.HopLen, currHfIdx - start, segLen - start)
@@ -951,6 +991,7 @@ requires  0 <= offset
 requires  0 <= start && start <= currHfIdx
 requires  0 <= currHfIdx && currHfIdx <= segLen
 requires  offset + path.HopLen * segLen <= len(raw)
+requires  low(currHfIdx) && low(segLen)
 preserves acc(sl.Bytes(raw, 0, len(raw)), p)
 ensures   hopFields(raw, offset, currHfIdx, segLen) ==
  	hopFields(raw, offset + start * path.HopLen, currHfIdx - start, segLen - start)

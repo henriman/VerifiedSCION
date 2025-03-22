@@ -155,6 +155,7 @@ requires segs.Valid()
 requires MetaLen + numInf * path.InfoLen <= len(raw)
 requires numInf == segs.NumInfoFields()
 requires acc(sl.Bytes(raw, 0, len(raw)), p)
+requires low(numInf)
 ensures  acc(sl.Bytes(raw[:MetaLen], 0, MetaLen), p)
 ensures  acc(sl.Bytes(InfofieldByteSlice(raw, 0), 0, path.InfoLen), p)
 ensures  1 < numInf ==> acc(sl.Bytes(InfofieldByteSlice(raw, 1), 0, path.InfoLen), p)
@@ -191,6 +192,7 @@ requires acc(sl.Bytes(InfofieldByteSlice(raw, 0), 0, path.InfoLen), p)
 requires 1 < numInf ==> acc(sl.Bytes(InfofieldByteSlice(raw, 1), 0, path.InfoLen), p)
 requires 2 < numInf ==> acc(sl.Bytes(InfofieldByteSlice(raw, 2), 0, path.InfoLen), p)
 requires acc(sl.Bytes(raw[HopfieldsStartIdx(0, segs):], 0, len(raw[HopfieldsStartIdx(0, segs):])), p)
+requires low(numInf)
 ensures  acc(sl.Bytes(raw, 0, len(raw)), p)
 decreases
 func CombineBytesFromInfoFields(raw []byte, numInf int, segs io.SegLens, p perm) {
@@ -317,6 +319,7 @@ requires  0 < SegLen
 requires  offset + path.HopLen * SegLen <= len(raw)
 requires  0 <= currHfIdx && currHfIdx <= SegLen
 requires  0 <= currInfIdx && currInfIdx < 3
+requires  low(SegLen)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R50)
 preserves acc(sl.Bytes(raw[offset:offset + SegLen * path.HopLen], 0, SegLen * path.HopLen), R50)
 preserves acc(sl.Bytes(InfofieldByteSlice(raw, currInfIdx), 0, path.InfoLen), R50)
@@ -409,6 +412,7 @@ ghost
 requires  segs.Valid()
 requires  PktLen(segs, MetaLen) <= len(raw)
 requires  1 <= currInfIdx && currInfIdx < 4
+requires  low(currInfIdx) && low(segs.Seg2Len) && low(segs.Seg3Len)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R49)
 preserves (currInfIdx == 1 && segs.Seg2Len > 0) ||
 	(currInfIdx == 2 && segs.Seg2Len > 0 && segs.Seg3Len > 0) ==>
@@ -470,6 +474,7 @@ ghost
 requires  segs.Valid()
 requires  PktLen(segs, MetaLen) <= len(raw)
 requires  -1 <= currInfIdx && currInfIdx < 2
+requires  low(currInfIdx) && low(segs.Seg1Len) && low(segs.Seg2Len) && low(segs.Seg3Len > 0)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R49)
 preserves (currInfIdx == 0 && segs.Seg2Len > 0) ||
 	(currInfIdx == 1 && segs.Seg2Len > 0 && segs.Seg3Len > 0) ==>
@@ -531,6 +536,7 @@ ghost
 requires  segs.Valid()
 requires  PktLen(segs, MetaLen) <= len(raw)
 requires  2 <= currInfIdx && currInfIdx < 5
+requires  low(currInfIdx) && low(segs.Seg1Len) && low(segs.Seg2Len > 0) && low(segs.Seg3Len)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R49)
 preserves (segs.Seg2Len > 0 && segs.Seg3Len > 0 &&
 	(currInfIdx == 2 || currInfIdx == 4)) ==>
@@ -597,6 +603,7 @@ pure func BytesStoreCurrSeg(hopfields []byte, currHfIdx int, segLen int, inf io.
 ghost
 requires 0 <= currHfIdx && currHfIdx < segLen
 requires segLen * path.HopLen == len(hopfields)
+requires low(currHfIdx) && low(segLen)
 preserves acc(sl.Bytes(hopfields, 0, len(hopfields)), R49)
 preserves let currHfStart := currHfIdx * path.HopLen in
 	let currHfEnd := currHfStart + path.HopLen in

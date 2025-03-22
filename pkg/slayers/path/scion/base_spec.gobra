@@ -118,12 +118,29 @@ pure func (b *Base) GetNumINF() (res int) {
 		b.NumINF
 }
 
+// TODO: Maybe combine with above eventually
+ghost
+requires b.NonInitMem()
+decreases
+pure func (b *Base) GetNumINFNonInit() (res int) {
+	return unfolding b.NonInitMem() in
+		b.NumINF
+}
+
 ghost
 requires b.Mem()
 ensures  0 <= res
 decreases
 pure func (b *Base) GetNumHops() (res int) {
 	return unfolding b.Mem() in
+		b.NumHops
+}
+
+ghost
+requires b.NonInitMem()
+decreases
+pure func (b *Base) GetNumHopsNonInit() (res int) {
+	return unfolding b.NonInitMem() in
 		b.NumHops
 }
 
@@ -148,6 +165,13 @@ requires s.Mem()
 decreases
 pure func (s *Base) GetCurrHF() uint8 {
 	return s.GetMetaHdr().CurrHF
+}
+
+ghost
+requires s.Mem()
+decreases
+pure func (s *Base) GetCurrINF() uint8 {
+	return s.GetMetaHdr().CurrINF
 }
 
 ghost

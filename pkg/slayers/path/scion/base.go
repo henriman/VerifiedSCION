@@ -39,6 +39,8 @@ const (
 	PathType path.Type = 1
 )
 
+// TODO: Once Gobra issue 878 is resolved, remove `trusted`.
+// @ trusted
 // @ requires path.PathPackageMem()
 // @ requires !path.Registered(PathType)
 // @ ensures  path.PathPackageMem()
@@ -79,7 +81,12 @@ type Base struct {
 }
 
 // @ requires  s.NonInitMem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R50)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R50)
+// @ requires  low(len(data))
+// @ requires  len(data) >= MetaLen ==>
+// @ 	low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1)) &&
+// @ 	low(sl.GetByte(data, 0, len(data), 2)) && low(sl.GetByte(data, 0, len(data), 3))
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R50)
 // @ ensures   r != nil ==>
 // @ 	s.NonInitMem() && r.ErrorMem()
 // @ ensures   r == nil ==>
@@ -89,6 +96,8 @@ type Base struct {
 // @ ensures   len(data) < MetaLen ==> r != nil
 // posts for IO:
 // @ ensures   r == nil ==> s.GetBase().EqAbsHeader(data)
+// @ ensures   low(r != nil)
+// @ ensures   r == nil ==> low(s.GetNumINF())
 // @ decreases
 func (s *Base) DecodeFromBytes(data []byte) (r error) {
 	// PathMeta takes care of bounds check.
@@ -100,6 +109,10 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 	}
 	s.NumINF = 0
 	s.NumHops = 0
+	// TODO: remove assertions
+	//@ assert low(s.PathMeta.SegLen[0])
+	//@ assert low(s.PathMeta.SegLen[1])
+	//@ assert low(s.PathMeta.SegLen[2])
 
 	//@ ghost var metaHdrCpy MetaHdr = s.PathMeta
 
@@ -128,6 +141,11 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 	//@ 	s.PathMeta.SegLen[j] != 0
 	//@ invariant forall j int :: { s.PathMeta.SegLen[j] } (s.NumINF <= j && i < j && j < MaxINFs) ==>
 	//@ 	s.PathMeta.SegLen[j] == 0
+	//@ invariant low(s.NumHops) && low(s.NumINF)
+	//@ invariant low(s.PathMeta.SegLen[0])
+	//@ invariant low(s.PathMeta.SegLen[1])
+	//@ invariant low(s.PathMeta.SegLen[2])
+	//@ invariant low(i)
 	//@ decreases i
 	for i := 2; i >= 0; i-- {
 		if s.PathMeta.SegLen[i] == 0 && s.NumINF > 0 {
@@ -159,6 +177,9 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 
 // IncPath increases the currHF index and currINF index if appropriate.
 // @ requires s.Mem()
+// @ requires low(s.GetNumINF() == 0)
+// @ requires low(s.GetCurrHF()) && low(s.GetNumHops())
+// @ requires low(s.GetMetaHdr().SegLen[0]) && low(s.GetMetaHdr().SegLen[1])
 // @ ensures  (e != nil) == (
 // @ 	old(s.GetNumINF()) == 0 ||
 // @ 	old(int(s.GetCurrHF()) >= s.GetNumHops()-1))
@@ -168,6 +189,7 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 // @ 	let newBase := s.GetBase() in
 // @ 	newBase == oldBase.IncPathSpec())
 // @ ensures  e != nil ==> (s.NonInitMem() && e.ErrorMem())
+// @ ensures  low(e == nil)
 // @ decreases
 func (s *Base) IncPath() (e error) {
 	//@ unfold s.Mem()
@@ -188,7 +210,12 @@ func (s *Base) IncPath() (e error) {
 }
 
 // IsXover returns whether we are at a crossover point.
-// @ preserves acc(s.Mem(), R45)
+// @ requires acc(s.Mem(), R45)
+// SIF: `low(s.GetNumHops())` is necessary due to "implicit" non-low branch condition
+// introduced by short-circuit evaluation.
+// @ requires low(s.GetCurrHF()) && low(s.GetNumHops())
+// @ requires low(s.GetMetaHdr().SegLen[0]) && low(s.GetMetaHdr().SegLen[1])
+// @ ensures  acc(s.Mem(), R45)
 // @ ensures   r == s.GetBase().IsXoverSpec()
 // @ decreases
 func (s *Base) IsXover() (r bool) {
@@ -199,7 +226,10 @@ func (s *Base) IsXover() (r bool) {
 }
 
 // IsFirstHopAfterXover returns whether this is the first hop field after a crossover point.
-// @ preserves acc(s.Mem(), R19)
+// @ requires acc(s.Mem(), R19)
+// @ requires low(s.GetCurrHF()) && low(s.GetCurrINF() > 0)
+// @ requires low(s.GetMetaHdr().SegLen[0]) && low(s.GetMetaHdr().SegLen[1])
+// @ ensures  acc(s.Mem(), R19)
 // @ ensures   res ==> unfolding acc(s.Mem(), _) in s.PathMeta.CurrINF > 0 && s.PathMeta.CurrHF > 0
 // @ decreases
 func (s *Base) IsFirstHopAfterXover() (res bool) {
@@ -209,7 +239,10 @@ func (s *Base) IsFirstHopAfterXover() (res bool) {
 		s.PathMeta.CurrINF-1 == s.infIndexForHF(s.PathMeta.CurrHF-1)
 }
 
-// @ preserves acc(s, R50)
+// @ requires acc(s, R50)
+// @ requires low(hf)
+// @ requires low(s.PathMeta.SegLen[0]) && low(s.PathMeta.SegLen[1])
+// @ ensures acc(s, R50)
 // @ ensures   r == s.InfForHfSpec(hf)
 // @ decreases
 func (s *Base) infIndexForHF(hf uint8) (r uint8) {
@@ -251,12 +284,20 @@ type MetaHdr struct {
 
 // DecodeFromBytes populates the fields from a raw buffer. The buffer must be of length >=
 // scion.MetaLen.
+// @ requires  acc(sl.Bytes(raw, 0, len(raw)), R50)
+// @ requires  low(len(raw))
+// @ requires  len(raw) >= MetaLen ==>
+// @ 	low(sl.GetByte(raw, 0, len(raw), 0)) && low(sl.GetByte(raw, 0, len(raw), 1)) &&
+// @ 	low(sl.GetByte(raw, 0, len(raw), 2)) && low(sl.GetByte(raw, 0, len(raw), 3))
 // @ preserves acc(m)
-// @ preserves acc(sl.Bytes(raw, 0, len(raw)), R50)
+// @ ensures   acc(sl.Bytes(raw, 0, len(raw)), R50)
 // @ ensures   (len(raw) >= MetaLen) == (e == nil)
 // @ ensures   e == nil ==> m.InBounds()
 // @ ensures   e == nil ==> m.DecodeFromBytesSpec(raw)
 // @ ensures   e != nil ==> e.ErrorMem()
+// @ ensures   low(e != nil)
+// TODO: Once Gobra issue 891 is resolved, change to low(m.SegLen)
+// @ ensures   low(m.SegLen[0]) && low(m.SegLen[1]) && low(m.SegLen[2])
 // @ decreases
 func (m *MetaHdr) DecodeFromBytes(raw []byte) (e error) {
 	if len(raw) < MetaLen {
@@ -265,11 +306,15 @@ func (m *MetaHdr) DecodeFromBytes(raw []byte) (e error) {
 	}
 	//@ unfold acc(sl.Bytes(raw, 0, len(raw)), R50)
 	line := binary.BigEndian.Uint32(raw)
+	// TODO: remove assertion
+	// @ assert low(line)
 	m.CurrINF = uint8(line >> 30)
 	m.CurrHF = uint8(line>>24) & 0x3F
 	//@ bit.Shift30LessThan4(line)
 	//@ bit.And3fAtMost64(uint8(line>>24))
 	m.SegLen[0] = uint8(line>>12) & 0x3F
+	// TODO: remove assertion
+	// @ assert low(m.SegLen[0])
 	m.SegLen[1] = uint8(line>>6) & 0x3F
 	m.SegLen[2] = uint8(line) & 0x3F
 	//@ bit.And3fAtMost64(uint8(line>>12))
@@ -282,10 +327,15 @@ func (m *MetaHdr) DecodeFromBytes(raw []byte) (e error) {
 // SerializeTo writes the fields into the provided buffer. The buffer must be of length >=
 // scion.MetaLen.
 // @ requires  len(b) >= MetaLen
-// @ preserves acc(m, R50)
+// @ requires  acc(m, R50)
+// @ requires  low(m.CurrINF) && low(m.CurrHF) && low(m.SegLen)
 // @ preserves sl.Bytes(b, 0, len(b))
+// @ ensures   acc(m, R50)
 // @ ensures   e == nil
 // @ ensures   m.SerializeToSpec(b)
+// @ ensures   len(b) >= MetaLen ==>
+// @ 	low(sl.GetByte(b, 0, len(b), 0)) && low(sl.GetByte(b, 0, len(b), 1)) &&
+// @ 	low(sl.GetByte(b, 0, len(b), 2)) && low(sl.GetByte(b, 0, len(b), 3))
 // @ decreases
 func (m *MetaHdr) SerializeTo(b []byte) (e error) {
 	if len(b) < MetaLen {

@@ -32,6 +32,7 @@ requires  offset + path.HopLen * segLen <= length
 requires  length <= len(raw)
 requires  0 <= currHfIdx && currHfIdx <= segLen
 requires  0 <= currInfIdx && currInfIdx < 3
+requires  low(segLen)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R51)
 preserves acc(sl.Bytes(raw[start:length], 0, len(raw[start:length])), R51)
 ensures   CurrSeg(raw, offset, currInfIdx, currHfIdx, segLen, headerOffset) ==
@@ -82,6 +83,7 @@ requires 0 < segLen
 requires 0 <= currHfIdx && currHfIdx <= segLen
 requires length <= len(raw)
 requires offset + path.HopLen * segLen <= length
+requires low(segLen)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R52)
 preserves acc(sl.Bytes(raw[start:length], 0, len(raw[start:length])), R52)
 ensures  segment(raw, offset, currHfIdx, ainfo, uinfo, consDir, peer, segLen) ==
@@ -107,6 +109,7 @@ requires  0 <= start && start <= offset
 requires  0 <= currHfIdx && currHfIdx <= segLen
 requires  offset + path.HopLen * segLen <= length
 requires  length <= len(raw)
+requires  low(currHfIdx) && low(segLen)
 preserves acc(sl.Bytes(raw, 0, len(raw)), p)
 preserves acc(sl.Bytes(raw[start:length], 0, len(raw[start:length])), p)
 ensures   hopFields(raw, offset, currHfIdx, segLen) ==
@@ -128,6 +131,7 @@ requires  segs.Valid()
 requires  0 <= length && length <= len(raw)
 requires  PktLen(segs, headerOffset) <= length
 requires  1 <= currInfIdx && currInfIdx < 4
+requires  low(currInfIdx) && low(segs.Seg2Len) && low(segs.Seg3Len)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R51)
 preserves acc(sl.Bytes(raw[start:length], 0, len(raw[start:length])), R51)
 ensures   LeftSeg(raw, currInfIdx, segs, headerOffset) ==
@@ -157,6 +161,7 @@ requires  segs.Valid()
 requires  0 <= length && length <= len(raw)
 requires  PktLen(segs, headerOffset) <= length
 requires  -1 <= currInfIdx && currInfIdx < 2
+requires  low(currInfIdx) && low(segs.Seg1Len) && low(segs.Seg2Len) && low(segs.Seg3Len > 0)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R51)
 preserves acc(sl.Bytes(raw[start:length], 0, len(raw[start:length])), R51)
 ensures   RightSeg(raw, currInfIdx, segs, headerOffset) ==
@@ -185,6 +190,7 @@ requires  segs.Valid()
 requires  2 <= currInfIdx && currInfIdx < 5
 requires  0 <= length && length <= len(raw)
 requires  PktLen(segs, headerOffset) <= length
+requires  low(currInfIdx) && low(segs.Seg1Len) && low(segs.Seg2Len > 0) && low(segs.Seg3Len)
 preserves acc(sl.Bytes(raw, 0, len(raw)), R51)
 preserves acc(sl.Bytes(raw[start:length], 0, len(raw[start:length])), R51)
 ensures   MidSeg(raw, currInfIdx, segs, headerOffset) ==

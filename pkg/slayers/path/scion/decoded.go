@@ -37,7 +37,13 @@ type Decoded struct {
 
 // DecodeFromBytes fully decodes the SCION path into the corresponding fields.
 // @ requires  s.NonInitMem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R42)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R42)
+// @ requires  low(len(data))
+// @ requires  low(s.GetNumINFNonInit()) && low(s.GetNumHopsNonInit())
+// @ requires  len(data) >= MetaLen ==>
+// @ 	low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1)) &&
+// @ 	low(sl.GetByte(data, 0, len(data), 2)) && low(sl.GetByte(data, 0, len(data), 3))
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R42)
 // @ ensures   r == nil ==> (
 // @ 	s.Mem(data) &&
 // @ 	let lenD := len(data) in
@@ -51,6 +57,8 @@ type Decoded struct {
 // @ 	metaHdr == s.GetMetaHdr(data))
 // @ ensures   r == nil ==> s.GetBase(data).WeaklyValid()
 // @ ensures   r != nil ==> (r.ErrorMem() && s.NonInitMem())
+// @ ensures   low(r != nil)
+// @ ensures   r == nil ==> low(s.GetNumINF(data))
 // @ decreases
 func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	//@ unfold s.NonInitMem()
@@ -60,6 +68,9 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	}
 	// (VerifiedSCION) Gobra expects a stronger contract for s.Len() when in fact
 	// what happens here is that we just call the same function in s.Base.
+	// TODO: remove assertions
+	// @ assert low(s.Base.GetNumINF())
+	// @ assert low(s.Base.GetNumHops())
 	if minLen := s. /*@ Base. @*/ Len(); len(data) < minLen {
 		//@ s.Base.DowngradePerm()
 		//@ fold s.NonInitMem()
@@ -70,6 +81,9 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	//@ assert len(data) >= MetaLen + s.Base.GetNumINF() * path.InfoLen + s.Base.GetNumHops() * path.HopLen
 	//@ sl.SplitByIndex_Bytes(data, 0, len(data), offset, R43)
 
+	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	numInf := /*@ unfolding acc(s.Base.Mem(), _) in @*/ s.NumINF
+
 	//@ invariant acc(&s.InfoFields)
 	//@ invariant acc(s.Base.Mem(), R1)
 	//@ invariant len(s.InfoFields) == s.Base.GetNumINF()
@@ -79,8 +93,10 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	//@ invariant forall j int :: { &s.InfoFields[j] } 0 <= j && j < s.Base.GetNumINF() ==> acc(&s.InfoFields[j])
 	//@ invariant acc(sl.Bytes(data, 0, offset), R43)
 	//@ invariant acc(sl.Bytes(data, offset, len(data)), R43)
+	//@ invariant numInf == s.Base.GetNumINF()
+	//@ invariant low(i)
 	//@ decreases s.Base.GetNumINF() - i
-	for i := 0; i < /*@ unfolding acc(s.Base.Mem(), _) in @*/ s.NumINF; i++ {
+	for i := 0; i < numInf; i++ {
 		//@ sl.SplitByIndex_Bytes(data, offset, len(data), offset + path.InfoLen, R43)
 		//@ sl.Reslice_Bytes(data, offset, offset + path.InfoLen, R43)
 		if err := s.InfoFields[i].DecodeFromBytes(data[offset : offset+path.InfoLen]); err != nil {
@@ -93,6 +109,10 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 		//@ sl.CombineAtIndex_Bytes(data, 0, offset + path.InfoLen, offset, R43)
 		offset += path.InfoLen
 	}
+
+	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	numHops := /*@ unfolding acc(s.Base.Mem(), R2) in @*/ s.NumHops
+
 	s.HopFields = make([]path.HopField, ( /*@ unfolding s.Base.Mem() in @*/ s.NumHops))
 	//@ invariant acc(&s.HopFields)
 	//@ invariant acc(s.Base.Mem(), R1)
@@ -104,8 +124,10 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	//@ invariant offset == MetaLen + s.Base.GetNumINF() * path.InfoLen + i * path.HopLen
 	//@ invariant acc(sl.Bytes(data, 0, offset), R43)
 	//@ invariant acc(sl.Bytes(data, offset, len(data)), R43)
+	//@ invariant numHops == s.Base.GetNumHops()
+	//@ invariant low(i)
 	//@ decreases s.Base.GetNumHops() - i
-	for i := 0; i < /*@ unfolding acc(s.Base.Mem(), R2) in @*/ s.NumHops; i++ {
+	for i := 0; i < numHops; i++ {
 		//@ sl.SplitByIndex_Bytes(data, offset, len(data), offset + path.HopLen, R43)
 		//@ sl.Reslice_Bytes(data, offset, offset + path.HopLen, R43)
 		if err := s.HopFields[i].DecodeFromBytes(data[offset : offset+path.HopLen]); err != nil {
@@ -125,10 +147,17 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 
 // SerializeTo writePerms the path to a slice. The slice must be big enough to hold the entire data,
 // otherwise an error is returned.
-// @ preserves acc(s.Mem(ubuf), R1)
+// @ requires  acc(s.Mem(ubuf), R1)
+// @ requires  low(len(b)) && low(s.GetNumINF(ubuf)) && low(s.GetNumHops(ubuf))
+// @ requires  low(s.getLenInfoFields(ubuf)) && low(s.getLenHopFields(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ preserves b !== ubuf ==> sl.Bytes(b, 0, len(b))
+// @ ensures   acc(s.Mem(ubuf), R1)
 // @ ensures   r != nil ==> r.ErrorMem()
+// @ ensures   low(r != nil)
+// @ ensures   len(b) >= MetaLen ==>
+// @ 	low(sl.GetByte(b, 0, len(b), 0)) && low(sl.GetByte(b, 0, len(b), 1)) &&
+// @ 	low(sl.GetByte(b, 0, len(b), 2)) && low(sl.GetByte(b, 0, len(b), 3))
 // @ decreases
 func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 	if len(b) < s.Len( /*@ ubuf @*/ ) {
@@ -144,25 +173,38 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 		// @ Unreachable()
 		return err
 	}
+	// TODO: remove assertion
+	// @ assert   len(b) >= MetaLen ==>
+	// @ 	low(sl.GetByte(b, 0, len(b), 0)) && low(sl.GetByte(b, 0, len(b), 1)) &&
+	// @ 	low(sl.GetByte(b, 0, len(b), 2)) && low(sl.GetByte(b, 0, len(b), 3))
+
 	//@ fold acc(s.Base.Mem(), R1)
 	//@ sl.Unslice_Bytes(b, 0, MetaLen, writePerm)
 	//@ sl.CombineAtIndex_Bytes(b, 0, len(b), MetaLen, writePerm)
 	//@ fold acc(s.Mem(ubuf), R1)
 	offset := MetaLen
 
+	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	lenInfoFields := /*@ unfolding acc(s.Mem(ubuf), _) in @*/ len(s.InfoFields)
+	//@ assert low(lenInfoFields)
+
 	//@ invariant acc(s.Mem(ubuf), R1)
-	//@ invariant sl.Bytes(ubuf, 0, len(ubuf))
+	//@ invariant acc(sl.Bytes(ubuf, 0, len(ubuf)), R1)
 	//@ invariant b !== ubuf ==> sl.Bytes(b, 0, len(b))
 	//@ invariant s.LenSpec(ubuf) <= len(b)
 	//@ invariant 0 <= i && i <= s.getLenInfoFields(ubuf)
 	//@ invariant offset == MetaLen + i * path.InfoLen
 	//@ invariant MetaLen + s.getLenInfoFields(ubuf) * path.InfoLen + s.getLenHopFields(ubuf) * path.HopLen <= len(b)
+	//@ invariant lenInfoFields == s.getLenInfoFields(ubuf)
+	//@ invariant low(i)
 	//@ decreases s.getLenInfoFields(ubuf) - i
 	// (VerifiedSCION) TODO: reinstate the original range clause
 	// for _, info := range s.InfoFields {
-	for i := 0; i < /*@ unfolding acc(s.Mem(ubuf), _) in @*/ len(s.InfoFields); i++ {
+	for i := 0; i < lenInfoFields; i++ {
 		//@ unfold acc(s.Mem(ubuf), R1)
 		info := &s.InfoFields[i]
+		// TODO: remove assertion
+		//@ assert acc(info, R10)
 		//@ sl.SplitByIndex_Bytes(b, 0, len(b), offset, writePerm)
 		//@ sl.SplitByIndex_Bytes(b, offset, len(b), offset + path.InfoLen, writePerm)
 		//@ sl.Reslice_Bytes(b, offset, offset + path.InfoLen, writePerm)
@@ -177,17 +219,29 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 		//@ fold acc(s.Mem(ubuf), R1)
 		offset += path.InfoLen
 	}
+
+	// TODO: remove assertion
+	// @ assert   len(b) >= MetaLen ==>
+	// @ 	low(sl.GetByte(b, 0, len(b), 0)) && low(sl.GetByte(b, 0, len(b), 1)) &&
+	// @ 	low(sl.GetByte(b, 0, len(b), 2)) && low(sl.GetByte(b, 0, len(b), 3))
+
+	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	lenHopFields := /*@ unfolding acc(s.Mem(ubuf), _) in @*/ len(s.HopFields)
+	//@ assert low(lenHopFields)
+
 	//@ invariant acc(s.Mem(ubuf), R1)
+	//@ invariant lenHopFields == s.getLenHopFields(ubuf)
 	//@ invariant sl.Bytes(ubuf, 0, len(ubuf))
 	//@ invariant b !== ubuf ==> sl.Bytes(b, 0, len(b))
 	//@ invariant s.LenSpec(ubuf) <= len(b)
 	//@ invariant 0 <= i && i <= s.getLenHopFields(ubuf)
 	//@ invariant offset == MetaLen + s.getLenInfoFields(ubuf) * path.InfoLen + i * path.HopLen
 	//@ invariant MetaLen + s.getLenInfoFields(ubuf) * path.InfoLen + s.getLenHopFields(ubuf) * path.HopLen <= len(b)
+	//@ invariant low(i)
 	//@ decreases s.getLenHopFields(ubuf)-i
 	// (VerifiedSCION) TODO: reinstate the original range clause
 	// for _, hop := range s.HopFields {
-	for i := 0; i < /*@ unfolding acc(s.Mem(ubuf), _) in @*/ len(s.HopFields); i++ {
+	for i := 0; i < lenHopFields; i++ {
 		//@ unfold acc(s.Mem(ubuf), R1)
 		hop := &s.HopFields[i]
 		//@ sl.SplitByIndex_Bytes(b, 0, len(b), offset, writePerm)
@@ -208,6 +262,8 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 
 // Reverse reverses a SCION path.
 // @ requires s.Mem(ubuf)
+// @ requires low(s.GetNumINF(ubuf)) && low(s.GetNumHops(ubuf))
+// @ requires low(s.GetBase(ubuf).Valid())
 // @ ensures  r == nil ==> (
 // @	p != nil                    &&
 // @	p.Mem(ubuf)                 &&
@@ -244,27 +300,36 @@ func (s *Decoded) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, r error) {
 		s.PathMeta.SegLen[0], s.PathMeta.SegLen[lastIdx] = s.PathMeta.SegLen[lastIdx], s.PathMeta.SegLen[0]
 	}
 	//@ fold s.Base.Mem()
+	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	numInf := /*@ unfolding acc(s.Base.Mem(), R11) in @*/ s.NumINF
 	//@ invariant acc(s.Base.Mem(), R10)
 	//@ invariant 0 <= i && i <= s.Base.GetNumINF()
 	//@ invariant acc(&s.InfoFields, R10)
 	//@ invariant len(s.InfoFields) == s.Base.GetNumINF()
 	//@ invariant forall i int :: { &s.InfoFields[i] } 0 <= i && i < len(s.InfoFields) ==>
 	//@ 	(acc(&s.InfoFields[i].ConsDir))
+	//@ invariant numInf == s.Base.GetNumINF()
+	//@ invariant low(i)
 	//@ decreases MaxINFs-i
 	// Reverse cons dir flags
-	for i := 0; i < ( /*@ unfolding acc(s.Base.Mem(), R11) in @*/ s.NumINF); i++ {
+	for i := 0; i < numInf; i++ {
 		info := &s.InfoFields[i]
 		info.ConsDir = !info.ConsDir
 	}
 	//@ fold s.Mem(ubuf)
 
+	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	numHops := /*@ unfolding s.Mem(ubuf) in unfolding s.Base.Mem() in @*/ s.NumHops
+
 	// Reverse order of hop fields
 	//@ invariant s.Mem(ubuf)
+	//@ invariant numHops == s.GetNumHops(ubuf)
 	//@ invariant 0 <= i && i <= s.GetNumHops(ubuf)
 	//@ invariant -1 <= j && j < s.GetNumHops(ubuf)
 	//@ invariant s.GetBase(ubuf) == baseAfterReversingSegLen
+	//@ invariant low(i) && low(j)
 	//@ decreases j-i
-	for i, j := 0, ( /*@ unfolding s.Mem(ubuf) in (unfolding s.Base.Mem() in @*/ s.NumHops - 1 /*@ ) @*/); i < j; i, j = i+1, j-1 {
+	for i, j := 0, numHops-1; i < j; i, j = i+1, j-1 {
 		//@ unfold s.Mem(ubuf)
 		//@ assert &s.HopFields[i] != &s.HopFields[j]
 		//@ unfold s.HopFields[i].Mem()
@@ -290,8 +355,11 @@ func (s *Decoded) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, r error) {
 }
 
 // ToRaw tranforms scion.Decoded into scion.Raw.
-// @ preserves s.Mem(ubuf1)
+// @ requires  s.Mem(ubuf1)
+// @ requires  low(s.GetNumINF(ubuf1)) && low(s.GetNumHops(ubuf1))
+// @ requires  low(s.getLenInfoFields(ubuf1)) && low(s.getLenHopFields(ubuf1))
 // @ preserves sl.Bytes(ubuf1, 0, len(ubuf1))
+// @ ensures   s.Mem(ubuf1)
 // @ ensures   err == nil ==> r.Mem(ubuf2)
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases

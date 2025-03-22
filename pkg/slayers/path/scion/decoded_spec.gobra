@@ -93,7 +93,11 @@ pure func (d *Decoded) Type(ghost ubuf []byte) path.Type {
   * Unfortunately, Gobra does not fully support them yet, so we
   * introduced this method which acts as a wrapper.
   */
-preserves acc(d.Mem(ubuf), R19)
+requires acc(d.Mem(ubuf), R19)
+requires low(d.GetBase(ubuf).PathMeta.CurrHF)  // TODO: Maybe introduce function for this
+requires low(d.GetNumHops(ubuf))
+requires low(d.GetBase(ubuf).PathMeta.SegLen[0]) && low(d.GetBase(ubuf).PathMeta.SegLen[1])
+ensures  acc(d.Mem(ubuf), R19)
 decreases
 func (d *Decoded) IsXover(ghost ubuf []byte) bool {
 	unfold acc(d.Mem(ubuf), R19)
@@ -109,6 +113,9 @@ func (d *Decoded) IsXover(ghost ubuf []byte) bool {
   * which can be extremely cumbersome.
   */
 requires d.Mem(ubuf)
+requires low(d.GetNumINF(ubuf) == 0)
+requires low(d.GetMetaHdr(ubuf).CurrHF) && low(d.GetNumHops(ubuf))
+requires low(d.GetMetaHdr(ubuf).SegLen[0]) && low(d.GetMetaHdr(ubuf).SegLen[1])
 ensures  e == nil ==> (
 	d.Mem(ubuf) &&
 	d.LenSpec(ubuf) == old(d.LenSpec(ubuf)) &&
@@ -135,12 +142,29 @@ pure func (d *Decoded) GetNumINF(ub []byte) int {
 		d.Base.GetNumINF()
 }
 
+// TODO: combine with above eventually maybe
+ghost
+requires d.NonInitMem()
+decreases
+pure func (d *Decoded) GetNumINFNonInit() int {
+	return unfolding d.NonInitMem() in
+		d.Base.GetNumINFNonInit()
+}
+
 ghost
 requires d.Mem(ub)
 decreases
 pure func (d *Decoded) GetNumHops(ub []byte) int {
 	return unfolding d.Mem(ub) in
 		d.Base.GetNumHops()
+}
+
+ghost
+requires d.NonInitMem()
+decreases
+pure func (d *Decoded) GetNumHopsNonInit() int {
+	return unfolding d.NonInitMem() in
+		d.Base.GetNumHopsNonInit()
 }
 
 ghost

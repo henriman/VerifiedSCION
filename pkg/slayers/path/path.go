@@ -75,6 +75,7 @@ type Path interface {
 	//@ preserves acc(Mem(ub), R1)
 	//@ preserves sl.Bytes(b, 0, len(b))
 	//@ ensures   e != nil ==> e.ErrorMem()
+	//@ ensures   low(e != nil)
 	//@ decreases
 	SerializeTo(b []byte /*@, ghost ub []byte @*/) (e error)
 	// DecodesFromBytes decodes the path from the provided buffer.

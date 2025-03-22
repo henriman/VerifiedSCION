@@ -188,6 +188,8 @@ trusted
 preserves acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 ensures   BigEndian.PutUint32Spec(b[0], b[1], b[2], b[3], v)
 ensures   BigEndian.Uint32Spec(b[0], b[1], b[2], b[3]) == v
+// TODO: Use forall once issues are solved
+ensures   low(v) ==> low(b[0]) && low(b[1]) && low(b[2]) && low(b[3])
 decreases
 func (e bigEndian) PutUint32(b []byte, v uint32) {
 	b[0] = byte(v >> 24)
