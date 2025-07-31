@@ -249,7 +249,6 @@ func (ia IA) AS() AS {
 	return AS(ia) & MaxAS
 }
 
-// @ requires low(ia)
 // @ decreases
 func (ia IA) MarshalText() ([]byte, error) {
 	return []byte(ia.String()), nil
