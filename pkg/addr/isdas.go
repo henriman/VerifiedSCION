@@ -290,15 +290,8 @@ func (ia IA) IsWildcard() bool {
 	return ia.ISD() == 0 || ia.AS() == 0
 }
 
-// @ requires low(ia)
 // @ decreases
 func (ia IA) String() string {
-	// (VerifiedSCION) Added casts around ia.ISD() and ia.AS() to be able to pass them to 'fmt.Sprintf'
-	// TODO: Once Gobra issue #835/#890 is resolved, remove this assumption.
-	//@ ghost v := []interface{}{ia.ISD(), ia.AS()}
-	//@ assert low(v[0])
-	//@ assert low(v[1])
-	//@ assume forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i]) && low(v[i])
 	return fmt.Sprintf("%d-%s", ia.ISD(), ia.AS())
 }
 

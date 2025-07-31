@@ -24,8 +24,6 @@ import (
 
 pred (ia *IA) Mem() { acc(ia) }
 
-pred (ia *IA) LowMem() { acc(ia) && low(*ia) }
-
 (*IA) implements encoding.TextUnmarshaler {
 	(ia *IA) UnmarshalText(text []byte) (err error) {
 		unfold ia.Mem()
@@ -37,16 +35,12 @@ pred (ia *IA) LowMem() { acc(ia) && low(*ia) }
 // Implementation proof would confuse the two predicates named Mem for IA and *IA
 // Issue: https://github.com/viperproject/gobra/issues/449
 pred MemForStringer(ia IA) { true }
-pred LowMemForStringer(ia IA) { low(ia) }
 
 IA implements fmt.Stringer {
 	pred Mem := MemForStringer
-	pred LowMem := LowMemForStringer
 	
-	(ia IA) String() (str string) {
-		unfold acc(LowMemForStringer(ia), 1/2)
-		str = ia.String()
-		fold acc(MemForStringer(ia))
+	(ia IA) String() string {
+		return ia.String()
 	}
 }
 
@@ -62,8 +56,7 @@ pred (_as *AS) Mem() { acc(_as) }
 
 (*IA) implements flag.Value {
 	(ia *IA) String() (str string) {
-		unfold acc(ia.Mem(), 1/2)
-		unfold acc(ia.LowMem(), 1/2)
+		unfold ia.Mem()
 		str = ia.String()
 		fold ia.Mem()
 	}

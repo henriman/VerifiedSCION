@@ -18,10 +18,8 @@ package flag
 
 type Value interface {
 	pred Mem()
-	pred LowMem()
 	
-	requires acc(Mem(), 1/2) && acc(LowMem(), 1/2)
-	ensures acc(Mem())
+	preserves acc(Mem())
 	decreases
 	String() string
 
