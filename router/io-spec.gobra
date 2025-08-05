@@ -103,10 +103,26 @@ pure func absReturnErr(respr processResult) (val io.Val) {
 }
 
 ghost
+requires d.Mem()
+decreases
+pure func (d *DataPlane) dpSpecWellConfiguredLocalIAHelper(dp io.DataPlaneSpec) bool {
+	return unfolding d.Mem() in d.dpSpecWellConfiguredLocalIA(dp)
+}
+
+ghost
 requires acc(&d.localIA)
 decreases
 pure func (d *DataPlane) dpSpecWellConfiguredLocalIA(dp io.DataPlaneSpec) bool {
 	return io.AS{uint(d.localIA)} == dp.Asid()
+}
+
+// TODO: I'm not sure whether these helper methods are necessary, I just didn't
+// know how to "unfold the old d.Mem()" to compare the old non-helper results
+ghost
+requires d.Mem()
+decreases
+pure func (d *DataPlane) dpSpecWellConfiguredNeighborIAsHelper(dp io.DataPlaneSpec) bool {
+	return unfolding d.Mem() in d.dpSpecWellConfiguredNeighborIAs(dp)
 }
 
 ghost
@@ -127,6 +143,13 @@ pure func absLinktype(link topology.LinkType) io.Link {
 		link == topology.Child ? io.Link(io.IO_ProvCust{}) :
 		link == topology.Peer ? io.Link(io.IO_Core{}) :
 		io.Link(io.IO_NoLink{})
+}
+
+ghost
+requires d.Mem()
+decreases
+pure func (d *DataPlane) dpSpecWellConfiguredLinkTypesHelper(dp io.DataPlaneSpec) bool {
+	return unfolding d.Mem() in d.dpSpecWellConfiguredLinkTypes(dp)
 }
 
 ghost

@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: include again
-// gobra
+// +gobra
 
 package router
 
@@ -84,16 +83,18 @@ func canModifyRunning(d *DataPlane) {
 requires macFactory != nil                        &&
 	acc(key)                                      &&
 	len(*key) > 0                                 &&
-	acc(sl.Bytes(*key, 0, len(*key)), _)          &&
+	sl.Bytes(*key, 0, len(*key))                  &&
 	scrypto.ValidKeyForHash(*key)                 &&
-	macFactory implements MacFactorySpec{key}
+	acc(asid) && *asid == io.AS{1000}             &&
+	macFactory implements MacFactorySpec{key, asid}
 requires metrics != nil && metrics.Mem()
 requires ctx != nil && ctx.Mem()
 func testRun(
-	macFactory func() hash.Hash,
+	macFactory func() (hash.Hash, ghost hash.ScionHashSpec),
 	key *[]byte,
 	metrics *Metrics,
 	ctx context.Context,
+	ghost asid gpointer[io.AS],
 	ghost place io.Place,
 	ghost state io.Dp3sStateLocal) (d *DataPlane) {
 	// body similar to foldDataPlaneMem
@@ -128,9 +129,10 @@ func testRun(
 	d.internal = allocateBatchConn()
 	fold accAddr(d.internalNextHops)
 	d.svc = newServices()
-	d.macFactory = macFactory
-	d.key = key
-	d.localIA = 1000
+	// TODO: use SetKey
+	// d.macFactory = macFactory
+	// d.key = key
+	// d.localIA = 1000
 	d.Metrics = metrics
 	d.bfdSessions = make(map[uint16]bfdSession)
 	fold accBfdSession(d.bfdSessions)
@@ -205,30 +207,91 @@ func testRun(
 	assert reveal dp.Valid()
 	)
 
-	assert dp.Asid().V == 1000
-	assert d.localIA == 1000
-	assert d.dpSpecWellConfiguredLocalIA(dp)
-	assert d.dpSpecWellConfiguredNeighborIAs(dp)
-	assert d.dpSpecWellConfiguredLinkTypes(dp)
+	// assert dp.Asid().V == 1000
+	// assert d.localIA == 1000
+	// assert d.dpSpecWellConfiguredLocalIA(dp)
+	// assert d.dpSpecWellConfiguredNeighborIAs(dp)
+	// assert d.dpSpecWellConfiguredLinkTypes(dp)
 
+	// fold acc(d.Mem(), OutMutexPerm)
+	// assert d.dpSpecWellConfiguredNeighborIAs(dp)
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
+	// fold acc(d.Mem(), 1 - OutMutexPerm)
 	fold d.Mem()
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	assert d.getDomNeighborIAs() == reveal d.getDomExternal()
 	assert d.getDomNeighborIAs() == d.getDomLinkTypes()
 	assert !(0 in d.getDomNeighborIAs())
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
-	assert reveal d.DpAgreesWithSpec(dp)
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 
 	assert reveal d.PreWellConfigured()
 	fold MutexInvariant!< d !>()
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	// end of foldDataPlaneMem
+	// assert !d.IsRunning()
+	// assert d.InternalConnIsSet()
+	// assert d.KeyIsSet()
+	// assert d.SvcsAreSet()
+	// assert d.MetricsAreSet()
+	d.mtx.SetInv(MutexInvariant!<d!>)
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
+	assert d.mtx.LockP()
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
+	assert d.mtx.LockInv() == MutexInvariant!<d!>
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
+
+	// TODO: I can probably work around asid ghost pointer argument by wrapping io.AS{uint(1000)}
+	// (maybe `share asid` or something could also be useful)
+	assert reveal d.PreWellConfigured()
+	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
+	// TODO: alternatively, I could try to instead apply this "trick" of only
+	// unfolding part of Mem and all of localIA (if no other way, maybe using
+	// an outline block, since I know the required contract) in SetIA and 
+	// requiring Mem() there as usual. However, then I will likely need 
+	// all of the postconditions ensuring that stuff has not changed since from
+	// the caller's view, it has given up all permissions and thus cannot know
+	// whether the data is manipulated or not.
+	unfold acc(d.Mem(), OutMutexPerm/2)
+	d.SetIA(addr.IA(1000), dp)
+	fold acc(d.Mem(), OutMutexPerm/2)
+	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
+	assert reveal d.PreWellConfigured()
+	// NOTE: This assertion is the first failing one
+	// Reason: On call to SetIA, we lose all permissions to d.Mem() (the ones
+	// in mutex and the ones in precondition), and consequently we cannot know
+	// whether other things than just the localIA are changed ...
+	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
+	// d.macFactory = macFactory
+	// d.key = key
+	unfold acc(d.Mem(), OutMutexPerm/2)
+	if err := d.SetKey(*key, dp); err != nil {
+		return nil
+	}
+	unfold acc(d.Mem(), OutMutexPerm/4)
+	assert acc(d.key, 3*OutMutexPerm/4)
+	assert acc(sl.Bytes(*d.key, 0, len(*d.key)), _)
+	assert len(*d.key) > 0
+	assert scrypto.ValidKeyForHash(*d.key)
+	assert acc(d.asid, 3*OutMutexPerm/4)
+	assert *d.asid == io.AS{uint(d.localIA)}
+	assert d.macFactory implements MacFactorySpec{d.key, d.asid}
+	fold acc(d.Mem(), 3*OutMutexPerm/4)
+	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
+	assert reveal d.PreWellConfigured()
+	assert dp.Asid().V == 1000
+	// assert d.localIA == 1000
+
+	assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
+	assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredLinkTypes(dp)
+	assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredLocalIA(dp)
+	assert reveal d.DpAgreesWithSpec(dp)
+
 	assert !d.IsRunning()
 	assert d.InternalConnIsSet()
 	assert d.KeyIsSet()
 	assert d.SvcsAreSet()
 	assert d.MetricsAreSet()
-	d.mtx.SetInv(MutexInvariant!<d!>)
-	assert d.mtx.LockP()
-	assert d.mtx.LockInv() == MutexInvariant!<d!>
 
 	// io-spec needs to be inhaled
 	inhale io.token(place)

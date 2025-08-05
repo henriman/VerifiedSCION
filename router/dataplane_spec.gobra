@@ -69,7 +69,6 @@ pred (d *DataPlane) Mem() {
 	(d.internalNextHops != nil  ==> accAddr(d.internalNextHops))  &&
 	(d.svc != nil               ==> d.svc.Mem())                  &&
 	(d.macFactory != nil        ==> (
-		// TODO: probably also need ac(d.asid)
 		acc(d.key)                                      	&&
 		acc(sl.Bytes(*d.key, 0, len(*d.key)), _)        	&&
 		len(*d.key) > 0                                 	&&
