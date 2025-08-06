@@ -85,7 +85,10 @@ requires macFactory != nil                        &&
 	len(*key) > 0                                 &&
 	sl.Bytes(*key, 0, len(*key))                  &&
 	scrypto.ValidKeyForHash(*key)                 &&
-	acc(asid) && *asid == io.AS{1000}             &&
+	// TODO[henri]: might want to use asid in place of 1000 as well maybe? and then
+	// no requirement on the contents of asid?
+	// TODO[henri]: try not using gpointer in gobra-felix test
+	acc(asid) && asid.V != 0		              &&
 	macFactory implements MacFactorySpec{key, asid}
 requires metrics != nil && metrics.Mem()
 requires ctx != nil && ctx.Mem()
@@ -118,7 +121,7 @@ func testRun(
 	d.neighborIAs = map[uint16]addr.IA{
 		uint16(1): 1001,
 		uint16(2): 1002,
-		uint16(3): 1000,
+		uint16(3): addr.IA(asid.V),
 	}
 
 	a1 := allocateUDPAddr()
@@ -129,16 +132,13 @@ func testRun(
 	d.internal = allocateBatchConn()
 	fold accAddr(d.internalNextHops)
 	d.svc = newServices()
-	// TODO: use SetKey
-	// d.macFactory = macFactory
-	// d.key = key
-	// d.localIA = 1000
 	d.Metrics = metrics
 	d.bfdSessions = make(map[uint16]bfdSession)
 	fold accBfdSession(d.bfdSessions)
 	d.forwardingMetrics = make(map[uint16]forwardingMetrics)
 	fold accForwardingMetrics(d.forwardingMetrics)
 
+	preserves acc(asid, 1/2)
 	ensures dp.Valid()
 	// the following trivial assertion makes sure that `==` matches
 	// `===` for ghost structs
@@ -152,19 +152,22 @@ func testRun(
 		neighborIAs: dict[io.Ifs]io.AS{
 			io.Ifs{1}: io.AS{1001},
 			io.Ifs{2}: io.AS{1002},
-			io.Ifs{3}: io.AS{1000},
+			io.Ifs{3}: *asid,
 		},
-		localIA: io.AS{1000},
+		// localIA: io.AS{1000},
+		localIA: *asid,
 		links:  dict[io.AsIfsPair]io.AsIfsPair {
-			io.AsIfsPair{io.AS{1000}, io.Ifs{1}}: io.AsIfsPair{io.AS{1001}, io.Ifs{7}},
-			io.AsIfsPair{io.AS{1000}, io.Ifs{2}}: io.AsIfsPair{io.AS{1002}, io.Ifs{8}},
-			io.AsIfsPair{io.AS{1000}, io.Ifs{3}}: io.AsIfsPair{io.AS{1000}, io.Ifs{3}},
-			io.AsIfsPair{io.AS{1001}, io.Ifs{7}}: io.AsIfsPair{io.AS{1000}, io.Ifs{1}},
-			io.AsIfsPair{io.AS{1002}, io.Ifs{8}}: io.AsIfsPair{io.AS{1000}, io.Ifs{2}}}}
+			// io.AsIfsPair{io.AS{1000}, io.Ifs{1}}: io.AsIfsPair{io.AS{1001}, io.Ifs{7}},
+			io.AsIfsPair{*asid, io.Ifs{1}}: io.AsIfsPair{io.AS{1001}, io.Ifs{7}},
+			// io.AsIfsPair{io.AS{1000}, io.Ifs{2}}: io.AsIfsPair{io.AS{1002}, io.Ifs{8}},
+			io.AsIfsPair{*asid, io.Ifs{2}}: io.AsIfsPair{io.AS{1002}, io.Ifs{8}},
+			io.AsIfsPair{*asid, io.Ifs{3}}: io.AsIfsPair{*asid, io.Ifs{3}},
+			io.AsIfsPair{io.AS{1001}, io.Ifs{7}}: io.AsIfsPair{*asid, io.Ifs{1}},
+			io.AsIfsPair{io.AS{1002}, io.Ifs{8}}: io.AsIfsPair{*asid, io.Ifs{2}}}}
 	outline(
-	pair1 := io.AsIfsPair{io.AS{1000}, io.Ifs{1}}
-	pair2 := io.AsIfsPair{io.AS{1000}, io.Ifs{2}}
-	pair3 := io.AsIfsPair{io.AS{1000}, io.Ifs{3}}
+	pair1 := io.AsIfsPair{*asid, io.Ifs{1}}
+	pair2 := io.AsIfsPair{*asid, io.Ifs{2}}
+	pair3 := io.AsIfsPair{*asid, io.Ifs{3}}
 	pair4 := io.AsIfsPair{io.AS{1001}, io.Ifs{7}}
 	pair5 := io.AsIfsPair{io.AS{1002}, io.Ifs{8}}
 
@@ -177,9 +180,9 @@ func testRun(
 		neighborIAs: dict[io.Ifs]io.AS{
 			io.Ifs{1}: io.AS{1001},
 			io.Ifs{2}: io.AS{1002},
-			io.Ifs{3}: io.AS{1000},
+			io.Ifs{3}: *asid,
 		},
-		localIA: io.AS{1000},
+		localIA: *asid,
 		links:  dict[io.AsIfsPair]io.AsIfsPair {
 			pair1: pair4,
 			pair2: pair5,
@@ -207,39 +210,18 @@ func testRun(
 	assert reveal dp.Valid()
 	)
 
-	// assert dp.Asid().V == 1000
-	// assert d.localIA == 1000
-	// assert d.dpSpecWellConfiguredLocalIA(dp)
-	// assert d.dpSpecWellConfiguredNeighborIAs(dp)
-	// assert d.dpSpecWellConfiguredLinkTypes(dp)
-
-	// fold acc(d.Mem(), OutMutexPerm)
-	// assert d.dpSpecWellConfiguredNeighborIAs(dp)
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
-	// fold acc(d.Mem(), 1 - OutMutexPerm)
 	fold d.Mem()
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	assert d.getDomNeighborIAs() == reveal d.getDomExternal()
 	assert d.getDomNeighborIAs() == d.getDomLinkTypes()
 	assert !(0 in d.getDomNeighborIAs())
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 
 	assert reveal d.PreWellConfigured()
 	fold MutexInvariant!< d !>()
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	// end of foldDataPlaneMem
-	// assert !d.IsRunning()
-	// assert d.InternalConnIsSet()
-	// assert d.KeyIsSet()
-	// assert d.SvcsAreSet()
-	// assert d.MetricsAreSet()
 	d.mtx.SetInv(MutexInvariant!<d!>)
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	assert d.mtx.LockP()
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	assert d.mtx.LockInv() == MutexInvariant!<d!>
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 
 	// TODO: I can probably work around asid ghost pointer argument by wrapping io.AS{uint(1000)}
 	// (maybe `share asid` or something could also be useful)
@@ -253,7 +235,7 @@ func testRun(
 	// the caller's view, it has given up all permissions and thus cannot know
 	// whether the data is manipulated or not.
 	unfold acc(d.Mem(), OutMutexPerm/2)
-	d.SetIA(addr.IA(1000), dp)
+	d.SetIA(addr.IA(asid.V))
 	fold acc(d.Mem(), OutMutexPerm/2)
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
 	assert reveal d.PreWellConfigured()
@@ -265,7 +247,7 @@ func testRun(
 	// d.macFactory = macFactory
 	// d.key = key
 	unfold acc(d.Mem(), OutMutexPerm/2)
-	if err := d.SetKey(*key, dp); err != nil {
+	if err := d.SetKey(*key); err != nil {
 		return nil
 	}
 	unfold acc(d.Mem(), OutMutexPerm/4)
@@ -279,7 +261,7 @@ func testRun(
 	fold acc(d.Mem(), 3*OutMutexPerm/4)
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
 	assert reveal d.PreWellConfigured()
-	assert dp.Asid().V == 1000
+	assert dp.Asid() == *asid
 	// assert d.localIA == 1000
 
 	assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)

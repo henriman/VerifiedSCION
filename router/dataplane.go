@@ -273,7 +273,6 @@ func (e scmpError) Error() string {
 }
 
 // SetIA sets the local IA for the dataplane.
-// TODO: possibly make this splitting up nicer ...
 // @ requires  acc(d.Mem(), OutMutexPerm/2)
 // @ requires  acc(&d.localIA, OutMutexPerm/2)
 // @ requires  !d.IsRunning()
@@ -283,33 +282,19 @@ func (e scmpError) Error() string {
 // @ preserves d.mtx.LockP()
 // @ preserves d.mtx.LockInv() == MutexInvariant!<d!>
 // @ ensures   acc(d.Mem(), OutMutexPerm/2)
-// @ ensures   acc(&d.localIA, OutMutexPerm/2)
-// TODO: verify this claim. then turn it into preserves !d.KeyIsSet()
+// @ ensures   acc(&d.localIA, OutMutexPerm/2) && d.localIA == ia
 // @ ensures   !d.IsRunning() && !d.KeyIsSet()
-// @ ensures   e == nil && d.LocalIA() == ia
-// TODO: I'm not sure it makes sense to have DataPlaneSpec here?
-// TODO: Could also make this dependent on whether dp is supplied (i.e. if it is reference, ... != nil ==> ...)
-// TODO: think about instead changing required permissions ...
-//  ensures   d.dpSpecWellConfiguredNeighborIAsHelper(dp) == old(d.dpSpecWellConfiguredNeighborIAsHelper(dp))
-//  ensures   d.dpSpecWellConfiguredLinkTypesHelper(dp) == old(d.dpSpecWellConfiguredLinkTypesHelper(dp))
-//  ensures   d.InternalConnIsSet() == old(d.InternalConnIsSet())
-//  ensures   d.SvcsAreSet() == old(d.SvcsAreSet())
-//  ensures   d.MetricsAreSet() == old(d.MetricsAreSet())
-//  ensures   d.PreWellConfigured() == old(d.PreWellConfigured())
+// @ ensures   e == nil
 // @ decreases 0 if sync.IgnoreBlockingForTermination()
-func (d *DataPlane) SetIA(ia addr.IA /*@, ghost dp io.DataPlaneSpec@*/) (e error) {
-	//  reveal d.PreWellConfigured()
-	//  reveal d.getDomExternal()
-	//  ghost isPreWellConfigured := d.PreWellConfigured()
+func (d *DataPlane) SetIA(ia addr.IA) (e error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	//  assert isPreWellConfigured == d.PreWellConfigured()
 	// @ unfold MutexInvariant!<d!>()
 	// @ assert !d.IsRunning()
 	// @ d.isRunningEq()
 	// @ unfold acc(d.Mem(), MutexPerm + OutMutexPerm/2)
-	//  defer fold MutexInvariant!<d!>()
-	//  defer fold d.Mem()
+	// @ defer fold MutexInvariant!<d!>()
+	// @ defer fold acc(d.Mem(), MutexPerm + OutMutexPerm/2)
 	if d.running {
 		// @ Unreachable()
 		return modifyExisting
@@ -323,9 +308,6 @@ func (d *DataPlane) SetIA(ia addr.IA /*@, ghost dp io.DataPlaneSpec@*/) (e error
 		return alreadySet
 	}
 	d.localIA = ia
-	// @ fold acc(d.Mem(), MutexPerm + OutMutexPerm/2)
-	// @ fold MutexInvariant!<d!>()
-	//  assert isPreWellConfigured == d.PreWellConfigured()
 	return nil
 }
 
@@ -343,35 +325,22 @@ func (d *DataPlane) SetIA(ia addr.IA /*@, ghost dp io.DataPlaneSpec@*/) (e error
 // @ preserves d.mtx.LockInv() == MutexInvariant!<d!>
 // @ ensures   acc(d.Mem(), OutMutexPerm/2)
 // @ ensures   acc(&d.key, OutMutexPerm/2)
-// @ ensures   res == nil ==> acc(d.key, OutMutexPerm/2)
-// @ ensures   res == nil ==> acc(sl.Bytes(*d.key, 0, len(*d.key)), _)
 // @ ensures   acc(&d.asid, OutMutexPerm/2)
-// @ ensures   res == nil ==> acc(d.asid, OutMutexPerm/2)
 // @ ensures   acc(&d.macFactory, OutMutexPerm/2)
+// @ ensures   res == nil ==> acc(d.asid, OutMutexPerm/2) &&
+// @ 	acc(d.key, OutMutexPerm/2) && acc(sl.Bytes(*d.key, 0, len(*d.key)), _)
 // @ ensures   !d.IsRunning()
 // @ ensures   res == nil ==> d.KeyIsSet()
-// TODO: prove this
-// TODO: instead don't require all d.Mem() but only what we need?
-//  ensures   d.dpSpecWellConfiguredNeighborIAsHelper(dp) == old(d.dpSpecWellConfiguredNeighborIAsHelper(dp))
-//  ensures   d.dpSpecWellConfiguredLinkTypesHelper(dp) == old(d.dpSpecWellConfiguredLinkTypesHelper(dp))
-//  ensures   d.dpSpecWellConfiguredLocalIAHelper(dp) == old(d.dpSpecWellConfiguredLocalIAHelper(dp))
-//  ensures   d.InternalConnIsSet() == old(d.InternalConnIsSet())
-//  ensures   d.SvcsAreSet() == old(d.SvcsAreSet())
-//  ensures   d.MetricsAreSet() == old(d.MetricsAreSet())
-//  ensures   d.PreWellConfigured() == old(d.PreWellConfigured())
 // @ decreases 0 if sync.IgnoreBlockingForTermination()
-func (d *DataPlane) SetKey(key []byte /*@, ghost dp io.DataPlaneSpec @*/) (res error) {
+func (d *DataPlane) SetKey(key []byte) (res error) {
 	// @ share key
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	// @ unfold MutexInvariant!<d!>()
 	// @ assert !d.IsRunning()
 	// @ d.isRunningEq()
-	// TODO[henri]: could clean this up considering that d.Mem() is already
-	// "partly unfolded" before first unfold (i.e. might not need to unfold twice)
-	// @ unfold acc(d.Mem(), (MutexPerm + OutMutexPerm/2)/2)
 	// @ d.keyIsSetEq()
-	// @ unfold acc(d.Mem(), (MutexPerm + OutMutexPerm/2)/2)
+	// @ unfold acc(d.Mem(), MutexPerm + OutMutexPerm/2)
 	// @ defer fold MutexInvariant!<d!>()
 	// @ defer fold acc(d.Mem(), MutexPerm + OutMutexPerm/2)
 	if d.running {
