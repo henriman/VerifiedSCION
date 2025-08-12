@@ -62,7 +62,6 @@ func (l LinkType) String() string {
 // LinkTypeFromString returns the numerical link type associated with a string description. If the
 // string is not recognized, an Unset link type is returned. The matching is case-insensitive.
 // @ requires low(s)
-// @ ensures low(res)
 // @ decreases
 func LinkTypeFromString(s string) (res LinkType) {
 	var l /*@@@*/ LinkType
@@ -79,35 +78,25 @@ func LinkTypeFromString(s string) (res LinkType) {
 // @ requires low(l)
 // @ ensures (l == Core || l == Parent || l == Child || l == Peer) == (err == nil)
 // @ ensures err == nil ==> sl.Bytes(res, 0, len(res))
-// @ ensures err == nil ==> sif.IsLowBytes(res, 0, len(res))
 // @ ensures err != nil ==> err.ErrorMem()
-// @ ensures low(err != nil)
 // @ decreases
 func (l LinkType) MarshalText() (res []byte, err error) {
 	switch l {
 	case Core:
 		tmp := []byte("core")
-		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume sif.IsLowByteSlice(tmp)
-		//@ sif.FoldLowByteSlice(tmp)
+		//@ fold sl.Bytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Parent:
 		tmp := []byte("parent")
-		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume sif.IsLowByteSlice(tmp)
-		//@ sif.FoldLowByteSlice(tmp)
+		//@ fold sl.Bytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Child:
 		tmp := []byte("child")
-		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume sif.IsLowByteSlice(tmp)
-		//@ sif.FoldLowByteSlice(tmp)
+		//@ fold sl.Bytes(tmp, 0, len(tmp))
 		return tmp, nil
 	case Peer:
 		tmp := []byte("peer")
-		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume sif.IsLowByteSlice(tmp)
-		//@ sif.FoldLowByteSlice(tmp)
+		//@ fold sl.Bytes(tmp, 0, len(tmp))
 		return tmp, nil
 	default:
 		return nil, serrors.New("invalid link type")
@@ -119,7 +108,6 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 // @ preserves acc(l)
 // @ ensures acc(sl.Bytes(data, 0, len(data)), R15)
 // @ ensures err != nil ==> err.ErrorMem()
-// @ ensures err == nil ==> low(*l)
 // @ ensures low(err != nil)
 // @ decreases
 func (l *LinkType) UnmarshalText(data []byte) (err error) {

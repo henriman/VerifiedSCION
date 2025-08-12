@@ -4,16 +4,14 @@ package sif
 
 import sl "github.com/scionproto/scion/verification/utils/slices"
 
-// TODO: Add `&& low(i) ==>` once the commits which add this to the other 
-// packages have been merged.
-
 ghost
 opaque
 hyper
 requires acc(s)
 decreases
 pure func IsLowByteSlice(s []byte) bool {
-    return low(len(s)) && forall i int :: { &s[i] } 0 <= i && i < len(s) ==> low(s[i])
+    return low(len(s)) && forall i int :: { &s[i] } 0 <= i && i < len(s) &&
+        low(i) ==> low(s[i])
 }
 
 ghost
@@ -23,8 +21,8 @@ requires sl.Bytes(s, start, end)
 decreases
 pure func IsLowBytes(s []byte, start, end int) bool {
     return low(len(s)) &&
-        forall i int :: { low(sl.GetByte(s, start, end, i)) } start <= i && i < end ==>
-            low(sl.GetByte(s, start, end, i))
+        forall i int :: { low(sl.GetByte(s, start, end, i)) } start <= i && i < end &&
+            low(i) ==> low(sl.GetByte(s, start, end, i))
 }
 
 // NOTE[henri]: Due to Gobra issue #955, we have to split the pre- and 
@@ -37,8 +35,8 @@ decreases
 func FoldLowByteSlice(s []byte) {
     reveal IsLowByteSlice(s)
     fold acc(sl.Bytes(s, 0, len(s)), 1/2)
-    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) ==> 
-        sl.GetByte(s, 0, len(s), i) == s[i]
+    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) && 
+        low(i) ==> sl.GetByte(s, 0, len(s), i) == s[i]
     fold acc(sl.Bytes(s, 0, len(s)), 1/2)
     assert reveal IsLowBytes(s, 0, len(s))
 }
@@ -53,10 +51,10 @@ decreases
 func UnfoldLowBytes(s []byte, ghost p perm) {
     reveal IsLowBytes(s, 0, len(s))
     unfold acc(sl.Bytes(s, 0, len(s)), p/2)
-    assert forall i int :: { low(sl.GetByte(s, 0, len(s), i)) } 0 <= i && i < len(s) ==>
-        low(sl.GetByte(s, 0, len(s), i))
-    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) ==> 
-        sl.GetByte(s, 0, len(s), i) == s[i]
+    assert forall i int :: { low(sl.GetByte(s, 0, len(s), i)) } 0 <= i && i < len(s) &&
+        low(i) ==> low(sl.GetByte(s, 0, len(s), i))
+    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) && 
+        low(i) ==> sl.GetByte(s, 0, len(s), i) == s[i]
     unfold acc(sl.Bytes(s, 0, len(s)), p/2)
     assert reveal IsLowByteSlice(s)
 }
