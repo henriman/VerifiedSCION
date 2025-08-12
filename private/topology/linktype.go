@@ -68,8 +68,8 @@ func LinkTypeFromString(s string) (res LinkType) {
 	var l /*@@@*/ LinkType
 	tmp := []byte(s)
 	// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-	//@ assume forall i int :: { &tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-	//@ fold sl.Bytes(tmp, 0, len(tmp))
+	//@ assume sif.IsLowByteSlice(tmp)
+	//@ sif.FoldLowByteSlice(tmp)
 	if err := l.UnmarshalText(tmp); err != nil {
 		return Unset
 	}
@@ -79,9 +79,7 @@ func LinkTypeFromString(s string) (res LinkType) {
 // @ requires low(l)
 // @ ensures (l == Core || l == Parent || l == Child || l == Peer) == (err == nil)
 // @ ensures err == nil ==> sl.Bytes(res, 0, len(res))
-// @ ensures err == nil ==> low(len(res)) && 
-// @ 	forall i int :: { sl.GetByte(res, 0, len(res), i) } 0 <= i && i < len(res) ==>
-// @ 	low(sl.GetByte(res, 0, len(res), i))
+// @ ensures err == nil ==> sif.IsLowBytes(res, 0, len(res))
 // @ ensures err != nil ==> err.ErrorMem()
 // @ ensures low(err != nil)
 // @ decreases
@@ -90,26 +88,26 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 	case Core:
 		tmp := []byte("core")
 		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume sif.IsLowByteSlice(tmp)
+		//@ sif.FoldLowByteSlice(tmp)
 		return tmp, nil
 	case Parent:
 		tmp := []byte("parent")
 		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume sif.IsLowByteSlice(tmp)
+		//@ sif.FoldLowByteSlice(tmp)
 		return tmp, nil
 	case Child:
 		tmp := []byte("child")
 		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume sif.IsLowByteSlice(tmp)
+		//@ sif.FoldLowByteSlice(tmp)
 		return tmp, nil
 	case Peer:
 		tmp := []byte("peer")
 		// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-		//@ assume forall i int :: { tmp[i] } 0 <= i && i < len(tmp) ==> low(tmp[i])
-		//@ fold sl.Bytes(tmp, 0, len(tmp))
+		//@ assume sif.IsLowByteSlice(tmp)
+		//@ sif.FoldLowByteSlice(tmp)
 		return tmp, nil
 	default:
 		return nil, serrors.New("invalid link type")
@@ -117,9 +115,7 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 }
 
 // @ requires acc(sl.Bytes(data, 0, len(data)), R15)
-// @ requires low(len(data)) && 
-// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) ==>
-// @ 	low(sl.GetByte(data, 0, len(data), i))
+// @ requires sif.IsLowBytes(data, 0, len(data))
 // @ preserves acc(l)
 // @ ensures acc(sl.Bytes(data, 0, len(data)), R15)
 // @ ensures err != nil ==> err.ErrorMem()
@@ -127,11 +123,8 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 // @ ensures low(err != nil)
 // @ decreases
 func (l *LinkType) UnmarshalText(data []byte) (err error) {
-	//@ BeforeUnfold:
-	//@ unfold acc(sl.Bytes(data, 0, len(data)), R15)
+	//@ sif.UnfoldLowBytes(data, R15)
 	//@ ghost defer fold acc(sl.Bytes(data, 0, len(data)), R15)
-	//@ assert forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) ==>
-	//@ 	old[BeforeUnfold](sl.GetByte(data, 0, len(data), i)) == data[i]
 	//@ sif.LowSliceImpliesLowString(data, R15)
 	switch strings.ToLower(string(data)) {
 	case "core":
