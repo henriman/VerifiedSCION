@@ -35,8 +35,8 @@ decreases
 func FoldLowByteSlice(s []byte) {
     reveal IsLowByteSlice(s)
     fold acc(sl.Bytes(s, 0, len(s)), 1/2)
-    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) && 
-        low(i) ==> sl.GetByte(s, 0, len(s), i) == s[i]
+    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) ==>
+        sl.GetByte(s, 0, len(s), i) == s[i]
     fold acc(sl.Bytes(s, 0, len(s)), 1/2)
     assert reveal IsLowBytes(s, 0, len(s))
 }
@@ -53,8 +53,8 @@ func UnfoldLowBytes(s []byte, ghost p perm) {
     unfold acc(sl.Bytes(s, 0, len(s)), p/2)
     assert forall i int :: { low(sl.GetByte(s, 0, len(s), i)) } 0 <= i && i < len(s) &&
         low(i) ==> low(sl.GetByte(s, 0, len(s), i))
-    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) && 
-        low(i) ==> sl.GetByte(s, 0, len(s), i) == s[i]
+    assert forall i int :: { sl.GetByte(s, 0, len(s), i) }{ &s[i] } 0 <= i && i < len(s) ==>
+        sl.GetByte(s, 0, len(s), i) == s[i]
     unfold acc(sl.Bytes(s, 0, len(s)), p/2)
     assert reveal IsLowByteSlice(s)
 }
