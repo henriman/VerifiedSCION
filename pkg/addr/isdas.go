@@ -100,7 +100,6 @@ func parseAS(_as string, sep string) (retAs AS, retErr error) {
 	var parsed AS
 	//@ invariant 0 <= i && i <= asParts
 	//@ invariant acc(parts)
-	// TODO: this isn't a byte slice right
 	//@ invariant sif.IsLowStringSlice(parts)
 	//@ invariant low(i) && low(_as) && low(parsed)
 	//@ decreases asParts - i

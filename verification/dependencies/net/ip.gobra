@@ -64,7 +64,6 @@ func (ip IP) IsGlobalUnicast() bool
 // To4 converts the IPv4 address ip to a 4-byte representation.
 requires   wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], _)
 requires  !wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], R20)
-// TODO: dunno if this is possible considering IP is type alias
 requires  sif.IsLowByteSlice(ip)
 ensures    wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], _)
 ensures   !wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], R20)
