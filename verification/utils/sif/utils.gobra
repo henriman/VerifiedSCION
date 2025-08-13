@@ -17,6 +17,16 @@ pure func IsLowByteSlice(s []byte) bool {
 ghost
 opaque
 hyper
+requires acc(s)
+decreases
+pure func IsLowStringSlice(s []string) bool {
+    return low(len(s)) && forall i int :: { &s[i] } 0 <= i && i < len(s) &&
+        low(i) ==> low(s[i])
+}
+
+ghost
+opaque
+hyper
 requires sl.Bytes(s, start, end)
 decreases
 pure func IsLowBytes(s []byte, start, end int) bool {

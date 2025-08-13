@@ -88,6 +88,7 @@ func ParseAS(_as string) (retAs AS, retErr error) {
 // @ decreases
 func parseAS(_as string, sep string) (retAs AS, retErr error) {
 	parts := strings.Split(_as, sep)
+	//@ reveal sif.IsLowStringSlice(parts)
 	if len(parts) == 1 {
 		// Must be a BGP AS, parse as 32-bit decimal number
 		return asParseBGP(_as)
@@ -99,12 +100,13 @@ func parseAS(_as string, sep string) (retAs AS, retErr error) {
 	var parsed AS
 	//@ invariant 0 <= i && i <= asParts
 	//@ invariant acc(parts)
-	//@ invariant forall i int :: { parts[i] } 0 <= i && i < len(parts) && 
-	//@ 	low(i) ==> low(parts[i])
+	// TODO: this isn't a byte slice right
+	//@ invariant sif.IsLowStringSlice(parts)
 	//@ invariant low(i) && low(_as) && low(parsed)
 	//@ decreases asParts - i
 	for i := 0; i < asParts; i++ {
 		parsed <<= asPartBits
+		//@ reveal sif.IsLowStringSlice(parts)
 		v, err := strconv.ParseUint(parts[i], asPartBase, asPartBits)
 		if err != nil {
 			return 0, serrors.WrapStr("parsing AS part", err, "index", i, "value", _as)
@@ -167,8 +169,7 @@ func (_as AS) MarshalText() ([]byte, error) {
 }
 
 // @ requires  forall i int :: { &text[i] } 0 <= i && i < len(text) ==> acc(&text[i])
-// @ requires  low(len(text)) && forall i int :: { text[i] } 0 <= i && i < len(text) &&
-// @ 	low(i) ==> low(text[i])
+// @ requires  sif.IsLowByteSlice(text)
 // @ preserves acc(_as)
 // @ ensures   forall i int :: { &text[i] } 0 <= i && i < len(text) ==> acc(&text[i])
 // @ decreases
@@ -222,6 +223,7 @@ func IAFrom(isd ISD, _as AS) (ia IA, err error) {
 // @ decreases
 func ParseIA(ia string) (retIA IA, retErr error) {
 	parts := strings.Split(ia, "-")
+	//@ reveal sif.IsLowStringSlice(parts)
 	if len(parts) != 2 {
 		return 0, serrors.New("invalid ISD-AS", "value", ia)
 	}
@@ -254,8 +256,7 @@ func (ia IA) MarshalText() ([]byte, error) {
 }
 
 // @ requires  forall i int :: { &b[i] } 0 <= i && i < len(b) ==> acc(&b[i])
-// @ requires  low(len(b)) && forall i int :: { b[i] } 0 <= i && i < len(b) &&
-// @ 	low(i) ==> low(b[i])
+// @ requires  sif.IsLowByteSlice(b)
 // @ preserves acc(ia)
 // @ ensures   forall i int :: { &b[i] } 0 <= i && i < len(b) ==> acc(&b[i])
 // @ decreases

@@ -11,6 +11,7 @@ package net
 
 import . "github.com/scionproto/scion/verification/utils/definitions"
 import sl "github.com/scionproto/scion/verification/utils/slices"
+import "github.com/scionproto/scion/verification/utils/sif"
 
 // IP address lengths (bytes).
 const (
@@ -63,8 +64,8 @@ func (ip IP) IsGlobalUnicast() bool
 // To4 converts the IPv4 address ip to a 4-byte representation.
 requires   wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], _)
 requires  !wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], R20)
-requires  low(len(ip)) && forall i int :: { &ip[i] } 0 <= i && i < len(ip) &&
-	low(i) ==> low(ip[i])
+// TODO: dunno if this is possible considering IP is type alias
+requires  sif.IsLowByteSlice(ip)
 ensures    wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], _)
 ensures   !wildcard ==> forall i int :: { &ip[i] } 0 <= i && i < len(ip) ==> acc(&ip[i], R20)
 ensures   res != nil ==> len(res) == IPv4len
@@ -81,6 +82,7 @@ ensures   len(ip) != IPv4len && len(ip) != IPv6len ==> res == nil
 ensures   low(res != nil)
 decreases
 func (ip IP) To4(ghost wildcard bool) (res IP) {
+	reveal sif.IsLowByteSlice(ip)
 	if len(ip) == IPv4len {
 		return ip
 	}
@@ -161,7 +163,6 @@ pure func (ip IP) Equal(x IP) bool
 // ParseIP parses s as an IP address, returning the result.
 ensures forall i int :: {&res[i]} 0 <= i && i < len(res) ==> acc(&res[i])
 ensures res != nil ==> len(res) == IPv4len || len(res) == IPv6len
-ensures low(s) ==> low(res == nil) && low(len(res)) && 
-	forall i int :: { &res[i] } 0 <= i && i < len(res) && low(i) ==> low(res[i])
+ensures low(s) ==> low(res == nil) && sif.IsLowByteSlice(res)
 decreases _
 func ParseIP(s string) (res IP)

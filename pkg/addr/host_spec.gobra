@@ -21,6 +21,7 @@ import (
 
 	"github.com/scionproto/scion/verification/utils/errors"
 	"github.com/scionproto/scion/verification/utils/slices"
+	"github.com/scionproto/scion/verification/utils/sif"
 )
 
 pred (h HostNone) Mem() { len(h) == HostLenNone }
@@ -63,6 +64,11 @@ trusted
 requires p > 0
 requires acc(h.Mem(), p) && h.IsLow()
 ensures  acc(h.Mem(), p)
+// NOTE[henri]: If it wasn't for encoding leading to insufficient permissions,
+// we could implement this postcondition as:
+// ensures  unfolding acc(h.Mem(), p) in sif.IsLowBytes(h, 0, len(h))
+// TODO: alternatively, introduce IsLowSlice for this situation in particular.
+// Do I want this? Or just keep it like this for these cases?
 ensures  low(len(h)) && forall i int :: { h.GetByte(i) } 0 <= i && i < len(h) &&
 	low(i) ==> low(h.GetByte(i))
 decreases
