@@ -66,8 +66,7 @@ func (l LinkType) String() string {
 func LinkTypeFromString(s string) (res LinkType) {
 	var l /*@@@*/ LinkType
 	tmp := []byte(s)
-	// TODO: Once Gobra issue #831 is resolved, remove this assumption.
-	//@ assume sif.IsLowByteSlice(tmp)
+	//@ assert reveal sif.IsLowByteSlice(tmp)
 	//@ sif.FoldLowByteSlice(tmp)
 	if err := l.UnmarshalText(tmp); err != nil {
 		return Unset
