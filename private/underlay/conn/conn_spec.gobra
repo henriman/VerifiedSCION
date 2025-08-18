@@ -165,21 +165,26 @@ pure func (c *Config) Deref() Config {
 	return unfolding c.Mem() in *c
 }
 
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
-trusted
+opaque
+hyper
 requires c.Mem()
 decreases
-pure func (c *Config) IsLow() bool
+pure func (c *Config) IsLow() bool {
+	return low(c.Deref())
+}
 
-// "Reveal the body" of `c.IsLow` (necessary bc. we can't implement `c.IsLow` yet).
-// TODO: Once Gobra issue #846 is resolved, implement this.
+// "Reveal the body" of `c.IsLow` (remnant from when we couldn't implement it yet).
 ghost
-trusted
-requires acc(c.Mem(), R1) && c.IsLow()
+// NOTE[henri]: Due to Gobra issue #955, we have to split the precondition 
+// across two `requires`.
+requires acc(c.Mem(), R1)
+requires c.IsLow()
 ensures  acc(c.Mem(), R1) && low(c.Deref())
 decreases
-func (c *Config) RevealIsLow()
+func (c *Config) RevealIsLow() {
+	reveal c.IsLow()
+}
 
 /** Lift methods in *connUDPBase to *connUDPIPv4 **/
 *connUDPIPv4 implements Conn

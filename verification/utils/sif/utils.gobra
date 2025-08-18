@@ -36,7 +36,7 @@ pure func IsLowBytes(s []byte, start, end int) bool {
 }
 
 // NOTE[henri]: Due to Gobra issue #955, we have to split the pre- and 
-// postcondition across two lines (resp.).
+// postcondition across two `requires`/`ensures` (resp.).
 requires acc(s)
 requires IsLowByteSlice(s)
 ensures  sl.Bytes(s, 0, len(s))
