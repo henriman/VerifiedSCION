@@ -38,9 +38,6 @@ pred (s *Raw) Mem(buf []byte) {
 	len(s.Raw) == s.Base.Len()
 }
 
-pred (*Raw) LowSerializeTo()
-pred (*Raw) LowLen()
-
 // TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted

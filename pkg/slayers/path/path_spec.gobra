@@ -31,21 +31,31 @@ pred (r *rawPath) NonInitMem() {
 	acc(r)
 }
 
-pred (*rawPath) LowSerializeTo()
-pred (*rawPath) LowLen()
-
-ghost
-requires p > 0 && acc(r.Mem(ub), p) && r.LowLen()
-ensures  acc(r.Mem(ub), p) && low(r.LenSpec(ub))
-decreases
-func (r *rawPath) UnfoldLowLen(ghost ub []byte, ghost p perm)
-
 ghost
 requires r.Mem(ub)
 decreases
-pure func (r *rawPath) IsLow(ub []byte) bool {
-	return true
+pure func (r *rawPath) GetRaw(ghost ub []byte) []byte {
+	return unfolding r.Mem(ub) in r.raw
 }
+
+// TODO: Once Gobra issue #846 is resolved, implement `IsLow`.
+ghost
+trusted
+requires r.Mem(ub)
+decreases
+pure func (r *rawPath) IsLow(ub []byte) bool
+
+// "Reveal the body" of `r.IsLow` (necessary bc. we can't implement `r.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires acc(r.Mem(ub), p) && r.IsLow(ub)
+ensures  acc(r.Mem(ub), p)
+ensures  low(r.GetRaw(ub))
+decreases
+func (r *rawPath) RevealIsLow(ghost ub []byte, p perm)
+
 
 ghost
 requires p.Mem(buf)

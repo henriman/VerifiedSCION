@@ -237,7 +237,7 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 // @ requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ requires  low(s.GetDstAddrType(ubuf, true)) && low(s.GetSrcAddrType(ubuf, true))
 // @ requires  low(s.PathEndIdx(ubuf))
-// @ requires  s.GetScionPath(ubuf).LowLen()
+//  requires  s.GetScionPath(ubuf).LowLen()
 // @ ensures   b.Mem()
 // @ ensures   acc(s.Mem(ubuf), R0)
 // @ ensures   sl.Bytes(ubuf, 0, len(ubuf))
@@ -253,8 +253,8 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 	// @ unfold acc(s.Mem(ubuf), R1)
 	// @ defer fold acc(s.Mem(ubuf), R1)
 	// @ sl.SplitRange_Bytes(ubuf, int(CmnHdrLen+s.AddrHdrLen(nil, true)), int(s.HdrLen*LineLen), R10)
-	// @ assert s.GetScionPath(ubuf).LowLen()
-	// @ assert s.Path.LowLen()
+	//  assert s.GetScionPath(ubuf).LowLen()
+	//  assert s.Path.LowLen()
 	scnLen := CmnHdrLen + s.AddrHdrLen( /*@ nil, true @*/ ) + s.Path.Len( /*@ ubuf[CmnHdrLen+s.AddrHdrLen(nil, true) : s.HdrLen*LineLen] @*/ )
 	// @ sl.CombineRange_Bytes(ubuf, int(CmnHdrLen+s.AddrHdrLenSpecInternal()), int(s.HdrLen*LineLen), R10)
 	if scnLen > MaxHdrLen {
@@ -459,7 +459,7 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 		return err
 	}
 	// TODO: Rework `LowLen` and then remove this assumption
-	// @ assume s.Path.LowLen()
+	//  assume s.Path.LowLen()
 	// @ sl.SplitRange_Bytes(data, offset, offset+pathLen, R41)
 	err = s.Path.DecodeFromBytes(data[offset : offset+pathLen])
 	if err != nil {

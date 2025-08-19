@@ -191,10 +191,8 @@ pred (s *SCION) Mem(ubuf []byte) {
 	// helpful facts for other methods:
 	// - for router::updateScionLayer:
 	(typeOf(s.Path) == type[*onehop.Path] ==>
-		s.ValidSizeOhpUbOpenInv(ubuf)) // &&
-	// TODO: Once Gobra issue 846 is resolved, rework this.
-	// Sensitivity information.
-	// s.Path.LowLen()
+		s.ValidSizeOhpUbOpenInv(ubuf))
+	// NOTE[henri]: might need IsLow here
 }
 
 ghost

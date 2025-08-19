@@ -100,7 +100,7 @@ type Path interface {
 	// (VerifiedSCION) There are implementations of this interface (e.g., scion.Raw) that
 	// store b and use it as internal data.
 	//@ requires  NonInitMem()
-	//@ requires  LowLen()
+	// requires  LowLen()
 	//@ requires  low(len(b))
 	//@ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 	//@ ensures   err == nil ==> Mem(b)
@@ -120,7 +120,8 @@ type Path interface {
 	//@ requires  Mem(ub)
 	// TODO: Watch out if I made a similar mistake somewhere: We need to require
 	// `Low...` predicates anywhere the underlying data may be changed
-	//@ requires  LowLen() && low(len(ub))
+	// requires  LowLen() && low(len(ub))
+	//@ requires  low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)
@@ -136,9 +137,11 @@ type Path interface {
 
 	// Len returns the length of a path in bytes.
 	// TODO: Once Gobra issue 846 is resolved, rework this.
-	//@ pred LowLen()
-	//@ requires  LowLen()
-	//@ preserves acc(Mem(ub), R50)
+	// pred LowLen()
+	// requires  LowLen()
+	// TODO: adjust spacing
+	//@ requires  acc(Mem(ub), R50) && IsLow(ub)
+	//@ ensures   acc(Mem(ub), R50)
 	//@ ensures   l == LenSpec(ub)
 	//@ ensures   low(l)
 	//@ decreases
@@ -279,13 +282,13 @@ func (p *rawPath) Reverse( /*@ ghost ub []byte @*/ ) (r Path, e error) {
 	return nil, serrors.New("not supported")
 }
 
-// @ requires  p.LowLen()
-// @ preserves acc(p.Mem(ub), R50)
+// @ requires  acc(p.Mem(ub), R50) && p.IsLow(ub)
+// @ ensures   acc(p.Mem(ub), R50)
 // @ ensures   l == p.LenSpec(ub)
 // @ ensures   low(l)
 // @ decreases
 func (p *rawPath) Len( /*@ ghost ub []byte @*/ ) (l int) {
-	//@ p.UnfoldLowLen(ub, R50/2)
+	//@ p.RevealIsLow(ub, R50)
 	return /*@ unfolding acc(p.Mem(ub), R50) in @*/ len(p.raw)
 }
 

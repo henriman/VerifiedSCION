@@ -32,9 +32,6 @@ pred (o *Path) Mem(ubuf []byte) {
 	PathLen <= len(ubuf)
 }
 
-pred (*Path) LowSerializeTo()
-pred (*Path) LowLen()
-
 ghost
 requires p.Mem(buf)
 ensures  p.NonInitMem()
