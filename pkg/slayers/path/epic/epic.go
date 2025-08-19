@@ -41,14 +41,10 @@ const (
 )
 
 // RegisterPath registers the EPIC path type globally.
-// TODO: Once Gobra issue 878 is resolved, remove `truested`.
-// @ trusted
-// @ requires path.PathPackageMem()
-// @ requires !path.Registered(PathType)
-// @ ensures  path.PathPackageMem()
-// @ ensures  forall t path.Type :: { old(path.Registered(t)) }{ path.Registered(t) } 0 <= t && t < path.MaxPathType ==>
-// @ 	t != PathType ==> old(path.Registered(t)) == path.Registered(t)
-// @ ensures  path.Registered(PathType)
+// @ requires path.PkgMem()
+// @ requires path.RegisteredTypes().DoesNotContain(int64(PathType))
+// @ ensures  path.PkgMem()
+// @ ensures  path.RegisteredTypes().Contains(int64(PathType))
 // @ decreases
 func RegisterPath() {
 	tmp := path.Metadata{
@@ -67,7 +63,7 @@ func RegisterPath() {
 		},
 	}
 	//@ proof tmp.New implements path.NewPathSpec {
-	//@		return tmp.New() as newPath
+	//@ 	return tmp.New() as newPath
 	//@ }
 	path.RegisterPath(tmp)
 }
@@ -82,11 +78,12 @@ type Path struct {
 
 // SerializeTo serializes the Path into buffer b. On failure, an error is returned, otherwise
 // SerializeTo will return nil.
-// @ requires  p.LowSerializeTo()
 // @ requires  low(len(b))
-// @ preserves acc(p.Mem(ubuf), R1)
+// @ requires  acc(p.Mem(ubuf), R1)
+// @ requires  p.IsLow(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ preserves sl.Bytes(b, 0, len(b))
+// @ ensures   acc(p.Mem(ubuf), R1)
 // @ ensures   r != nil ==> r.ErrorMem()
 // @ ensures   !old(p.hasScionPath(ubuf)) ==> r != nil
 // @ ensures   len(b) < old(p.LenSpec(ubuf)) ==> r != nil
@@ -94,7 +91,7 @@ type Path struct {
 // @ ensures   old(p.getLHVFLen(ubuf)) != HVFLen ==> r != nil
 // @ decreases
 func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
-	// @ p.GetLowSerializeTo(ubuf, R1/2)
+	//@ p.RevealIsLow(ubuf)
 	if len(b) < p.Len( /*@ ubuf @*/ ) {
 		return serrors.New("buffer too small to serialize path.", "expected", int(p.Len( /*@ ubuf @*/ )),
 			"actual", len(b))
@@ -143,7 +140,7 @@ func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 // DecodeFromBytes deserializes the buffer b into the Path. On failure, an error is returned,
 // otherwise SerializeTo will return nil.
 // @ requires  p.NonInitMem()
-// @ requires  low(len(b) < MetadataLen)
+// @ requires  low(len(b))
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 // @ ensures   len(b) < MetadataLen ==> r != nil
 // @ ensures   r == nil ==> p.Mem(b)

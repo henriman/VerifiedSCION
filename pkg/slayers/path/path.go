@@ -14,21 +14,24 @@
 
 // +gobra
 
-// @ initEnsures PathPackageMem()
-// Skipped the following post-condition due to performance reasons
-// initEnsures forall t Type :: 0 <= t && t < maxPathType ==> !Registered(t)
-// Instead, we have:
-// @ initEnsures !Registered(0) && !Registered(1) && !Registered(2) && !Registered(3)
-// TODO: Once Gobra issue 883 is resolved, move this into `PathPackageMem`
-// @ initEnsures forall t Type :: { Registered(t) } 0 <= t && t < maxPathType ==> low(Registered(t))
-// @ initEnsures low(IsStrictDecoding())
 package path
+
+// @ friendPkg "../" PkgMem()
+// We have a non-quantified friendPkg clause below to avoid perf. issues.
+// @ friendPkg "../" RegisteredTypes().DoesNotContain(0) &&
+// @ 	RegisteredTypes().DoesNotContain(1) &&
+// @ 	RegisteredTypes().DoesNotContain(2) &&
+// @ 	RegisteredTypes().DoesNotContain(3) &&
+// @ 	low(IsStrictDecoding()) &&
+// @ 	forall t int64 :: { RegisteredTypes().DoesNotContain(t) } RegisteredTypes().Start <= t && t <= RegisteredTypes().End &&
+// @ 		low(t) ==> low(RegisteredTypes().DoesNotContain(t))
 
 import (
 	"fmt"
 
 	"github.com/scionproto/scion/pkg/private/serrors"
 	//@ . "github.com/scionproto/scion/verification/utils/definitions"
+	//@ "github.com/scionproto/scion/verification/utils/monoset"
 	//@ sl "github.com/scionproto/scion/verification/utils/slices"
 )
 
@@ -40,24 +43,26 @@ var (
 	strictDecoding/*@@@*/ bool = true
 )
 
+// @ ghost var registeredKeys monoset.BoundedMonotonicSet = monoset.Alloc(0, int64(maxPathType))
+
 func init() {
 	// (VerifiedSCION) ghost initialization code to establish the PathPackageMem predicate.
 	// @ assert acc(&registeredPaths)
 	// @ assert acc(&strictDecoding)
-	// @ fold PathPackageMem()
+	// @ fold PkgMem()
 }
 
 // Type indicates the type of the path contained in the SCION header.
 type Type uint8
 
 // @ requires 0 <= t && t < maxPathType
-// @ requires acc(PathPackageMem(), R20)
+// @ requires acc(PkgMem(), R20)
 // @ requires low(Registered(t))
-// @ ensures  acc(PathPackageMem(), R20)
+// @ ensures  acc(PkgMem(), R20)
 // @ decreases
 func (t Type) String() string {
-	//@ unfold acc(PathPackageMem(), R20)
-	//@ ghost defer fold acc(PathPackageMem(), R20)
+	//@ unfold acc(PkgMem(), R20)
+	//@ ghost defer fold acc(PkgMem(), R20)
 	pm := registeredPaths[t]
 	if !pm.inUse {
 		return fmt.Sprintf("UNKNOWN (%d)", t)
@@ -72,19 +77,22 @@ type Path interface {
 	// (VerifiedSCION) Must imply the resources required to initialize
 	// a new instance of a predicate.
 	//@ pred NonInitMem()
+
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	//@ ghost
+	//@ requires Mem(ub)
+	//@ decreases
+	//@ pure IsLow(ghost ub []byte) bool
+
 	// SerializeTo serializes the path into the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface that modify the underlying
 	// structure when serializing (e.g. scion.Raw)
-	// TODO: Once Gobra issue 846 is resolved, rework this.
-	// Predicate containing sensitivity information. Intended to be implemented
-	// as an abstract predicate, alongside an abstract function requiring
-	// `LowSerializeTo()`, and ensuring the corresponding sensitivity.
-	//@ pred LowSerializeTo()
-	//@ requires  LowSerializeTo()
 	//@ requires  low(len(b))
+	//@ requires  acc(Mem(ub), R1)
+	//@ requires  IsLow(ub)
 	//@ preserves sl.Bytes(ub, 0, len(ub))
-	//@ preserves acc(Mem(ub), R1)
 	//@ preserves sl.Bytes(b, 0, len(b))
+	//@ ensures   acc(Mem(ub), R1)
 	//@ ensures   e != nil ==> e.ErrorMem()
 	//@ decreases
 	SerializeTo(b []byte /*@, ghost ub []byte @*/) (e error)
@@ -92,7 +100,10 @@ type Path interface {
 	// (VerifiedSCION) There are implementations of this interface (e.g., scion.Raw) that
 	// store b and use it as internal data.
 	//@ requires  NonInitMem()
+<<<<<<< HEAD
 	//@ requires  LowLen()
+=======
+>>>>>>> sif-pkg-slayers-path-epic
 	//@ requires  low(len(b))
 	//@ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 	//@ ensures   err == nil ==> Mem(b)
@@ -165,23 +176,24 @@ type Metadata struct {
 // RegisterPath registers a new SCION path type globally.
 // The PathType passed in must be unique, or a runtime panic will occur.
 // @ requires 0 <= pathMeta.Type && pathMeta.Type < maxPathType
-// @ requires PathPackageMem()
-// @ requires !Registered(pathMeta.Type)
+// @ requires PkgMem()
+// @ requires RegisteredTypes().DoesNotContain(int64(pathMeta.Type))
 // @ requires pathMeta.New implements NewPathSpec
-// @ ensures  PathPackageMem()
-// @ ensures  forall t Type :: { old(Registered(t)) }{ Registered(t) } 0 <= t && t < maxPathType ==>
-// @ 	t != pathMeta.Type ==> old(Registered(t)) == Registered(t)
-// @ ensures  Registered(pathMeta.Type)
+// @ ensures  PkgMem()
+// @ ensures  RegisteredTypes().Contains(int64(pathMeta.Type))
 // @ decreases
 func RegisterPath(pathMeta Metadata) {
-	//@ unfold PathPackageMem()
+	//@ unfold PkgMem()
 	pm := registeredPaths[pathMeta.Type]
+	// @ RegisteredTypes().DoesNotContainImpliesNotFContains(int64(pathMeta.Type))
 	if pm.inUse {
 		panic("path type already registered")
 	}
+	// @ RegisteredTypes().Add(int64(pathMeta.Type))
 	registeredPaths[pathMeta.Type].inUse = true
 	registeredPaths[pathMeta.Type].Metadata = pathMeta
-	//@ fold PathPackageMem()
+	// @ RegisteredTypes().ContainsImpliesFContains(int64(pathMeta.Type))
+	//@ fold PkgMem()
 }
 
 // StrictDecoding enables or disables strict path decoding. If enabled, unknown
@@ -191,24 +203,24 @@ func RegisterPath(pathMeta Metadata) {
 // Strict parsing is enabled by default.
 //
 // Experimental: This function is experimental and might be subject to change.
-// @ requires PathPackageMem()
-// @ ensures  PathPackageMem()
+// @ requires PkgMem()
+// @ ensures  PkgMem()
 // @ decreases
 func StrictDecoding(strict bool) {
-	//@ unfold PathPackageMem()
+	//@ unfold PkgMem()
 	strictDecoding = strict
-	//@ fold PathPackageMem()
+	//@ fold PkgMem()
 }
 
 // NewPath returns a new path object of pathType.
 // @ requires 0 <= pathType && pathType < maxPathType
-// @ requires acc(PathPackageMem(), _)
+// @ requires acc(PkgMem(), _)
 // @ requires low(Registered(pathType)) && low(IsStrictDecoding())
 // @ ensures  e != nil ==> e.ErrorMem()
 // @ ensures  e == nil ==> p != nil && p.NonInitMem()
 // @ decreases
 func NewPath(pathType Type) (p Path, e error) {
-	//@ unfold acc(PathPackageMem(), _)
+	//@ unfold acc(PkgMem(), _)
 	pm := registeredPaths[pathType]
 	if !pm.inUse {
 		if strictDecoding {

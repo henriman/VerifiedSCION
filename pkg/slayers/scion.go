@@ -14,14 +14,14 @@
 
 // +gobra
 
-// @ initEnsures acc(path.PathPackageMem(), _)
-// @ initEnsures path.Registered(empty.PathType)
-// @ initEnsures path.Registered(scion.PathType)
-// @ initEnsures path.Registered(onehop.PathType)
-// @ initEnsures path.Registered(epic.PathType)
-// @ initEnsures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
-// @ 	low(path.Registered(t))
-// @ initEnsures low(path.IsStrictDecoding())
+//  initEnsures path.Registered(empty.PathType)
+//  initEnsures path.Registered(scion.PathType)
+//  initEnsures path.Registered(onehop.PathType)
+//  initEnsures path.Registered(epic.PathType)
+//  initEnsures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+//  	low(path.Registered(t))
+//  initEnsures low(path.IsStrictDecoding())
+// @ dup pkgInvariant acc(path.PkgMem(), _)
 package slayers
 
 import (
@@ -33,12 +33,12 @@ import (
 	"github.com/scionproto/scion/pkg/addr"
 	"github.com/scionproto/scion/pkg/private/serrors"
 
-	// @ importRequires path.PathPackageMem()
-	// @ importRequires !path.Registered(0) && !path.Registered(1)
-	// @ importRequires !path.Registered(2) && !path.Registered(3)
-	// @ importRequires forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
-	// @ 	low(path.Registered(t))
+	// @ importRequires path.PkgMem()
+	// @ importRequires path.RegisteredTypes().DoesNotContain(0) && path.RegisteredTypes().DoesNotContain(1)
+	// @ importRequires path.RegisteredTypes().DoesNotContain(2) && path.RegisteredTypes().DoesNotContain(3)
 	// @ importRequires low(path.IsStrictDecoding())
+	// @ importRequires forall t int64 :: { path.RegisteredTypes().DoesNotContain(t) } path.RegisteredTypes().Start <= t && t <= path.RegisteredTypes().End &&
+	// @ 	low(t) ==> low(path.RegisteredTypes().DoesNotContain(t))
 	"github.com/scionproto/scion/pkg/slayers/path"
 	"github.com/scionproto/scion/pkg/slayers/path/empty"
 	"github.com/scionproto/scion/pkg/slayers/path/epic"
@@ -845,9 +845,9 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 	switch a := hostAddr.(type) {
 	case *net.IPAddr:
 		// @ ghost if wildcard {
-		// @     unfold acc(hostAddr.Mem(), _)
+		// @ 	unfold acc(hostAddr.Mem(), _)
 		// @ } else {
-		// @ 	 unfold acc(hostAddr.Mem(), R20)
+		// @ 	unfold acc(hostAddr.Mem(), R20)
 		// @ }
 		if ip := a.IP.To4( /*@ wildcard @*/ ); ip != nil {
 			// @ ghost if !wildcard && isIPv6(a) {
@@ -870,13 +870,13 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 		// @ assert !wildcard && isIP(hostAddr) ==> (unfolding acc(hostAddr.Mem(), R20) in (isIPv6(hostAddr) && isConvertibleToIPv4(hostAddr) ==> forall i int :: { &b[i] } 0 <= i && i < len(b) ==> &b[i] == &hostAddr.(*net.IPAddr).IP[12+i]))
 		verScionTmp := a.IP
 		// @ ghost if wildcard {
-		// @   fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), _)
+		// @ 	fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), _)
 		// @ } else {
-		// @   fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
-		// @   package acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20) {
-		// @     unfold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
-		// @     fold acc(hostAddr.Mem(), R20)
-		// @   }
+		// @ 	fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
+		// @ 	package acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20) {
+		// @ 		unfold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
+		// @ 		fold acc(hostAddr.Mem(), R20)
+		// @ 	}
 		// @ }
 		return T16Ip, verScionTmp, nil
 	case addr.HostSVC:

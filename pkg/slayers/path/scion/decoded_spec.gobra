@@ -50,6 +50,13 @@ pred (d *Decoded) Mem(ubuf []byte) {
 pred (*Decoded) LowSerializeTo()
 pred (*Decoded) LowLen()
 
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires d.Mem(ub)
+decreases
+pure func (d *Decoded) IsLow(ub []byte) bool
+
 /**** End of Predicates ****/
 
 /**** Stubs ****/
