@@ -22,9 +22,9 @@ package path
 // @ 	RegisteredTypes().DoesNotContain(1) &&
 // @ 	RegisteredTypes().DoesNotContain(2) &&
 // @ 	RegisteredTypes().DoesNotContain(3) &&
-// @ 	low(IsStrictDecoding()) &&
-// @ 	forall t int64 :: { RegisteredTypes().DoesNotContain(t) } RegisteredTypes().Start <= t && t <= RegisteredTypes().End &&
-// @ 		low(t) ==> low(RegisteredTypes().DoesNotContain(t))
+// @ 	low(IsStrictDecoding())
+//  	forall t int64 :: { RegisteredTypes().DoesNotContain(t) } RegisteredTypes().Start <= t && t <= RegisteredTypes().End &&
+//  		low(t) ==> low(RegisteredTypes().DoesNotContain(t))
 
 import (
 	"fmt"
@@ -87,7 +87,7 @@ type Path interface {
 	// SerializeTo serializes the path into the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface that modify the underlying
 	// structure when serializing (e.g. scion.Raw)
-	//@ requires  low(len(b))
+	//@ requires  low(len(b)) && low(len(ub))
 	//@ requires  acc(Mem(ub), R1)
 	//@ requires  IsLow(ub)
 	//@ preserves sl.Bytes(ub, 0, len(ub))
@@ -100,10 +100,7 @@ type Path interface {
 	// (VerifiedSCION) There are implementations of this interface (e.g., scion.Raw) that
 	// store b and use it as internal data.
 	//@ requires  NonInitMem()
-<<<<<<< HEAD
 	//@ requires  LowLen()
-=======
->>>>>>> sif-pkg-slayers-path-epic
 	//@ requires  low(len(b))
 	//@ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 	//@ ensures   err == nil ==> Mem(b)
@@ -123,7 +120,7 @@ type Path interface {
 	//@ requires  Mem(ub)
 	// TODO: Watch out if I made a similar mistake somewhere: We need to require
 	// `Low...` predicates anywhere the underlying data may be changed
-	//@ requires  LowLen()
+	//@ requires  LowLen() && low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)

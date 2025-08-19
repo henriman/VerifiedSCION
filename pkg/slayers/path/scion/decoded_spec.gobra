@@ -69,6 +69,7 @@ pure func (d *Decoded) IsLow(ub []byte) bool
   */
 preserves acc(d.Mem(ubuf), R50)
 ensures   l == d.LenSpec(ubuf)
+ensures   low(l)
 decreases
 func (d *Decoded) Len(ghost ubuf []byte) (l int) {
 	return unfolding acc(d.Mem(ubuf), _) in d.Base.Len()

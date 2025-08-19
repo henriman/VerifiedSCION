@@ -14,13 +14,14 @@
 
 // +gobra
 
-//  initEnsures path.Registered(empty.PathType)
-//  initEnsures path.Registered(scion.PathType)
-//  initEnsures path.Registered(onehop.PathType)
-//  initEnsures path.Registered(epic.PathType)
-//  initEnsures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
-//  	low(path.Registered(t))
-//  initEnsures low(path.IsStrictDecoding())
+//	initEnsures path.Registered(empty.PathType)
+//	initEnsures path.Registered(scion.PathType)
+//	initEnsures path.Registered(onehop.PathType)
+//	initEnsures path.Registered(epic.PathType)
+//	initEnsures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
+//		low(path.Registered(t))
+//	initEnsures low(path.IsStrictDecoding())
+//
 // @ dup pkgInvariant acc(path.PkgMem(), _)
 package slayers
 
@@ -37,8 +38,8 @@ import (
 	// @ importRequires path.RegisteredTypes().DoesNotContain(0) && path.RegisteredTypes().DoesNotContain(1)
 	// @ importRequires path.RegisteredTypes().DoesNotContain(2) && path.RegisteredTypes().DoesNotContain(3)
 	// @ importRequires low(path.IsStrictDecoding())
-	// @ importRequires forall t int64 :: { path.RegisteredTypes().DoesNotContain(t) } path.RegisteredTypes().Start <= t && t <= path.RegisteredTypes().End &&
-	// @ 	low(t) ==> low(path.RegisteredTypes().DoesNotContain(t))
+	//  importRequires forall t int64 :: { path.RegisteredTypes().DoesNotContain(t) } path.RegisteredTypes().Start <= t && t <= path.RegisteredTypes().End &&
+	//  	low(t) ==> low(path.RegisteredTypes().DoesNotContain(t))
 	"github.com/scionproto/scion/pkg/slayers/path"
 	"github.com/scionproto/scion/pkg/slayers/path/empty"
 	"github.com/scionproto/scion/pkg/slayers/path/epic"

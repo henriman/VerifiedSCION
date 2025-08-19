@@ -78,7 +78,8 @@ type Path struct {
 
 // SerializeTo serializes the Path into buffer b. On failure, an error is returned, otherwise
 // SerializeTo will return nil.
-// @ requires  low(len(b))
+// TODO: Think about incorporating low(len(ubuf)) in IsLow
+// @ requires  low(len(b)) && low(len(ubuf))
 // @ requires  acc(p.Mem(ubuf), R1)
 // @ requires  p.IsLow(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
@@ -185,6 +186,7 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 // Reverse reverses the EPIC path. In particular, this means that the SCION path type subheader
 // is reversed.
 // @ requires p.Mem(ubuf)
+// @ requires low(len(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures  r == nil ==> ret != nil
 // @ ensures  r == nil ==> ret.Mem(ubuf)

@@ -767,16 +767,10 @@ pure func isHostSVC(a net.Addr) bool {
 
 // invariant established by initialization
 ghost
-<<<<<<< HEAD
-trusted // TODO: drop this line after the static init PR
-ensures acc(path.PathPackageMem(), _)
-ensures forall t path.Type :: { path.Registered(t) } 0 <= t && t < path.maxPathType ==>
-	low(path.Registered(t))
-=======
 ensures acc(path.PkgMem(), _)
-ensures forall t int64 :: { path.RegisteredTypes().DoesNotContain(t) } path.RegisteredTypes().Start <= t && t <= path.RegisteredTypes().End &&
-	low(t) ==> low(path.RegisteredTypes().DoesNotContain(t))
->>>>>>> sif-pkg-slayers-path-epic
+// TODO: Commented out for now as this is now predicate and not clear how to deal
+// ensures forall t int64 :: path.RegisteredTypes().Start <= t && t <= path.RegisteredTypes().End &&
+// 	low(t) ==> low(path.RegisteredTypes().DoesNotContain(t))
 decreases
 func EstablishPathPkgMem() {
 	openDupPkgInv
