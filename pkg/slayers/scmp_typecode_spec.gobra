@@ -20,7 +20,7 @@ pred SCMPTypeCodeMem() {
 	// We don't use a trigger here since triggers of the form scmpTypeCodeInfo[i].codes would generate a ternary expression
 	// The default trigger generated is: { (i_V0 elem domain((getMap(scmpTypeCodeInfo_e8d3837_G().underlyingMapField): Map[Int,Tuple2[Int, Ref]]))) }
 	acc(scmpTypeCodeInfo) &&
-	(forall i SCMPType :: { scmpTypeCodeInfo[i] } i elem domain(scmpTypeCodeInfo) ==> scmpTypeCodeInfo[i].codes != nil ==> acc(scmpTypeCodeInfo[i].codes) // &&
+	forall i SCMPType :: { scmpTypeCodeInfo[i] } i elem domain(scmpTypeCodeInfo) ==> scmpTypeCodeInfo[i].codes != nil ==> acc(scmpTypeCodeInfo[i].codes) // &&
 	// SIF: As `scmpTypeCodeInfo` is a global (constant?), I think it makes sense to put this here.
 	// (forall i SCMPType :: { i in domain(scmpTypeCodeInfo) } low(i in domain(scmpTypeCodeInfo))) &&
 	// (forall i SCMPType :: { i in domain(scmpTypeCodeInfo) } i in domain(scmpTypeCodeInfo) ==>
@@ -48,7 +48,7 @@ ghost
 requires SCMPTypeCodeMem()
 decreases
 pure func InSCMPTypeCodeInfo(t SCMPType) bool {
-    return unfolding SCMPTypeCodeMem() in (t in domain(scmpTypeCodeInfo))
+    return unfolding SCMPTypeCodeMem() in (t elem domain(scmpTypeCodeInfo))
 }
 
 ghost
@@ -66,5 +66,5 @@ requires SCMPTypeCodeInfoCodes(t) != nil
 decreases
 pure func InSCMPTypeCodeInfoCodes(t SCMPType, c SCMPCode) bool {
     return unfolding SCMPTypeCodeMem() in 
-        (c in domain(scmpTypeCodeInfo[t].codes))
+        (c elem domain(scmpTypeCodeInfo[t].codes))
 }

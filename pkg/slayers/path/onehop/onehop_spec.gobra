@@ -65,3 +65,28 @@ pure func (p *Path) LenSpec(ghost ub []byte) int {
 }
 
 (*Path) implements path.Path
+
+ghost
+requires o.Mem(ub)
+decreases
+pure func (o *Path) GetSecondHopConsIngress(ghost ub []byte) uint16 {
+	return unfolding o.Mem(ub) in 
+		unfolding o.SecondHop.Mem() in o.SecondHop.ConsIngress
+}
+
+// TODO: Once Gobra issue #846 is resolved, implement `IsLow`.
+ghost
+trusted
+requires o.Mem(ub)
+decreases
+pure func (o *Path) IsLow(ub []byte) bool
+
+ghost
+trusted
+requires p > 0
+requires acc(o.Mem(ub), p) && o.IsLow(ub)
+ensures  acc(o.Mem(ub), p)
+ensures  low(o.GetSecondHopConsIngress(ub))
+decreases
+func (o *Path) RevealIsLow(ub []byte, p perm)
+
