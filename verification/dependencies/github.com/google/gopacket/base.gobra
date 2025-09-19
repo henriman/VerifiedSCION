@@ -35,6 +35,15 @@ type Payload []byte
 
 pred (p Payload) Mem(ub []byte) { ub === p }
 
+// TODO: might be able to already implement with true
+// - but not hyper I suppose
+ghost
+trusted
+requires p.Mem(ub)
+decreases
+pure func (p Payload) IsLow(ghost ub []byte) bool
+
+
 decreases
 pure func (p Payload) LayerType() LayerType {
 	return LayerTypePayload

@@ -84,7 +84,9 @@ func (s *SCMP) CanDecode() (res gopacket.LayerClass) {
 // NextLayerType use the typecode to select the right next decoder.
 // If the SCMP type is unknown, the next layer is gopacket.LayerTypePayload.
 // NextLayerType returns the layer type contained by this DecodingLayer.
-// @ preserves acc(s.Mem(ub), R20)
+// @ requires  acc(s.Mem(ub), R20)
+// @ requires  low(s.GetTypeCode(ub))
+// @ ensures   acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 	switch /*@unfolding acc(s.Mem(ub), R20) in @*/ s.TypeCode.Type() {
@@ -166,12 +168,17 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 }
 
 // DecodeFromBytes decodes the given bytes into this layer.
-// @ requires  df != nil
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
 // @ requires  s.NonInitMem()
+// @ requires  df != nil
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO: depending on whether we also need low contents or not, could combine
+// sl.Bytes(data, ...) into preserves again
+// @ requires  low(len(data))
 // @ preserves df.Mem()
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
+// @ ensures   low(res != nil)
 // @ decreases
 func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	if size := len(data); size < 4 {

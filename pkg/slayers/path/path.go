@@ -103,6 +103,7 @@ type Path interface {
 	//@ ensures   err == nil ==> IsValidResultOfDecoding(b)
 	//@ ensures   err != nil ==> err.ErrorMem()
 	//@ ensures   err != nil ==> NonInitMem()
+	//@ ensures   low(err != nil)
 	//@ decreases
 	DecodeFromBytes(b []byte) (err error)
 	//@ ghost
@@ -130,6 +131,9 @@ type Path interface {
 	// Len returns the length of a path in bytes.
 	//@ preserves acc(Mem(ub), R50)
 	//@ ensures   l == LenSpec(ub)
+	// TODO: prove this, will need IsLow likely
+	// - can't put this on LenSpec (yet) since it would need to be hyper
+	//@ ensures  low(l)
 	//@ decreases
 	Len( /*@ ghost ub []byte @*/ ) (l int)
 	// Type returns the type of a path.
@@ -201,9 +205,11 @@ func StrictDecoding(strict bool) {
 // NewPath returns a new path object of pathType.
 // @ requires 0 <= pathType && pathType < maxPathType
 // @ requires acc(PkgMem(), _)
-// @ requires low(Registered(pathType)) && low(IsStrictDecoding())
+//  requires low(Registered(pathType)) && low(IsStrictDecoding())
 // @ ensures  e != nil ==> e.ErrorMem()
 // @ ensures  e == nil ==> p != nil && p.NonInitMem()
+// @ ensures  low(e != nil)
+// @ ensures  low(typeOf(p))
 // @ decreases
 func NewPath(pathType Type) (p Path, e error) {
 	//@ unfold acc(PkgMem(), _)

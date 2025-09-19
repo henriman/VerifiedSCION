@@ -176,6 +176,13 @@ pred (b *BFD) NonInitMem() {
 
 pred (b *BFD) Mem(ub []byte)
 
+// TODO
+ghost
+trusted
+requires b.Mem(ub)
+decreases
+pure func (b *BFD) IsLow(ghost ub []byte) bool
+
 preserves acc(d, 1/10000)
 decreases
 func (d *BFD) Length() int

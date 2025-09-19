@@ -50,6 +50,33 @@ pred (h *HopByHopExtn) Mem(ubuf []byte) {
 		(acc(&h.Options[i]) && h.Options[i].Mem(i))
 }
 
+requires h.Mem(ub)
+decreases
+pure func (h *HopByHopExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding h.Mem(ub) in
+		unfolding h.extnBase.Mem(ub) in h.NextHdr
+}
+
+// TODO: add hyper or proper TODO add hyper / TODO implement
+ghost
+trusted
+requires  init ==> h.Mem(ub)
+requires !init ==> h.NonInitMem()
+decreases
+pure func (h *HopByHopExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+
+// TODO: add proper TODO to implement
+// NOTE: (for this and following RevealIsLowDecodingLayer) as we only call revealislow with
+// init == true, we don't specify anything for init == false
+// TODO: might just want to call this IsLow?
+ghost
+trusted
+requires p > 0
+requires init ==> acc(h.Mem(ub), p) && h.IsLowDecodingLayer(true, ub)
+ensures  init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
+decreases
+func (h *HopByHopExtn) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+
 // Gobra is not able to infer that HopByHopExtn is "inheriting"
 // the implementation of LayerContents from extnBase.
 requires false
@@ -82,6 +109,30 @@ pred (h *HopByHopExtnSkipper) NonInitMem() {
 pred (h *HopByHopExtnSkipper) Mem(ubuf []byte) {
 	h.extnBase.Mem(ubuf)
 }
+
+requires h.Mem(ub)
+decreases
+pure func (h *HopByHopExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding h.Mem(ub) in
+		unfolding h.extnBase.Mem(ub) in h.NextHdr
+}
+
+// TODO: add hyper or proper TODO add hyper / TODO implement
+ghost
+trusted
+requires  init ==> h.Mem(ub)
+requires !init ==> h.NonInitMem()
+decreases
+pure func (h *HopByHopExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+
+// TODO: add proper TODO to implement
+ghost
+trusted
+requires p > 0
+requires init ==> acc(h.Mem(ub), p) && h.IsLowDecodingLayer(true, ub)
+ensures  init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
+decreases
+func (h *HopByHopExtnSkipper) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that HopByHopExtnSkipper is "inheriting"
 // the implementation of LayerContents from extnBase.
@@ -138,6 +189,30 @@ pred (e *EndToEndExtn) Mem(ubuf []byte) {
 		(acc(&e.Options[i]) && e.Options[i].Mem(i))
 }
 
+requires e.Mem(ub)
+decreases
+pure func (e *EndToEndExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding e.Mem(ub) in
+		unfolding e.extnBase.Mem(ub) in e.NextHdr
+}
+
+// TODO: add hyper or proper TODO add hyper / TODO implement
+ghost
+trusted
+requires  init ==> e.Mem(ub)
+requires !init ==> e.NonInitMem()
+decreases
+pure func (e *EndToEndExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+
+// TODO: add proper TODO to implement
+ghost
+trusted
+requires p > 0
+requires init ==> acc(e.Mem(ub), p) && e.IsLowDecodingLayer(true, ub)
+ensures  init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
+decreases
+func (e *EndToEndExtn) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+
 // Gobra is not able to infer that EndToEndExtn is "inheriting"
 // the implementation of LayerContents from extnBase.
 requires false
@@ -172,6 +247,30 @@ pred (e *EndToEndExtnSkipper) NonInitMem() {
 pred (e *EndToEndExtnSkipper) Mem(ubuf []byte)  {
 	e.extnBase.Mem(ubuf)
 }
+
+requires e.Mem(ub)
+decreases
+pure func (e *EndToEndExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding e.Mem(ub) in
+		unfolding e.extnBase.Mem(ub) in e.NextHdr
+}
+
+// TODO: add hyper or proper TODO add hyper / TODO implement
+ghost
+trusted
+requires  init ==> e.Mem(ub)
+requires !init ==> e.NonInitMem()
+decreases
+pure func (e *EndToEndExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+
+// TODO: add proper TODO to implement
+ghost
+trusted
+requires p > 0
+requires init ==> acc(e.Mem(ub), p) && e.IsLowDecodingLayer(true, ub)
+ensures  init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
+decreases
+func (e *EndToEndExtnSkipper) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that EndToEndExtnSkipper is "inheriting"
 // the implementation of LayerContents from extnBase.

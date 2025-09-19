@@ -26,10 +26,24 @@ type DecodingLayer interface {
 	pred NonInitMem()
 	pred Mem(ubuf []byte)
 
-	requires  NonInitMem()
+	// TODO: Add explanation
+	// TODO: add hyper (or properTODO add hyper)
+	// TODO: might want to split this up into IsLowDecodingLayer/IsLowDecodingLayerNonInit
+	// TODO: might want ghost init bool
+	ghost
+	requires  init ==> Mem(ubuf)
+	requires !init ==> NonInitMem()
+	decreases
+	pure IsLowDecodingLayer(ghost init bool, ghost ubuf []byte) bool
+
+	requires  NonInitMem() && IsLowDecodingLayer(false, nil)
 	requires  df != nil
-	preserves acc(sl.Bytes(data, 0, len(data)), R40)
+	requires  acc(sl.Bytes(data, 0, len(data)), R40)
+	requires  low(len(data)) && 
+		forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+			low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 	preserves df.Mem()
+	ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 	ensures   res == nil ==> Mem(data)
 	ensures   res != nil ==> (NonInitMem() && res.ErrorMem())
 	decreases
@@ -40,7 +54,8 @@ type DecodingLayer interface {
 	decreases
 	CanDecode() (res LayerClass)
 
-	preserves acc(Mem(ubuf), R20)
+	requires acc(Mem(ubuf), R20) && IsLowDecodingLayer(true, ubuf)
+	ensures  acc(Mem(ubuf), R20)
 	decreases
 	NextLayerType(ghost ubuf []byte) LayerType
 

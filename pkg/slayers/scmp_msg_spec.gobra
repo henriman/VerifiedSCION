@@ -31,6 +31,13 @@ pred (s *SCMPExternalInterfaceDown) Mem(ub []byte) {
 	acc(&s.IA) && acc(&s.IfID) && s.BaseLayer.Mem(ub, addr.IABytes+scmpRawInterfaceLen)
 }
 
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPExternalInterfaceDown) IsLow(ghost ub []byte) bool
+
 requires false
 func (b *SCMPExternalInterfaceDown) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -63,6 +70,13 @@ pred (s *SCMPInternalConnectivityDown) Mem(ub []byte) {
 	acc(&s.IA) && acc(&s.Ingress) && acc(&s.Egress) && s.BaseLayer.Mem(ub, addr.IABytes+2*scmpRawInterfaceLen)
 }
 
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPInternalConnectivityDown) IsLow(ghost ub []byte) bool
+
 requires false
 func (b *SCMPInternalConnectivityDown) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -94,6 +108,13 @@ pred (s *SCMPEcho) Mem(ub []byte) {
 	acc(&s.Identifier) && acc(&s.SeqNumber) && s.BaseLayer.Mem(ub, 4)
 }
 
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPEcho) IsLow(ghost ub []byte) bool
+
 requires false
 func (b *SCMPEcho) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -124,6 +145,13 @@ pred (s *SCMPParameterProblem) NonInitMem() {
 pred (s *SCMPParameterProblem) Mem(ub []byte) {
 	acc(&s.Pointer) && s.BaseLayer.Mem(ub, 4)
 }
+
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPParameterProblem) IsLow(ghost ub []byte) bool
 
 requires false
 func (b *SCMPParameterProblem) LayerContents() (res []byte) {
@@ -160,6 +188,13 @@ pred (s *SCMPTraceroute) Mem(ub []byte) {
 	s.BaseLayer.Mem(ub, 4+addr.IABytes+scmpRawInterfaceLen)
 }
 
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPTraceroute) IsLow(ghost ub []byte) bool
+
 requires false
 decreases
 func (b *SCMPTraceroute) LayerContents() (res []byte) {
@@ -193,6 +228,13 @@ pred (s *SCMPDestinationUnreachable) Mem(ub []byte) {
 	s.BaseLayer.Mem(ub, 4)
 }
 
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPDestinationUnreachable) IsLow(ghost ub []byte) bool
+
 requires false
 func (b *SCMPDestinationUnreachable) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -223,6 +265,13 @@ pred (s *SCMPPacketTooBig) NonInitMem() {
 pred (s *SCMPPacketTooBig) Mem(ub []byte) {
 	acc(&s.MTU) && s.BaseLayer.Mem(ub, 4)
 }
+
+// TODO
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPPacketTooBig) IsLow(ghost ub []byte) bool
 
 requires false
 func (b *SCMPPacketTooBig) LayerContents() (res []byte) {

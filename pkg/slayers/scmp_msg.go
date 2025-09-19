@@ -65,10 +65,12 @@ func (i *SCMPExternalInterfaceDown) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPExternalInterfaceDown) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -203,10 +205,12 @@ func (*SCMPInternalConnectivityDown) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPInternalConnectivityDown) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -343,10 +347,12 @@ func (*SCMPEcho) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPEcho) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 4
@@ -496,10 +502,12 @@ func (*SCMPParameterProblem) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPParameterProblem) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2
@@ -638,11 +646,13 @@ func (*SCMPTraceroute) NextLayerType() gopacket.LayerType {
 // DecodeFromBytes decodes the given bytes into this layer.
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> i.NonInitMem()
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPTraceroute) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2 + addr.IABytes + scmpRawInterfaceLen
@@ -827,10 +837,12 @@ func (*SCMPDestinationUnreachable) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPDestinationUnreachable) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -927,10 +939,12 @@ func (*SCMPPacketTooBig) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPPacketTooBig) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2

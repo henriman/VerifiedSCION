@@ -39,6 +39,27 @@ pred (s *SCMP) Mem(ub []byte) {
 	(s.scn != nil ==> s.scn.ChecksumMem())
 }
 
+requires s.Mem(ub)
+decreases
+pure func (s *SCMP) GetTypeCode(ghost ub []byte) SCMPTypeCode {
+	return unfolding s.Mem(ub) in s.TypeCode
+}
+
+// TODO: add hyper or proper TODO add hyper / TODO implement
+ghost
+trusted
+requires  init ==> s.Mem(ub)
+requires !init ==> s.NonInitMem()
+decreases
+pure func (s *SCMP) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+
+// TODO: might want to call IsLow from here, or just implement as true?
+ghost
+trusted
+requires s.Mem(ub)
+decreases
+pure func (s *SCMP) IsLow(ghost ub []byte) bool
+
 ghost
 requires s.Mem(ub)
 ensures  s.NonInitMem()

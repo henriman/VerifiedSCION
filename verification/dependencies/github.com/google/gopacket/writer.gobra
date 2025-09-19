@@ -15,10 +15,15 @@ import "verification/utils/seqs"
 type SerializableLayer interface {
 	pred Mem(ubuf []byte)
 
+	ghost
+	requires Mem(ubuf)
+	decreases
+	pure IsLow(ghost ubuf []byte) bool
+
 	requires  !opts.FixLengths
 	requires  b != nil && b.Mem()
 	requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
-	requires  Mem(ubuf)
+	requires  Mem(ubuf) && IsLow(ubuf)
 	preserves sl.Bytes(ubuf, 0, len(ubuf))
 	ensures   err == nil ==> (Mem(ubuf) && b.Mem())
 	ensures   err == nil ==> sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
@@ -67,6 +72,10 @@ type SerializeBuffer interface {
 	ensures   err == nil ==> old(View()) == View()[num:]
 	ensures   err != nil ==> UBuf() === old(UBuf())
 	ensures   err != nil ==> err.ErrorMem()
+	// NOTE: I justified this by looking at the default implementation of 
+	// SerializeBuffer which doesn't take into account the internal state
+	// for success. however, we might want to
+	ensures   low(num) ==> low(err != nil)
 	decreases
 	PrependBytes(num int) (res []byte, err error)
 

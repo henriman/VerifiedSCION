@@ -21,6 +21,21 @@ pred (a *IPAddr) Mem() {
 	acc(a) && forall i int :: { &a.IP[i] } 0 <= i && i < len(a.IP) ==> acc(&a.IP[i])
 }
 
+ghost
+requires a.Mem()
+decreases
+pure func (a *IPAddr) GetIPLen() int {
+	return unfolding a.Mem() in len(a.IP)
+}
+
+ghost
+requires a.Mem()
+requires 0 <= i && i < a.GetIPLen()
+decreases
+pure func (a *IPAddr) GetIPByte(i int) byte {
+	return unfolding a.Mem() in a.IP[i]
+}
+
 (*IPAddr) implements Addr {
 	(e *IPAddr) Network() string {
 		return e.Network()

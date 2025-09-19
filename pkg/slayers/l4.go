@@ -33,6 +33,7 @@ const (
 	End2EndClass  L4ProtocolType = 201
 )
 
+// @ requires low(p)
 // @ decreases
 func (p L4ProtocolType) String() string {
 	switch p {
