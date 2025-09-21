@@ -37,6 +37,13 @@ pred (p *Path) Mem(ubuf []byte) {
 	p.ScionPath.Mem(ubuf[MetadataLen:])
 }
 
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires p.Mem(ub)
+decreases
+pure func (p *Path) IsLow(ub []byte) bool
+
 ghost
 requires p.Mem(ub)
 decreases

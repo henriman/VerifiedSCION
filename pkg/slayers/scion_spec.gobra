@@ -186,6 +186,25 @@ pred (s *SCION) Mem(ubuf []byte) {
 		s.ValidSizeOhpUbOpenInv(ubuf))
 }
 
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetSrcAddrType(ghost ub []byte) AddrType {
+	return unfolding s.Mem(ub) in s.SrcAddrType
+}
+
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetDstAddrType(ghost ub []byte) AddrType {
+	return unfolding s.Mem(ub) in s.DstAddrType
+}
+
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetSrcIA(ghost ub []byte) addr.IA {
+	return unfolding s.Mem(ub) in 
+		unfolding s.HeaderMem(ub[CmnHdrLen:]) in s.SrcIA
+}
+
 ghost
 requires s.Mem(ub)
 decreases

@@ -23,6 +23,13 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 type Block interface {
 	pred Mem()
 
+	// TODO: add explaining comment
+	// TODO: add hyper (or TODO to add hyper)
+	ghost
+	requires Mem()
+	decreases
+	pure IsLow() bool
+
 	// BlockSize returns the cipher's block size.
 	pure
 	requires Mem()
@@ -74,6 +81,13 @@ type Stream interface {
 type BlockMode interface {
 	pred Mem()
 
+	// TODO: add explaining comment
+	// TODO: add hyper (or TODO to add hyper)
+	ghost
+	requires Mem()
+	decreases
+	pure IsLow() bool
+
 	// BlockSize returns the mode's block size.
 	pure
 	requires Mem()
@@ -93,10 +107,22 @@ type BlockMode interface {
 	// the src buffers was passed in a single run. That is, BlockMode
 	// maintains state and does not reset at each CryptBlocks call.
 	requires  len(src) <= len(dst)
-	preserves Mem()
-	preserves acc(sl.Bytes(dst, 0, len(dst)), 1 - R10)
-	preserves dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)
-	preserves acc(sl.Bytes(src, 0, len(src)), R10)
+	requires  acc(sl.Bytes(dst, 0, len(dst)), 1 - R10)
+	requires  dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)
+	requires  acc(sl.Bytes(src, 0, len(src)), R10)
+	requires  low(len(dst)) &&
+		forall i int :: { sl.GetByte(dst, 0, len(dst), i) } 0 <= i && i < len(dst) &&
+			low(i) ==> low(sl.GetByte(dst, 0, len(dst), i))
+	requires  low(len(src)) &&
+		forall i int :: { sl.GetByte(src, 0, len(src), i) } 0 <= i && i < len(src) &&
+			low(i) ==> low(sl.GetByte(src, 0, len(src), i))
+	preserves Mem() && IsLow()
+	ensures   acc(sl.Bytes(dst, 0, len(dst)), 1 - R10)
+	ensures   dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)
+	ensures   acc(sl.Bytes(src, 0, len(src)), R10)
+	ensures   low(len(dst)) &&
+		forall i int :: { sl.GetByte(dst, 0, len(dst), i) } 0 <= i && i < len(dst) &&
+			low(i) ==> low(sl.GetByte(dst, 0, len(dst), i))
 	ensures   BlockSize() == old(BlockSize())
 	decreases
 	CryptBlocks(dst, src []byte)

@@ -45,6 +45,10 @@ requires acc(Bytes(s, start, end), p)
 requires start <= idx && idx <= end
 ensures  acc(Bytes(s, start, idx), p)
 ensures  acc(Bytes(s, idx, end), p)
+ensures  forall i int :: { GetByte(s, start, idx, i) }{ GetByte(s, start, end, i) } start <= i && i < idx ==>
+    GetByte(s, start, idx, i) == old(GetByte(s, start, end, i))
+ensures  forall i int :: { GetByte(s, idx, end, i) }{ GetByte(s, start, end, i) } idx <= i && i < end ==>
+    GetByte(s, idx, end, i) == old(GetByte(s, start, end, i))
 decreases
 func SplitByIndex_Bytes(s []byte, start int, end int, idx int, p perm) {
 	unfold acc(Bytes(s, start, end), p)
@@ -56,7 +60,12 @@ ghost
 requires 0 < p
 requires acc(Bytes(s, start, idx), p)
 requires acc(Bytes(s, idx,   end), p)
+requires start <= idx && idx <= end
 ensures  acc(Bytes(s, start, end), p)
+ensures  forall i int :: { GetByte(s, start, end, i) }{ GetByte(s, start, idx, i) } start <= i && i < idx ==>
+    GetByte(s, start, end, i) == old(GetByte(s, start, idx, i))
+ensures  forall i int :: { GetByte(s, start, end, i) }{ GetByte(s, idx, end, i) } idx <= i && i < end ==>
+    GetByte(s, start, end, i) == old(GetByte(s, idx, end, i))
 decreases
 func CombineAtIndex_Bytes(s []byte, start int, end int, idx int, p perm) {
 	unfold acc(Bytes(s, start, idx), p)
@@ -71,6 +80,8 @@ requires acc(Bytes(s, start, end), p)
 // the slice operation is well-formed
 requires unfolding acc(Bytes(s, start, end), p) in true
 ensures  acc(Bytes(s[start:end], 0, len(s[start:end])), p)
+ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) } 0 <= i && i < end-start ==>
+    GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, start, end, i+start))
 decreases
 func Reslice_Bytes(s []byte, start int, end int, p perm) {
 	unfold acc(Bytes(s, start, end), p)
@@ -82,7 +93,10 @@ ghost
 requires 0 < p
 requires 0 <= start && start <= end && end <= cap(s)
 requires acc(Bytes(s[start:end], 0, len(s[start:end])), p)
+requires low(start) && low(end)
 ensures  acc(Bytes(s, start, end), p)
+ensures  forall i int :: { GetByte(s, start, end, i) } start <= i && i < end ==>
+    GetByte(s, start, end, i) == old(GetByte(s[start:end], 0, end-start, i-start))
 decreases
 func Unslice_Bytes(s []byte, start int, end int, p perm) {
 	unfold acc(Bytes(s[start:end], 0, len(s[start:end])), p)
@@ -92,8 +106,13 @@ func Unslice_Bytes(s []byte, start int, end int, p perm) {
 
 	invariant 0 <= j && j <= len(s[start:end])
 	invariant forall i int :: { &s[start:end][i] } j <= i && i < len(s[start:end]) ==> acc(&s[start:end][i], p)
+    invariant forall i int :: { &s[start:end][i] } j <= i && i < len(s[start:end]) ==>
+        s[start:end][i] == old(GetByte(s[start:end], 0, end-start, i))
 	invariant forall i int :: { &s[start:end][i] }{ &s[start + i] } 0 <= i && i < len(s[start:end]) ==> &s[start:end][i] == &s[start + i]
 	invariant forall i int :: { &s[i] } start <= i && i < start+j ==> acc(&s[i], p)
+    invariant forall i int :: { &s[i] } start <= i && i < start+j ==>
+        s[i] == old(GetByte(s[start:end], 0, end-start, i-start))
+    invariant low(j)
 	decreases len(s[start:end]) - j
 	for j := 0; j < len(s[start:end]); j++ {
 		assert forall i int :: { &s[i] } start <= i && i < start+j ==> acc(&s[i], p)
@@ -111,6 +130,11 @@ requires acc(Bytes(s, 0, len(s)), p)
 ensures  acc(Bytes(s[start:end], 0, end-start), p)
 ensures  acc(Bytes(s, 0, start), p)
 ensures  acc(Bytes(s, end, len(s)), p)
+ensures  forall i int :: { GetByte(s, 0, start, i) }{ GetByte(s, 0, len(s), i) } 0 <= i && i < start ==>
+    GetByte(s, 0, start, i) == old(GetByte(s, 0, len(s), i))
+ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) } 0 <= i && i < end-start ==>
+    GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, 0, len(s), i+start))
+// NOTE[henri]: Should I also do this for other indices? (end <= i < len(s))
 decreases
 func SplitRange_Bytes(s []byte, start int, end int, p perm) {
 	SplitByIndex_Bytes(s, 0, len(s), start, p)
@@ -124,7 +148,13 @@ requires 0 <= start && start <= end && end <= len(s)
 requires acc(Bytes(s[start:end], 0, end-start), p)
 requires acc(Bytes(s, 0, start), p)
 requires acc(Bytes(s, end, len(s)), p)
+requires low(start) && low(end)
 ensures  acc(Bytes(s, 0, len(s)), p)
+ensures  forall i int :: { GetByte(s, 0, len(s), i) }{ GetByte(s, 0, start, i) } 0 <= i && i < start ==>
+    GetByte(s, 0, len(s), i) == old(GetByte(s, 0, start, i))
+ensures  forall i int :: { GetByte(s, 0, len(s), i) } start <= i && i < end ==>
+    GetByte(s, 0, len(s), i) == old(GetByte(s[start:end], 0, end-start, i-start))
+// NOTE[henri]: Should I also do this for other indices? (end <= i < len(s))
 decreases
 func CombineRange_Bytes(s []byte, start int, end int, p perm) {
 	Unslice_Bytes(s, start, end, p)
@@ -141,6 +171,7 @@ func NilAcc_Bytes() {
 
 ghost
 requires  len(s1) > 0 || len(s2) > 0
+requires  low(len(s1)) && low(len(s2))
 preserves Bytes(s1, 0, len(s1))
 preserves acc(Bytes(s2, 0, len(s2)), _)
 ensures   s1 !== s2
@@ -161,6 +192,7 @@ func PermsImplyIneqWithWildcard(s1 []byte, s2 []byte) {
 ghost
 requires  0 < p
 requires  len(s1) > 0 || len(s2) > 0
+requires  low(len(s1)) && low(len(s2))
 preserves Bytes(s1, 0, len(s1))
 preserves acc(Bytes(s2, 0, len(s2)), p)
 ensures   s1 !== s2

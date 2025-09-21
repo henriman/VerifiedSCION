@@ -255,6 +255,9 @@ func (i *PktID) DecodeFromBytes(raw []byte) {
 // @ requires  len(b) >= PktIDLen
 // @ preserves acc(i, R1)
 // @ preserves sl.Bytes(b, 0, len(b))
+// @ ensures   low(*i) ==>
+// @ 	forall i int :: { sl.GetByte(b, 0, len(b), i) } 0 <= i && i < PktIDLen &&
+// @ 		low(i) ==> low(sl.GetByte(b, 0, len(b), i))
 // @ decreases
 func (i *PktID) SerializeTo(b []byte) {
 	//@ unfold sl.Bytes(b, 0, len(b))

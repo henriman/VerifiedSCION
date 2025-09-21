@@ -21,7 +21,9 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 pred postInitInvariant() {
 	acc(&zeroInitVector) &&
 	len(zeroInitVector[:]) == 16 &&
-	acc(sl.Bytes(zeroInitVector[:], 0, len(zeroInitVector[:])))
+	acc(sl.Bytes(zeroInitVector[:], 0, len(zeroInitVector[:]))) &&
+	forall i int :: { sl.GetByte(zeroInitVector[:], 0, 16, i) } 0 <= i && i < 16 ==>
+		sl.GetByte(zeroInitVector[:], 0, 16, i) == 0
 }
 
 // learn the invariant established by init
@@ -30,4 +32,29 @@ ensures acc(postInitInvariant(), _)
 decreases
 func establishPostInitInvariant() {
 	openDupPkgInv
+}
+
+// TODO: if this helps, move it to utils file
+ghost
+opaque
+hyper
+requires acc(s)
+requires 0 <= start && end <= len(s)
+decreases
+pure func IsLowByteSlice(s []byte, start, end int) bool {
+    return low(len(s)) && forall i int :: { &s[i] } start <= i && i < end &&
+        low(i) ==> low(s[i])
+}
+
+ghost
+opaque
+hyper
+requires sl.Bytes(s, startPerm, endPerm)
+requires startPerm <= start && end <= endPerm
+decreases
+pure func IsLowBytes(s []byte, startPerm, endPerm, start, end int) bool {
+    return low(len(s)) &&
+        // TODO: Once Gobra issue #964 is resolved, specify trigger.
+        forall i int :: start <= i && i < end &&
+            low(i) ==> low(sl.GetByte(s, startPerm, endPerm, i))
 }

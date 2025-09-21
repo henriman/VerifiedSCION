@@ -19,13 +19,20 @@ const BlockSize = 16
 // The key argument should be the AES key,
 // either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256.
-preserves acc(slices.Bytes(key, 0, len(key)), R50)
+requires acc(slices.Bytes(key, 0, len(key)), R50)
+// TODO[henri]: might be too restrictive? (maybe only need low for parts or only for len)
+requires low(len(key)) && 
+	forall i int :: { slices.GetByte(key, 0, len(key), i) } 0 <= i && i < len(key) &&
+		low(i) ==> low(slices.GetByte(key, 0, len(key), i))
+ensures  acc(slices.Bytes(key, 0, len(key)), R50)
 ensures   err == nil ==>
 	len(key) == 16 || len(key) == 24 || len(key) == 32
 ensures   err == nil ==>
 	(result != nil &&
 	result.Mem()   &&
+	result.IsLow() &&
 	result.BlockSize() == BlockSize)
 ensures   err != nil ==> err.ErrorMem()
+ensures   low(err != nil)
 decreases
 func NewCipher(key []byte) (result cipher.Block, err error)
