@@ -23,8 +23,11 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 type Block interface {
 	pred Mem()
 
-	// TODO: add explaining comment
-	// TODO: add hyper (or TODO to add hyper)
+	// TODO[DOC]
+	// TODO: explain why this needs to be here considering it is not called in
+	// interface methods (but used for something else, see implementations
+	// of interface)
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
 	ghost
 	requires Mem()
 	decreases
@@ -81,8 +84,10 @@ type Stream interface {
 type BlockMode interface {
 	pred Mem()
 
-	// TODO: add explaining comment
-	// TODO: add hyper (or TODO to add hyper)
+	// TODO[DOC]
+	// TODO: explain why this needs to be here (I mean it is used in CryptBlocks,
+	// but this might be connected to Block interface)
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
 	ghost
 	requires Mem()
 	decreases
@@ -106,6 +111,9 @@ type BlockMode interface {
 	// Multiple calls to CryptBlocks behave as if the concatenation of
 	// the src buffers was passed in a single run. That is, BlockMode
 	// maintains state and does not reset at each CryptBlocks call.
+	// TODO[EPIC]
+	// TODO: This contract might be too restrictive. What do I really need to know?
+	// Do I need that dst is low, or only that its length is low?
 	requires  len(src) <= len(dst)
 	requires  acc(sl.Bytes(dst, 0, len(dst)), 1 - R10)
 	requires  dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)

@@ -134,7 +134,6 @@ ensures  forall i int :: { GetByte(s, 0, start, i) }{ GetByte(s, 0, len(s), i) }
     GetByte(s, 0, start, i) == old(GetByte(s, 0, len(s), i))
 ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) } 0 <= i && i < end-start ==>
     GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, 0, len(s), i+start))
-// NOTE[henri]: Should I also do this for other indices? (end <= i < len(s))
 decreases
 func SplitRange_Bytes(s []byte, start int, end int, p perm) {
 	SplitByIndex_Bytes(s, 0, len(s), start, p)

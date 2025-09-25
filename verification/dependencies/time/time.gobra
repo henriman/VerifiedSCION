@@ -11,6 +11,9 @@ package time
 
 import def "github.com/scionproto/scion/verification/utils/definitions"
 
+// TODO[TIME]: I might be able to make these fields private again now that I'm
+// using IsLow to abstract anyway
+// TODO[DOC]: Add NOTE[henri] regarding why I introduced the fields
 // TODO: I need to assert that `Time` is low in some places. However, just
 // using `low(<time object>)` does not make sense considering the actual `Time`
 // struct contains a pointer. I properly introduce these fields for now, but
@@ -33,6 +36,7 @@ type Time struct {
 	wall uint64
 	ext  int64
 
+	// TODO[DOC]: Add NOTE[henri] explaining why this is still private
 	// NOTE: Apparently, `loc` is only used when computing presentations.
 	// loc specifies the Location that should be used to
 	// determine the minute, hour, month, day, and year

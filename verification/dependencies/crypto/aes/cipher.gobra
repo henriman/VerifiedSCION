@@ -20,19 +20,22 @@ const BlockSize = 16
 // either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256.
 requires acc(slices.Bytes(key, 0, len(key)), R50)
-// TODO[henri]: might be too restrictive? (maybe only need low for parts or only for len)
+// TODO[EPIC]
+// TODO: I'm not sure whether this assumption makes sense to make here 
+// considering the key should not be low? But maybe that depends on how EPIC
+// works. Also, maybe we only need the len to be low
 requires low(len(key)) && 
 	forall i int :: { slices.GetByte(key, 0, len(key), i) } 0 <= i && i < len(key) &&
 		low(i) ==> low(slices.GetByte(key, 0, len(key), i))
 ensures  acc(slices.Bytes(key, 0, len(key)), R50)
-ensures   err == nil ==>
+ensures  err == nil ==>
 	len(key) == 16 || len(key) == 24 || len(key) == 32
-ensures   err == nil ==>
+ensures  err == nil ==>
 	(result != nil &&
 	result.Mem()   &&
 	result.IsLow() &&
 	result.BlockSize() == BlockSize)
-ensures   err != nil ==> err.ErrorMem()
-ensures   low(err != nil)
+ensures  err != nil ==> err.ErrorMem()
+ensures  low(err != nil)
 decreases
 func NewCipher(key []byte) (result cipher.Block, err error)

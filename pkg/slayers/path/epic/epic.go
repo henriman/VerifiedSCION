@@ -184,14 +184,14 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 
 // Reverse reverses the EPIC path. In particular, this means that the SCION path type subheader
 // is reversed.
-// @ requires p.Mem(ubuf)
+// @ requires  p.Mem(ubuf)
 // NOTE[henri]: Should this be put into p.IsLow(ubuf) instead?
-// @ requires low(len(ubuf))
+// @ requires  low(len(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
-// @ ensures  r == nil ==> ret != nil
-// @ ensures  r == nil ==> ret.Mem(ubuf)
-// @ ensures  r == nil ==> ret != nil
-// @ ensures  r != nil ==> r.ErrorMem()
+// @ ensures   r == nil ==> ret != nil
+// @ ensures   r == nil ==> ret.Mem(ubuf)
+// @ ensures   r == nil ==> ret != nil
+// @ ensures   r != nil ==> r.ErrorMem()
 // @ decreases
 func (p *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (ret path.Path, r error) {
 	//@ unfold p.Mem(ubuf)

@@ -11,20 +11,20 @@ package subtle
 
 import sl "github.com/scionproto/scion/verification/utils/slices"
 
+// TODO[DOC]
+// Add comment or NOTE[henri] regarding having changed this to non-pure
+// TODO[CONST]
+// TODO: might want to introduce the body here in order to be able to prove the 
+// contract (see comment below)
 // ConstantTimeCompare returns 1 if the two slices, x and y, have equal contents
 // and 0 otherwise. The time taken is a function of the length of the slices and
 // is independent of the contents.
 // trusted
-// TODO[henri]: Could also think about introducing body? or however else I
-// solved this before (in old pkg/experimental/epic I think)
-// TODO[henri]: Consider of using implication in ensures instead of precondition
 requires p > 0
-// requires sl.Bytes(x, 0, len(x))
 requires acc(sl.Bytes(x, 0, len(x)), p)
 requires low(len(x)) && 
     forall i int :: { sl.GetByte(x, 0, len(x), i) } 0 <= i && i < len(x) &&
         low(i) ==> low(sl.GetByte(x, 0, len(x), i))
-// requires sl.Bytes(y, 0, len(y))
 requires acc(sl.Bytes(y, 0, len(y)), p)
 requires low(len(y)) && 
     forall i int :: { sl.GetByte(y, 0, len(y), i) } 0 <= i && i < len(y) &&
@@ -33,7 +33,6 @@ ensures  acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
 ensures  len(x) != len(y) ==> res == 0
 ensures  low(res)
 decreases
-// pure func ConstantTimeCompare(x, y []byte) (res int)
 func ConstantTimeCompare(x, y []byte, ghost p perm) (res int)
 
 // Original annotations etc.:
