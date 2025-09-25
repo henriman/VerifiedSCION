@@ -59,7 +59,7 @@ var zeroInitVector /*@@@*/ [16]byte
 // otherwise an error is returned. An error is also returned if the current time is more than 1 day
 // and 63 minutes after the input timestamp.
 // @ requires input.IsLow() && now.IsLow()
-// @ ensures err != nil ==> err.ErrorMem()
+// @ ensures  err != nil ==> err.ErrorMem()
 // @ decreases
 func CreateTimestamp(input time.Time, now time.Time) (res uint32, err error) {
 	if input.After(now) {
@@ -82,7 +82,7 @@ func CreateTimestamp(input time.Time, now time.Time) (res uint32, err error) {
 // a possible clock drift between the packet source and the verifier of up to one second into
 // account.
 // @ requires timestamp.IsLow() && low(epicTS) && now.IsLow()
-// @ ensures err != nil ==> err.ErrorMem()
+// @ ensures  err != nil ==> err.ErrorMem()
 // @ decreases
 func VerifyTimestamp(timestamp time.Time, epicTS uint32, now time.Time) (err error) {
 	diff := (time.Duration(epicTS) + 1) * TimestampResolution
@@ -107,33 +107,34 @@ func VerifyTimestamp(timestamp time.Time, epicTS uint32, now time.Time) (err err
 // If the same buffer is provided in subsequent calls to this function, the previously returned
 // EPIC MAC may get overwritten. Only the most recently returned EPIC MAC is guaranteed to be
 // valid.
-// TODO: re-order since splitting up preserves made it messy
 // @ requires  len(auth) == 16
 // @ requires  sl.Bytes(buffer, 0, len(buffer))
-// @ requires  acc(s.Mem(ub), R20)
 // @ requires  acc(sl.Bytes(ub, 0, len(ub)), R20)
-// @ requires  low(len(buffer)) && low(s == nil)
 // @ requires  acc(sl.Bytes(auth, 0, len(auth)), R30)
+// @ requires  acc(s.Mem(ub), R20)
 // @ requires  low(len(auth)) &&
 // @ 	forall i int :: { sl.GetByte(auth, 0, len(auth), i) } 0 <= i && i < len(auth) &&
 // @ 		low(i) ==> low(sl.GetByte(auth, 0, len(auth), i))
-// @ requires  low(s.GetSrcAddrType(ub)) && low(s.GetSrcIA(ub)) && low(s.GetPayloadLen(ub))
-// @ requires  low(s.GetDstAddrType(ub))
+// @ requires  low(pktID)
+// @ requires  low(s == nil) && 
+// @ 	low(s.GetDstAddrType(ub)) && low(s.GetSrcAddrType(ub)) && 
+// @ 	low(s.GetPayloadLen(ub)) && low(s.GetSrcIA(ub))
+// @ requires  low(timestamp)
+// @ requires  low(len(buffer))
 // @ requires  low(len(ub)) && 
 // @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
 // @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
-// @ requires  low(timestamp) && low(pktID)
 // @ ensures   acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ ensures   acc(sl.Bytes(auth, 0, len(auth)), R30)
 // @ ensures   acc(s.Mem(ub), R20)
 // @ ensures   reserr == nil ==> sl.Bytes(res, 0, len(res))
 // @ ensures   reserr == nil ==> (sl.Bytes(res, 0, len(res)) --* sl.Bytes(buffer, 0, len(buffer)))
-// @ ensures   reserr == nil ==> low(len(res)) &&
-// @ 	forall i int :: { sl.GetByte(res, 0, len(res), i) } 0 <= i && i < len(res) &&
-// @ 		low(i) ==> low(sl.GetByte(res, 0, len(res), i))
 // @ ensures   reserr != nil ==> reserr.ErrorMem()
 // @ ensures   reserr != nil ==> sl.Bytes(buffer, 0, len(buffer))
 // @ ensures   low(reserr != nil)
+// @ ensures   reserr == nil ==> low(len(res)) &&
+// @ 	forall i int :: { sl.GetByte(res, 0, len(res), i) } 0 <= i && i < len(res) &&
+// @ 		low(i) ==> low(sl.GetByte(res, 0, len(res), i))
 // @ decreases
 func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	timestamp uint32, buffer []byte /*@ , ghost ub []byte @*/) (res []byte, reserr error) {
@@ -158,14 +159,17 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	// @ assert 16 <= inputLength
 	// @ assert f.BlockSize() == 16
 	// Calculate Epic MAC = first 4 bytes of the last CBC block
+	// TODO[assert]
 	// @ assert forall i int :: { sl.GetByte(buffer, 0, len(buffer), i) } 0 <= i && i < inputLength &&
 	// @ 	low(i) ==> low(sl.GetByte(buffer, 0, len(buffer), i))
 	// @ sl.SplitRange_Bytes(buffer, 0, inputLength, writePerm)
 	input := buffer[:inputLength]
+	// TODO[assert]
 	// @ assert low(len(input)) && 
 	// @ 	forall i int :: { sl.GetByte(input, 0, len(input), i) } 0 <= i && i < len(input) &&
 	// @ 		low(i) ==> low(sl.GetByte(input, 0, len(input), i))
 	f.CryptBlocks(input, input)
+	// TODO[assert]
 	// @ assert low(len(input)) && 
 	// @ 	forall i int :: { sl.GetByte(input, 0, len(input), i) } 0 <= i && i < len(input) &&
 	// @ 		low(i) ==> low(sl.GetByte(input, 0, len(input), i))
@@ -173,7 +177,8 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	// @ ghost end   := start + 4
 	result := input[len(input)-f.BlockSize() : len(input)-f.BlockSize()+4]
 	// @ sl.SplitRange_Bytes(input, start, end, writePerm)
-	// TODO: Once Gobra issue #946 is resolved, uncomment.
+	// TODO[946]
+	// TODO: Once Gobra issue #946 is resolved, uncomment and remove assumption.
 	//  package (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer))) {
 	//  	ghost if !allocatesNewBuffer {
 	//  		assert oldBuffer === buffer
@@ -182,11 +187,12 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	//  	}
 	//  }
 	//  assert (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
+	// TODO[946]
 	// TODO: I don't know if this is quite correct. Do I need to exhale some 
-	// permissions (and inhale magic wand) instead?
+	// permissions (and inhale magic wand) instead? Note that my assumption
+	// did not introduce an immediate contradiction, as `assert false` after
+	// this fails
 	// @ assume (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
-	// NOTE: My assumption does not introduce a (immediate) contradiction, as this fails
-	//  assert false
 	return result, nil
 }
 
@@ -195,23 +201,25 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 // bytes of the SCION path type MAC, has invalid length, or if the MAC calculation gives an error,
 // also VerifyHVF returns an error. The verification was successful if and only if VerifyHVF
 // returns nil.
-// @ requires  acc(sl.Bytes(hvf, 0, len(hvf)), R50)
-// @ requires  acc(sl.Bytes(auth, 0, len(auth)), R30)
-// @ requires  acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ requires  acc(s.Mem(ub), R20)
-// @ requires  low(s == nil) && low(len(auth)) && low(len(buffer))
-// @ requires  low(len(hvf)) &&
-// @ 	forall i int :: { sl.GetByte(hvf, 0, len(hvf), i) } 0 <= i && i < len(hvf) &&
-// @ 		low(i) ==> low(sl.GetByte(hvf, 0, len(hvf), i))
+// @ requires  acc(sl.Bytes(ub, 0, len(ub)), R20)
+// @ requires  acc(sl.Bytes(auth, 0, len(auth)), R30)
+// @ requires  acc(sl.Bytes(hvf, 0, len(hvf)), R50)
 // @ requires  low(len(auth)) &&
 // @ 	forall i int :: { sl.GetByte(auth, 0, len(auth), i) } 0 <= i && i < len(auth) &&
 // @ 		low(i) ==> low(sl.GetByte(auth, 0, len(auth), i))
-// @ requires  low(s.GetSrcAddrType(ub)) && low(s.GetSrcIA(ub)) && low(s.GetPayloadLen(ub))
-// @ requires  low(s.GetDstAddrType(ub))
+// @ requires  low(pktID)
+// @ requires  low(s == nil) && 
+// @ 	low(s.GetDstAddrType(ub)) && low(s.GetSrcAddrType(ub)) && 
+// @ 	low(s.GetPayloadLen(ub)) && low(s.GetSrcIA(ub))
+// @ requires  low(timestamp)
+// @ requires  low(len(hvf)) &&
+// @ 	forall i int :: { sl.GetByte(hvf, 0, len(hvf), i) } 0 <= i && i < len(hvf) &&
+// @ 		low(i) ==> low(sl.GetByte(hvf, 0, len(hvf), i))
+// @ requires  low(len(buffer))
 // @ requires  low(len(ub)) && 
 // @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
 // @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
-// @ requires  low(timestamp) && low(pktID)
 // @ preserves sl.Bytes(buffer, 0, len(buffer))
 // @ ensures   acc(s.Mem(ub), R20)
 // @ ensures   acc(sl.Bytes(ub, 0, len(ub)), R20)
@@ -231,9 +239,10 @@ func VerifyHVF(auth []byte, pktID epic.PktID, s *slayers.SCION,
 		return err
 	}
 
-	// TODO[henri]: Unsure whether it makes sense to have hvf and mac low here.
-	// Maybe we need to declassify, but we're outside of IO spec here.
-	// But EPIC verification works differently anyway ... so might be OK
+	// TODO[EPIC]
+	// TODO: I'm unsure whetehr it makes sense to require hvf and mac to be low
+	// here. Maybe we should declassify (but we're outside of IO spec ...).
+	// Though EPIC verification works differently anyway, so this might be OK
 	if subtle.ConstantTimeCompare(hvf, mac /*@, R51 @*/) == 0 {
 		// @ apply sl.Bytes(mac, 0, len(mac)) --* sl.Bytes(buffer, 0, len(buffer))
 		return serrors.New("epic hop validation field verification failed",
@@ -259,9 +268,10 @@ func CoreFromPktCounter(counter uint32) (uint8, uint32) {
 
 // @ requires  len(key) == 16
 // @ requires  acc(sl.Bytes(key, 0, len(key)), R50)
-// TODO[henri]: Unsure whether this precondition makes sense here. 
-// Maybe contract of `aes.NewCipher` is also too restrictive
-// @ requires low(len(key)) && 
+// TODO[EPIC]
+// TODO: I'm unsure whether it makes sense to require the key to be low here?
+// We need it, but maybe the contract of `aes.NewCipher` needs to be changed
+// @ requires  low(len(key)) && 
 // @ 	forall i int :: { sl.GetByte(key, 0, len(key), i) } 0 <= i && i < len(key) &&
 // @ 		low(i) ==> low(sl.GetByte(key, 0, len(key), i))
 // @ ensures   acc(sl.Bytes(key, 0, len(key)), R50)
@@ -284,35 +294,27 @@ func initEpicMac(key []byte) (res cipher.BlockMode, reserr error) {
 }
 
 // @ requires  MACBufferSize <= len(inputBuffer)
-// @ requires  acc(s.Mem(ub), R20)
 // @ requires  acc(sl.Bytes(ub, 0, len(ub)), R20)
-// @ requires  low(s == nil)
-// TODO: might want to abstract this using IsLow function
-// @ requires  low(s.GetSrcAddrType(ub)) && low(s.GetDstAddrType(ub))
-// @ requires  low(s.GetSrcIA(ub)) && low(s.GetPayloadLen(ub))
-// NOTE: The following is to establish that the contents of RawSrcAddr are low,
-// as this is === part of `ub` (cf. (*SCION).HeaderMem). Maybe we want to be 
-// more direct.
-// TODO: might want to make this less specific and mark all of ub low
-// @ requires  low(len(ub)) && 
-// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
-// @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
-//  requires  IsLowBytes(ub, 0, len(ub), slayers.CmnHdrLen, len(ub))
-// @ requires  low(timestamp) && low(pktID)
+// @ requires  acc(s.Mem(ub), R20)
+// @ requires  low(pktID)
+// NOTE[henri]: Should I abstract this using an `IsLow` function?
+// @ requires  low(s == nil) && 
+// @ 	low(s.GetDstAddrType(ub)) && low(s.GetSrcAddrType(ub)) && 
+// @ 	low(s.GetPayloadLen(ub)) && low(s.GetSrcIA(ub))
+// @ requires  low(timestamp)
 // @ requires  low(len(inputBuffer))
+// @ requires  low(len(ub)) && 
+// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
+// @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
 // @ preserves sl.Bytes(inputBuffer, 0, len(inputBuffer))
 // @ ensures   acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ ensures   acc(s.Mem(ub), R20)
 // @ ensures   reserr == nil ==> 16 <= res && res <= len(inputBuffer)
 // @ ensures   reserr != nil ==> reserr.ErrorMem()
 // @ ensures   low(reserr != nil)
-// TODO: don't know if for calling function `< res` is OK instead of `< len(inputBuffer)` ...
-//  ensures   reserr == nil ==> low(len(inputBuffer)) && 
-// TODO: comment in again. would need specialized LowBytes to set bounds
-// @ ensures   reserr == nil ==> 
+// @ ensures   reserr == nil ==>
 // @ 	forall i int :: { sl.GetByte(inputBuffer, 0, len(inputBuffer), i) } 0 <= i && i < res &&
 // @ 		low(i) ==> low(sl.GetByte(inputBuffer, 0, len(inputBuffer), i))
-//  ensures  reserr == nil ==> IsLowBytes(inputBuffer, 0, len(inputBuffer), 0, res)
 // @ ensures   low(res)
 // @ decreases
 func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
@@ -354,81 +356,55 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	offset := 0
 	inputBuffer[0] = uint8(s.SrcAddrType & 0x3) // extract length bits
 	offset += 1
-	//  assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-	//  	low(i) ==> low(inputBuffer[i])
-	//  assert reveal IsLowByteSlice(inputBuffer, 0, offset)
 	// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
 	// @ 	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
 	binary.BigEndian.PutUint32(inputBuffer[offset:], timestamp)
 	offset += 4
-	//  assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-	//  	low(i) ==> low(inputBuffer[i])
-	//  assert reveal IsLowByteSlice(inputBuffer, 0, offset)
 	// @ fold sl.Bytes(inputBuffer, 0, len(inputBuffer))
 	// @ sl.SplitRange_Bytes(inputBuffer, offset, len(inputBuffer), writePerm)
 	pktID.SerializeTo(inputBuffer[offset:])
 	// @ sl.CombineRange_Bytes(inputBuffer, offset, len(inputBuffer), writePerm)
 	offset += epic.PktIDLen
 	// @ unfold acc(sl.Bytes(inputBuffer, 0, len(inputBuffer)), HalfPerm)
-	// NOTE: Maybe extend to < len(inputBuffer)
     // @ assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset ==>
     // @ 	inputBuffer[i] == sl.GetByte(inputBuffer, 0, len(inputBuffer), i)
 	// @ unfold acc(sl.Bytes(inputBuffer, 0, len(inputBuffer)), HalfPerm)
-	//  assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-	//  	low(i) ==> low(inputBuffer[i])
-	//  assert reveal IsLowByteSlice(inputBuffer, 0, offset)
 	// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
 	// @ 	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
 	binary.BigEndian.PutUint64(inputBuffer[offset:], uint64(s.SrcIA))
 	offset += addr.IABytes
-	//  assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-	//  	low(i) ==> low(inputBuffer[i])
-	//  assert reveal IsLowByteSlice(inputBuffer, 0, offset)
-	// NOTE: BEGIN OUTLINE EXPERIMENT
-	//  assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
-	//  	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
-	//  sl.SplitRange_Bytes(ub, start, end, R20)
-    //  assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) ==>
-    //  	&srcAddr[i] == &ub[start:end][i]
-	//  unfold acc(sl.Bytes(srcAddr, 0, len(srcAddr)), R21)
-    //  assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) ==>
-    //  	srcAddr[i] == sl.GetByte(srcAddr, 0, len(srcAddr), i)
-	// copy(inputBuffer[offset:], srcAddr /*@ , R21 @*/)
-    //  assert forall i int :: { &inputBuffer[i] } offset <= i && i < offset + l ==>
-    //  	inputBuffer[i] == inputBuffer[offset:][i - offset]
-	//  fold acc(sl.Bytes(srcAddr, 0, len(srcAddr)), R21)
-	//  sl.CombineRange_Bytes(ub, start, end, R20)
-	// offset += l
-	//  assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-	//  	low(i) ==> low(inputBuffer[i])
-    // @ requires acc(s.Mem(ub), R22)
-    // @ requires acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
-    // @ requires offset == 5 + epic.PktIDLen + addr.IABytes
-    // @ requires start == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
-    // @ requires end == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()+s.SrcAddrType.Length()
-    // @ requires MACBufferSize <= len(inputBuffer)
+	// Without isolating this snippet using an `outline` block, verification
+	// takes significantly longer.
     // @ requires acc(sl.Bytes(ub, 0, len(ub)), R20)
     // @ requires low(len(ub)) && 
     // @     forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
     // @         low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
-    // @ requires unfolding acc(s.Mem(ub), R22) in unfolding acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22) in srcAddr === ub[start:end]
+    // @ requires acc(s.Mem(ub), R22)
+    // @ requires acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
     // @ requires acc(inputBuffer)
+    // @ requires MACBufferSize <= len(inputBuffer)
     // @ requires forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
     // @     low(i) ==> low(inputBuffer[i])
-    // @ requires l == len(srcAddr)
+    // @ requires offset == 5 + epic.PktIDLen + addr.IABytes
+    // @ requires start == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
+    // @ requires end == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()+s.SrcAddrType.Length()
     // @ requires low(start) && low(end)
-    // @ ensures  offset == 5 + epic.PktIDLen + addr.IABytes + l
-    // @ ensures  acc(inputBuffer)
-    // @ ensures  MACBufferSize <= len(inputBuffer)
-    // @ ensures  forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-    // @     low(i) ==> low(inputBuffer[i])
+    // @ requires unfolding acc(s.Mem(ub), R22) in unfolding acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22) in srcAddr === ub[start:end]
+    // @ requires l == len(srcAddr)
+    // @ ensures  acc(sl.Bytes(ub, 0, len(ub)), R20)
     // @ ensures  acc(s.Mem(ub), R22)
     // @ ensures  acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
-    // @ ensures  acc(sl.Bytes(ub, 0, len(ub)), R20)
+    // @ ensures  acc(inputBuffer)
+    // @ ensures  forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
+    // @     low(i) ==> low(inputBuffer[i])
+    // @ ensures  MACBufferSize <= len(inputBuffer)
+    // @ ensures  offset == 5 + epic.PktIDLen + addr.IABytes + l
     // @ decreases
     // @ outline(
         // @ unfold acc(s.Mem(ub), R22)
         // @ unfold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
+
+		// TODO[assert]
 
         // @ assert srcAddr === ub[start:end]
 		// @ assert forall i int :: { sl.GetByte(ub, 0, len(ub), i) } start <= i && i < end &&
@@ -462,24 +438,12 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
         // @ fold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
         // @ fold acc(s.Mem(ub), R22)
     // @ )
-	// NOTE: END OUTLINE EXPERIMENT
-	//  assert reveal IsLowByteSlice(inputBuffer, 0, offset)
-	// NOTE: it takes ~13 min. to get here
-	// NOTE: with outline block, it once took ~11 min. to get here
-	//  assert false
 	// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
 	// @ 	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
 	binary.BigEndian.PutUint16(inputBuffer[offset:], s.PayloadLen)
 	offset += 2
-	// NOTE: it takes ~16 min. to get here
-	//  assert false
-	// TODO: try to uncomment again
 	// @ assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
 	// @ 	low(i) ==> low(inputBuffer[i])
-	//  assert reveal IsLowByteSlice(inputBuffer, 0, offset)
-	// NOTE: takes at least 40 min., crashed once
-	// NOTE: with outline block, it once took ~6 mins.
-	//  assert false
 	// @ assert offset == 23 + l
 	// @ assert offset <= inputLength
 	// @ assert inputLength <= len(inputBuffer)
@@ -518,7 +482,5 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	// @ assert low(len(inputBuffer)) && 
 	// @ 	forall i int :: { sl.GetByte(inputBuffer, 0, len(inputBuffer), i) } 0 <= i && i < inputLength &&
 	// @ 		low(i) ==> low(sl.GetByte(inputBuffer, 0, len(inputBuffer), i))
-	//  assert reveal IsLowBytes(inputBuffer, 0, len(inputBuffer), 0, inputLength)
-	//  assert false
 	return inputLength, nil
 }
