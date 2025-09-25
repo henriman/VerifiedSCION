@@ -93,6 +93,8 @@ pred (u *UDPConn) Mem() {
 }
 
 // As we don't model the fields of `UDPConn`, `IsLow` is kept abstract.
+// We assume that `IsLow` covers all fields of `UDPConn`, since we use this
+// information in `private/underlay/sockctrl/sockopt.go`, `GetsocketoptInt`
 // The only way to create an instance of `*UDPConn` is by calling `ListenUDP`
 // or `DialUDP`. We require their input to be low; in return, we ensure that
 // `IsLow` holds for the returned instance.

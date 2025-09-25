@@ -105,9 +105,9 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 // @ requires acc(sl.Bytes(data, 0, len(data)), R15)
 // @ requires sif.IsLowBytes(data, 0, len(data))
 // @ preserves acc(l)
-// @ ensures acc(sl.Bytes(data, 0, len(data)), R15)
-// @ ensures err != nil ==> err.ErrorMem()
-// @ ensures low(err != nil)
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R15)
+// @ ensures   err != nil ==> err.ErrorMem()
+// @ ensures   low(err != nil)
 // @ decreases
 func (l *LinkType) UnmarshalText(data []byte) (err error) {
 	//@ sif.UnfoldLowBytes(data, R15)

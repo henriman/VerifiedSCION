@@ -6,6 +6,6 @@ package sif
 ghost
 requires p > 0 && acc(b, p)
 requires IsLowByteSlice(b)
-ensures acc(b, p) && low(string(b))
+ensures  acc(b, p) && low(string(b))
 decreases
 func LowSliceImpliesLowString(b []byte, p perm)

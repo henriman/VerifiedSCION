@@ -26,8 +26,6 @@ import (
 
 pred (h HostNone) Mem() { len(h) == HostLenNone }
 
-// NOTE[henri]: As `HostNone.String` doesn't need anything to be low, I 
-// implemented it trivially already.
 ghost
 requires h.Mem()
 decreases
@@ -80,8 +78,6 @@ pred (h HostIPv6) Mem() {
 	slices.Bytes(h, 0, len(h))
 }
 
-// NOTE[henri]: As `HostIPv6.String` doesn't need anything to be low, I 
-// implemented it trivially already.
 ghost
 requires h.Mem()
 decreases
