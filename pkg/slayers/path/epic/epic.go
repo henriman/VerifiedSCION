@@ -186,6 +186,7 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 // is reversed.
 // @ requires  p.Mem(ubuf)
 // NOTE[henri]: Should this be put into p.IsLow(ubuf) instead?
+// NOTE: fine to leave it as is
 // @ requires  low(len(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   r == nil ==> ret != nil

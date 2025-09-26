@@ -122,7 +122,7 @@ func VerifyTimestamp(timestamp time.Time, epicTS uint32, now time.Time) (err err
 // @ requires  low(timestamp)
 // @ requires  low(len(buffer))
 // @ requires  low(len(ub)) && 
-// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
+// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
 // @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
 // @ ensures   acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ ensures   acc(sl.Bytes(auth, 0, len(auth)), R30)
@@ -218,7 +218,7 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 // @ 		low(i) ==> low(sl.GetByte(hvf, 0, len(hvf), i))
 // @ requires  low(len(buffer))
 // @ requires  low(len(ub)) && 
-// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
+// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
 // @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
 // @ preserves sl.Bytes(buffer, 0, len(buffer))
 // @ ensures   acc(s.Mem(ub), R20)
@@ -298,6 +298,7 @@ func initEpicMac(key []byte) (res cipher.BlockMode, reserr error) {
 // @ requires  acc(s.Mem(ub), R20)
 // @ requires  low(pktID)
 // NOTE[henri]: Should I abstract this using an `IsLow` function?
+// TODO: yes
 // @ requires  low(s == nil) && 
 // @ 	low(s.GetDstAddrType(ub)) && low(s.GetSrcAddrType(ub)) && 
 // @ 	low(s.GetPayloadLen(ub)) && low(s.GetSrcIA(ub))
@@ -377,15 +378,15 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	// takes significantly longer.
     // @ requires acc(sl.Bytes(ub, 0, len(ub)), R20)
     // @ requires low(len(ub)) && 
-    // @     forall i int :: { sl.GetByte(ub, 0, len(ub), i) } slayers.CmnHdrLen <= i && i < len(ub) &&
+    // @     forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
     // @         low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
     // @ requires acc(s.Mem(ub), R22)
     // @ requires acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
     // @ requires acc(inputBuffer)
     // @ requires MACBufferSize <= len(inputBuffer)
+    // @ requires offset == 5 + epic.PktIDLen + addr.IABytes
     // @ requires forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
     // @     low(i) ==> low(inputBuffer[i])
-    // @ requires offset == 5 + epic.PktIDLen + addr.IABytes
     // @ requires start == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
     // @ requires end == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()+s.SrcAddrType.Length()
     // @ requires low(start) && low(end)
@@ -395,10 +396,10 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
     // @ ensures  acc(s.Mem(ub), R22)
     // @ ensures  acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
     // @ ensures  acc(inputBuffer)
-    // @ ensures  forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-    // @     low(i) ==> low(inputBuffer[i])
     // @ ensures  MACBufferSize <= len(inputBuffer)
     // @ ensures  offset == 5 + epic.PktIDLen + addr.IABytes + l
+    // @ ensures  forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
+    // @     low(i) ==> low(inputBuffer[i])
     // @ decreases
     // @ outline(
         // @ unfold acc(s.Mem(ub), R22)

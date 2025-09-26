@@ -16,6 +16,8 @@
 
 package slices
 
+// TODO: can keep currently invalid triggers as is
+
 // How to extend this file:
 // - if we need to support slices of non-supported types, we must repeat all definitions
 //   for that type. For this, we should be careful to avoid introducing cylical dependencies.

@@ -223,7 +223,7 @@ pure func (e bigEndian) PutUint64Spec(b0, b1, b2, b3, b4, b5, b6, b7 byte, v uin
 		b7 == byte(v)
 }
 
-// TODO[DAFNY]
+// TODO[DAFNY]: just add TODO
 // NOTE[henri]: This is analogous to the contract of PutUint32 etc. 
 // I suppose this would require me to als prove this in Dafny
 trusted
