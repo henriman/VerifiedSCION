@@ -177,22 +177,14 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	// @ ghost end   := start + 4
 	result := input[len(input)-f.BlockSize() : len(input)-f.BlockSize()+4]
 	// @ sl.SplitRange_Bytes(input, start, end, writePerm)
-	// TODO[946]
-	// TODO: Once Gobra issue #946 is resolved, uncomment and remove assumption.
-	//  package (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer))) {
-	//  	ghost if !allocatesNewBuffer {
-	//  		assert oldBuffer === buffer
-	//  		sl.CombineRange_Bytes(input, start, end, writePerm)
-	//  		sl.CombineRange_Bytes(oldBuffer, 0, inputLength, writePerm)
-	//  	}
-	//  }
-	//  assert (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
-	// TODO[946]
-	// TODO: I don't know if this is quite correct. Do I need to exhale some 
-	// permissions (and inhale magic wand) instead? Note that my assumption
-	// did not introduce an immediate contradiction, as `assert false` after
-	// this fails
-	// @ assume (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
+	// @ package (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer))) {
+	// @ 	ghost if !allocatesNewBuffer {
+	// @ 		assert oldBuffer === buffer
+	// @ 		sl.CombineRange_Bytes(input, start, end, writePerm)
+	// @ 		sl.CombineRange_Bytes(oldBuffer, 0, inputLength, writePerm)
+	// @ 	}
+	// @ }
+	// @ assert (sl.Bytes(result, 0, len(result)) --* sl.Bytes(oldBuffer, 0, len(oldBuffer)))
 	return result, nil
 }
 
