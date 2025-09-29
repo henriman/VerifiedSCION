@@ -16,8 +16,6 @@
 
 package slices
 
-// TODO: can keep currently invalid triggers as is
-
 // How to extend this file:
 // - if we need to support slices of non-supported types, we must repeat all definitions
 //   for that type. For this, we should be careful to avoid introducing cylical dependencies.
@@ -155,7 +153,6 @@ ensures  forall i int :: { GetByte(s, 0, len(s), i) }{ GetByte(s, 0, start, i) }
     GetByte(s, 0, len(s), i) == old(GetByte(s, 0, start, i))
 ensures  forall i int :: { GetByte(s, 0, len(s), i) } start <= i && i < end ==>
     GetByte(s, 0, len(s), i) == old(GetByte(s[start:end], 0, end-start, i-start))
-// NOTE[henri]: Should I also do this for other indices? (end <= i < len(s))
 decreases
 func CombineRange_Bytes(s []byte, start int, end int, p perm) {
 	Unslice_Bytes(s, start, end, p)
