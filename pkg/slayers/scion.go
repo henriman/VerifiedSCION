@@ -182,6 +182,7 @@ func (s *SCION) CanDecode() (res gopacket.LayerClass) {
 	return res
 }
 
+// TODO: we have to put lowness of ub outside. can probably remove this comment then
 // NOTE: problem: RevealIsLow requires access to Bytes(ub) ATM bc. elsewhere we
 // need that this is low.
 // - maybe we shouldn't keep lowness of ub in SCION.IsLow (also considering that
@@ -231,9 +232,9 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 //  requires  low(s.GetSrcAddrType(ubuf, false)) && low(s.GetDstAddrType(ubuf, false))
 // TODO: might prefer low(s.HdrLen)
 //  requires  low(s.PathEndIdx(ubuf))
-//  requires  low(len(ubuf)) && 
-//  	forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
-//  		low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
+// @ requires  low(len(ubuf)) && 
+// @ 	forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
+// @ 		low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
 //  requires  low(s.GetPathType(ubuf)) && low(s.GetNextHdr(ubuf))
 //  requires  s.PathIsLow(ubuf)
 // @ requires  s.IsLow(ubuf)
@@ -416,7 +417,17 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 	// @ 	low(s.PathType) && low(s.NextHdr)
 	// @ decreases
 	// @ outline(
+	// @ assert low(sl.GetByte(data, 0, len(data), 4))
+	// @ assert low(sl.GetByte(data, 0, len(data), 5))
+	// @ assert low(sl.GetByte(data, 0, len(data), 8))
+	// @ assert low(sl.GetByte(data, 0, len(data), 9))
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R41)
+	// TODO: can probably remove these assertions, but not the ones before unfold
+	// - can replace them with ghost calls, however
+	// @ assert low(data[4])
+	// @ assert low(data[5])
+	// @ assert low(data[8])
+	// @ assert low(data[9])
 	s.NextHdr = L4ProtocolType(data[4])
 	s.HdrLen = data[5]
 	// @ assert &data[6:8][0] == &data[6] && &data[6:8][1] == &data[7]
@@ -1082,6 +1093,7 @@ func (s *SCION) DecodeAddrHdr(data []byte) (res error) {
 // @ requires  acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 // @ requires  acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
 // @ requires  acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
+// TOOD: wrap in IsLow
 // @ requires low(len(s.RawSrcAddr)) && 
 // @ 	forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) &&
 // @ 		low(i) ==> low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))

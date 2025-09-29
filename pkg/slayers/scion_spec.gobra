@@ -272,16 +272,16 @@ pure func (s *SCION) IsLow(ghost ub []byte) bool {
 ghost
 trusted
 requires p > 0
-requires  init ==> acc(s.Mem(ub), p) && acc(sl.Bytes(ub, 0, len(ub)), p)
+requires  init ==> acc(s.Mem(ub), p)
 requires !init ==> acc(s.NonInitMem(), p)
 requires s.IsLowDecodingLayer(init, ub)
-ensures   init ==> acc(s.Mem(ub), p) && acc(sl.Bytes(ub, 0, len(ub)), p) && 
+ensures   init ==> acc(s.Mem(ub), p) &&
 	low(s.GetNextHdr(ub)) &&
 	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
 	low(s.PathEndIdx(ub)) &&
-	low(len(ub)) && 
-		(forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
-			low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))) &&
+	// low(len(ub)) && 
+	// 	(forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
+	// 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))) &&
 	low(s.GetPathType(ub)) &&
 	s.PathIsLow(ub)
 ensures  !init ==> acc(s.NonInitMem(), p) &&
