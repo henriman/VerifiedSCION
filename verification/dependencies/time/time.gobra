@@ -11,56 +11,19 @@ package time
 
 import def "github.com/scionproto/scion/verification/utils/definitions"
 
-// TODO[TIME]: I might be able to make these fields private again now that I'm
-// using IsLow to abstract anyway
-// TODO[DOC]: Add NOTE[henri] regarding why I introduced the fields
-// TODO: I need to assert that `Time` is low in some places. However, just
-// using `low(<time object>)` does not make sense considering the actual `Time`
-// struct contains a pointer. I properly introduce these fields for now, but
-// I'm not sure whether this is desired.
-// TODO: would also need to adjust pure annotations in case they rely on location?
-// - tho this shouldn't be a pitfall anymore considering I now use IsLow instead of low(Time),
-//   thus automatically inferring low(result) shouldn't happen
 type Time struct {
-	// wall and ext encode the wall time seconds, wall time nanoseconds,
-	// and optional monotonic clock reading in nanoseconds.
-	//
-	// From high to low bit position, wall encodes a 1-bit flag (hasMonotonic),
-	// a 33-bit seconds field, and a 30-bit wall time nanoseconds field.
-	// The nanoseconds field is in the range [0, 999999999].
-	// If the hasMonotonic bit is 0, then the 33-bit field must be zero
-	// and the full signed 64-bit wall seconds since Jan 1 year 1 is stored in ext.
-	// If the hasMonotonic bit is 1, then the 33-bit field holds a 33-bit
-	// unsigned wall seconds since Jan 1 year 1885, and ext holds a
-	// signed 64-bit monotonic clock reading, nanoseconds since process start.
-	wall uint64
-	ext  int64
-
-	// TODO[DOC]: Add NOTE[henri] explaining why this is still private
-	// NOTE: Apparently, `loc` is only used when computing presentations.
-	// loc specifies the Location that should be used to
-	// determine the minute, hour, month, day, and year
-	// that correspond to this Time.
-	// The nil location means UTC.
-	// All UTC times are represented with loc==nil, never loc==&utcLoc.
-	// loc *Location
-    privateField def.PrivateField
+    privateFields def.PrivateField
 }
 
 ghost
 hyper
 decreases
-pure func (t Time) IsLow() bool {
-	return low(t.wall) && low(t.ext)
-}
+pure func (t Time) IsLow() bool
 
 // After reports whether the time instant t is after u.
-// TODO: Not sure how to model this considering that I added some fields now.
-// - Add/remove `hyper pure`? Only possible once Gobra issue #965 is resolved
-// hyper
+// TODO: Once Gobra issue #965 is resolved, mark this as (`hyper`) `pure` again.
 ensures t.IsLow() && u.IsLow() ==> low(res)
 decreases
-// pure func (t Time) After(u Time) (res bool)
 func (t Time) After(u Time) (res bool)
 
 // Before reports whether the time instant t is before u.
