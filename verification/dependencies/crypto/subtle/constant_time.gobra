@@ -11,8 +11,7 @@ package subtle
 
 import sl "github.com/scionproto/scion/verification/utils/slices"
 
-// TODO: fine to just leave as non-pure, don't bother with introducing body
-
+// TODO[DOC]
 // NOTE[henri]: Due to Gobra issue 965, I can't mark this functions as 
 // `hyper pure` yet (as, on import, Gobra will complain that a (non-`hyper`) 
 // `pure` function can't have `low` in its contract). I could add a 
@@ -22,7 +21,7 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 // ConstantTimeCompare returns 1 if the two slices, x and y, have equal contents
 // and 0 otherwise. The time taken is a function of the length of the slices and
 // is independent of the contents.
-trusted
+// trusted
 requires p > 0
 requires acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
 requires low(len(x)) && 
@@ -35,43 +34,27 @@ ensures  acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
 ensures  len(x) != len(y) ==> res == 0
 ensures  low(res)
 decreases
-func ConstantTimeCompare(x, y []byte, ghost p perm) (res int)
-
-// Body with annotations:
-/*
-requires acc(sl.Bytes(x, 0, len(x)), R56)
-requires acc(sl.Bytes(y, 0, len(y)), R56)
-requires low(len(x)) && low(len(y))
-requires forall i int :: { sl.GetByte(x, 0, len(x), i) } 0 <= i && i < len(x) ==>
-    low(sl.GetByte(x, 0, len(x), i))
-requires forall i int :: { sl.GetByte(y, 0, len(y), i) } 0 <= i && i < len(y) ==>
-    low(sl.GetByte(y, 0, len(y), i))
-ensures  acc(sl.Bytes(x, 0, len(x)), R56)
-ensures  acc(sl.Bytes(y, 0, len(y)), R56)
-ensures  len(x) != len(y) ==> res == 0
-ensures  low(res)
-decreases
-func ConstantTimeCompare(x, y []byte) (res int) {
+func ConstantTimeCompare(x, y []byte, ghost p perm) (res int) {
     if len(x) != len(y) {
 		return 0
 	}
 
 	var v byte
 
-    unfold acc(sl.Bytes(x, 0, len(x)), R56/2)
-    unfold acc(sl.Bytes(y, 0, len(y)), R56/2)
-    defer fold acc(sl.Bytes(x, 0, len(x)), R56/2)
-    defer fold acc(sl.Bytes(y, 0, len(y)), R56/2)
+    unfold acc(sl.Bytes(x, 0, len(x)), p/2)
+    unfold acc(sl.Bytes(y, 0, len(y)), p/2)
+    defer fold acc(sl.Bytes(x, 0, len(x)), p/2)
+    defer fold acc(sl.Bytes(y, 0, len(y)), p/2)
 
     assert forall i int :: { sl.GetByte(x, 0, len(x), i) }{ x[i] } 0 <= i && i < len(x) ==>
         sl.GetByte(x, 0, len(x), i) == x[i]
     assert forall i int :: { sl.GetByte(y, 0, len(y), i) }{ y[i] } 0 <= i && i < len(y) ==>
         sl.GetByte(y, 0, len(y), i) == y[i]
 
-    invariant forall i int :: { &x[i] } 0 <= i && i < len(x) ==> 
-        acc(&x[i], R56/2) && low(x[i])
-    invariant forall i int :: { &y[i] } 0 <= i && i < len(y) ==> 
-        acc(&y[i], R56/2) && low(y[i])
+    invariant forall i int :: { &x[i] } 0 <= i && i < len(x) ==> acc(&x[i], p/2)
+    invariant forall i int :: { &y[i] } 0 <= i && i < len(y) ==> acc(&y[i], p/2)
+    invariant forall i int :: { &x[i] } 0 <= i && i < len(x) && low(i) ==> low(x[i])
+    invariant forall i int :: { &y[i] } 0 <= i && i < len(y) && low(i) ==> low(y[i])
     invariant low(v)
     invariant 0 <= i
     invariant low(i)
@@ -87,4 +70,3 @@ decreases
 pure func ConstantTimeByteEq(x, y uint8) int {
 	return int((uint32(x^y) - 1) >> 31)
 }
-*/
