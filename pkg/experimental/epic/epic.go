@@ -354,8 +354,8 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	// @ sl.CombineRange_Bytes(inputBuffer, offset, len(inputBuffer), writePerm)
 	offset += epic.PktIDLen
 	// @ unfold acc(sl.Bytes(inputBuffer, 0, len(inputBuffer)), HalfPerm)
-    // @ assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset ==>
-    // @ 	inputBuffer[i] == sl.GetByte(inputBuffer, 0, len(inputBuffer), i)
+	// @ assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset ==>
+	// @ 	inputBuffer[i] == sl.GetByte(inputBuffer, 0, len(inputBuffer), i)
 	// @ unfold acc(sl.Bytes(inputBuffer, 0, len(inputBuffer)), HalfPerm)
 	// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
 	// @ 	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
@@ -364,67 +364,67 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	// Without isolating this snippet using an `outline` block, verification
 	// takes significantly longer.
 	// NOTE: This is still somewhat unstable.
-    // @ requires acc(sl.Bytes(ub, 0, len(ub)), R20)
-    // @ requires low(len(ub)) && 
-    // @     forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
-    // @         low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
-    // @ requires acc(s.Mem(ub), R22)
-    // @ requires acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
-    // @ requires acc(inputBuffer)
-    // @ requires MACBufferSize <= len(inputBuffer)
-    // @ requires offset == 5 + epic.PktIDLen + addr.IABytes
-    // @ requires forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-    // @     low(i) ==> low(inputBuffer[i])
-    // @ requires start == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
-    // @ requires end == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()+s.SrcAddrType.Length()
-    // @ requires low(start) && low(end)
-    // @ requires unfolding acc(s.Mem(ub), R22) in unfolding acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22) in srcAddr === ub[start:end]
-    // @ requires l == len(srcAddr)
-    // @ ensures  acc(sl.Bytes(ub, 0, len(ub)), R20)
-    // @ ensures  acc(s.Mem(ub), R22)
-    // @ ensures  acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
-    // @ ensures  acc(inputBuffer)
-    // @ ensures  MACBufferSize <= len(inputBuffer)
-    // @ ensures  offset == 5 + epic.PktIDLen + addr.IABytes + l
-    // @ ensures  forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-    // @     low(i) ==> low(inputBuffer[i])
-    // @ decreases
-    // @ outline(
-        // @ unfold acc(s.Mem(ub), R22)
-        // @ unfold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
+	// @ requires acc(sl.Bytes(ub, 0, len(ub)), R20)
+	// @ requires low(len(ub)) && 
+	// @ 	forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
+	// @ 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
+	// @ requires acc(s.Mem(ub), R22)
+	// @ requires acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
+	// @ requires acc(inputBuffer)
+	// @ requires MACBufferSize <= len(inputBuffer)
+	// @ requires offset == 5 + epic.PktIDLen + addr.IABytes
+	// @ requires forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
+	// @ 	low(i) ==> low(inputBuffer[i])
+	// @ requires start == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
+	// @ requires end == slayers.CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()+s.SrcAddrType.Length()
+	// @ requires low(start) && low(end)
+	// @ requires unfolding acc(s.Mem(ub), R22) in unfolding acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22) in srcAddr === ub[start:end]
+	// @ requires l == len(srcAddr)
+	// @ ensures  acc(sl.Bytes(ub, 0, len(ub)), R20)
+	// @ ensures  acc(s.Mem(ub), R22)
+	// @ ensures  acc(&s.DstAddrType, R22) && acc(&s.SrcAddrType, R22)
+	// @ ensures  acc(inputBuffer)
+	// @ ensures  MACBufferSize <= len(inputBuffer)
+	// @ ensures  offset == 5 + epic.PktIDLen + addr.IABytes + l
+	// @ ensures  forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
+	// @ 	low(i) ==> low(inputBuffer[i])
+	// @ decreases
+	// @ outline(
+		// @ unfold acc(s.Mem(ub), R22)
+		// @ unfold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
 
-        // @ assert srcAddr === ub[start:end]
+		// @ assert srcAddr === ub[start:end]
 		// @ assert forall i int :: { sl.GetByte(ub, 0, len(ub), i) } start <= i && i < end &&
 		// @ 	low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))
 
-        // @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
-        // @     &inputBuffer[offset:][i] == &inputBuffer[offset+i]
-        // @ sl.SplitRange_Bytes(ub, start, end, R20)
+		// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
+		// @ 	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
+		// @ sl.SplitRange_Bytes(ub, start, end, R20)
 		// @ assert forall i int :: { sl.GetByte(ub[start:end], 0, len(ub[start:end]), i) } 0 <= i && i < len(ub[start:end]) &&
 		// @ 	low(i) ==> low(sl.GetByte(ub[start:end], 0, len(ub[start:end]), i))
-        // @ assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) ==>
-        // @     &srcAddr[i] == &ub[start:end][i]
+		// @ assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) ==>
+		// @ 	&srcAddr[i] == &ub[start:end][i]
 		// @ assert forall i int :: { sl.GetByte(srcAddr, 0, len(srcAddr), i) } 0 <= i && i < len(srcAddr) &&
 		// @ 	low(i) ==> low(sl.GetByte(srcAddr, 0, len(srcAddr), i))
-        // @ unfold acc(sl.Bytes(srcAddr, 0, len(srcAddr)), R21)
-        // @ assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) ==>
-        // @     srcAddr[i] == sl.GetByte(srcAddr, 0, len(srcAddr), i)
+		// @ unfold acc(sl.Bytes(srcAddr, 0, len(srcAddr)), R21)
+		// @ assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) ==>
+		// @ 	srcAddr[i] == sl.GetByte(srcAddr, 0, len(srcAddr), i)
 		// @ assert forall i int :: { &srcAddr[i] } 0 <= i && i < len(srcAddr) &&
 		// @ 	low(i) ==> low(srcAddr[i])
-        copy(inputBuffer[offset:], srcAddr /*@, R21 @*/)
+		copy(inputBuffer[offset:], srcAddr /*@, R21 @*/)
 		// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(srcAddr) &&
 		// @ 	low(i) ==> low(inputBuffer[offset:][i])
-        // @ assert forall i int :: { &inputBuffer[i] } offset <= i && i < offset + l ==>
-        // @     inputBuffer[i] == inputBuffer[offset:][i - offset]
-        // @ fold acc(sl.Bytes(srcAddr, 0, len(srcAddr)), R21)
-        // @ sl.CombineRange_Bytes(ub, start, end, R20)
-        offset += l
-        // @ assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
-        // @    low(i) ==> low(inputBuffer[i])
-        
-        // @ fold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
-        // @ fold acc(s.Mem(ub), R22)
-    // @ )
+		// @ assert forall i int :: { &inputBuffer[i] } offset <= i && i < offset + l ==>
+		// @ 	inputBuffer[i] == inputBuffer[offset:][i - offset]
+		// @ fold acc(sl.Bytes(srcAddr, 0, len(srcAddr)), R21)
+		// @ sl.CombineRange_Bytes(ub, start, end, R20)
+		offset += l
+		// @ assert forall i int :: { &inputBuffer[i] } 0 <= i && i < offset &&
+		// @    low(i) ==> low(inputBuffer[i])
+
+		// @ fold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
+		// @ fold acc(s.Mem(ub), R22)
+	// @ )
 	// @ assert forall i int :: { &inputBuffer[offset:][i] } 0 <= i && i < len(inputBuffer[offset:]) ==>
 	// @ 	&inputBuffer[offset:][i] == &inputBuffer[offset+i]
 	binary.BigEndian.PutUint16(inputBuffer[offset:], s.PayloadLen)
