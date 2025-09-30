@@ -111,7 +111,14 @@ func (a SCMPTypeCode) InfoMsg() bool {
 	return a.Type() > 127
 }
 
-// @ preserves acc(SCMPTypeCodeMem(), R10)
+// @ requires acc(SCMPTypeCodeMem(), R10)
+// @ requires low(a.Code())
+// @ requires low(ElemSCMPTypeCodeInfo(a.Type()))
+// @ requires ElemSCMPTypeCodeInfo(a.Type()) ==>
+// @ 	low(SCMPTypeCodeInfoCodes(a.Type()) == nil)
+// @ requires ElemSCMPTypeCodeInfo(a.Type()) && SCMPTypeCodeInfoCodes(a.Type()) != nil ==>
+// @ 	low(ElemSCMPTypeCodeInfoCodes(a.Type(), a.Code()))
+// @ ensures  acc(SCMPTypeCodeMem(), R10)
 // @ decreases
 func (a SCMPTypeCode) String() string {
 	t, c := a.Type(), a.Code()

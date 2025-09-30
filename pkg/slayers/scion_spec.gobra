@@ -133,6 +133,14 @@ pure func (s *SCION) PathPoolInitializedNonInitMem() bool {
 		s.pathPool != nil
 }
 
+// NOTE[henri]: Could be bundled with other pathpoolinitialized but i dont wanna bother rn
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) PathPoolInitializedMem(ghost ub []byte) bool {
+	return unfolding s.Mem(ub) in s.pathPool != nil
+}
+
 ghost
 requires 0 <= pathType && pathType < path.MaxPathType
 requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
@@ -299,11 +307,9 @@ ensures   init ==> acc(s.Mem(ub), p) &&
 	low(s.GetNextHdr(ub)) &&
 	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
 	low(s.PathEndIdx(ub)) &&
-	// low(len(ub)) && 
-	// 	(forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
-	// 		low(i) ==> low(sl.GetByte(ub, 0, len(ub), i))) &&
 	low(s.GetPathType(ub)) &&
-	s.PathIsLow(ub)
+	s.PathIsLow(ub) &&
+	low(s.PathPoolInitializedMem(ub))
 ensures  !init ==> acc(s.NonInitMem(), p) &&
 	// TODO: could replace this by low(GetPathPool != nil)
 	low(s.PathPoolInitializedNonInitMem()) &&
@@ -325,8 +331,6 @@ requires !init ==> acc(s.NonInitMem(), p) &&
 		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool()) &&
 			low(t) ==> low(typeOf(s.GetPathPoolPathNonInit(t)))) &&
 	low(typeOf(s.GetPathPoolRaw()))
-// NOTE: if we eventually also need this for init == true, then s.IsLowDecodingLayer
-// should move into its own line
 ensures  !init ==> acc(s.NonInitMem(), p) && s.IsLowDecodingLayer(false, nil)
 decreases
 func (s *SCION) AssertIsLow(init bool, ghost ub []byte, p perm)
@@ -367,10 +371,11 @@ pred (s *SCION) HeaderMem(ubuf []byte) {
 }
 
 ghost
-requires s.Mem(ub)
+requires s.Mem(ub) && s.IsLowDecodingLayer(true, ub)
 ensures  s.NonInitMem()
 decreases
 func (s *SCION) DowngradePerm(ghost ub []byte) {
+	s.RevealIsLow(true, ub, HalfPerm)
 	unfold s.Mem(ub)
 	unfold s.HeaderMem(ub[CmnHdrLen:])
 	s.Path.DowngradePerm(ub[CmnHdrLen+s.AddrHdrLenSpecInternal() : s.HdrLen*LineLen])
@@ -433,12 +438,15 @@ func (s *SCION) ExtractAcc(ghost ub []byte) (start, end int) {
 	start = CmnHdrLen+2*addr.IABytes
 	end = CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
 	assert s.RawDstAddr === ub[start:end]
-	package acc(s, R16) --* acc(s.Mem(ub), R15) {
-		unfold acc(s.Mem(ub), R16)
-		unfold acc(s.HeaderMem(ub[CmnHdrLen:]), R16)
-		fold acc(s.HeaderMem(ub[CmnHdrLen:]), R15)
-		fold acc(s.Mem(ub), R15)
-	}
+	// cf. #946
+	// package acc(s, R16) --* acc(s.Mem(ub), R15) {
+	// 	unfold acc(s.Mem(ub), R16)
+	// 	unfold acc(s.HeaderMem(ub[CmnHdrLen:]), R16)
+	// 	fold acc(s.HeaderMem(ub[CmnHdrLen:]), R15)
+	// 	fold acc(s.Mem(ub), R15)
+	// }
+	exhale acc(s.Mem(ub), R16)
+	inhale acc(s, R16) --* acc(s.Mem(ub), R15)
 	return start, end
 }
 

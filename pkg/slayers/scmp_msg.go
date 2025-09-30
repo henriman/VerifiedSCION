@@ -146,6 +146,9 @@ func (i *SCMPExternalInterfaceDown) SerializeTo(b gopacket.SerializeBuffer, opts
 // @ requires pb != nil
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures res != nil ==> res.ErrorMem()
 // @ decreases
 func decodeSCMPExternalInterfaceDown(data []byte, pb gopacket.PacketBuilder) (res error) {
@@ -301,6 +304,9 @@ func (i *SCMPInternalConnectivityDown) SerializeTo(b gopacket.SerializeBuffer, o
 // @ requires pb != nil
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPInternalConnectivityDown(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -460,6 +466,9 @@ func (i *SCMPEcho) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.Seriali
 // @ requires pb != nil
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPEcho(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -591,6 +600,9 @@ func (i *SCMPParameterProblem) SerializeTo(b gopacket.SerializeBuffer, opts gopa
 // @ requires  pb != nil
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPParameterProblem(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -793,6 +805,9 @@ func (i *SCMPTraceroute) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.S
 // @ requires  pb != nil
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPTraceroute(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -895,6 +910,9 @@ func (i *SCMPDestinationUnreachable) SerializeTo(b gopacket.SerializeBuffer, opt
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves pb.Mem()
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
@@ -1028,6 +1046,9 @@ func (i *SCMPPacketTooBig) SerializeTo(b gopacket.SerializeBuffer, opts gopacket
 // @ requires  pb != nil
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPPacketTooBig(data []byte, pb gopacket.PacketBuilder) (err error) {
