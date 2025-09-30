@@ -87,7 +87,13 @@ type BlockMode interface {
 	// TODO[DOC]
 	// TODO: explain why this needs to be here (I mean it is used in CryptBlocks,
 	// but this might be connected to Block interface)
+	// - BlockMode contains/may contain internal state (in particular e.g. 
+	//   for CBC: last MAC to be xored to next plaintext to encrypt). Thus
+	//   we introdcue IsLow to describe this internal state. NewCipher gives
+	//   us a new BlockMode that already IsLow, and then we maintain it
+	//   if we get low plaintext
 	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	// TODO: maybe I can implement this bc. i don't think it is implemented anywhere?
 	ghost
 	requires Mem()
 	decreases
@@ -111,27 +117,22 @@ type BlockMode interface {
 	// Multiple calls to CryptBlocks behave as if the concatenation of
 	// the src buffers was passed in a single run. That is, BlockMode
 	// maintains state and does not reset at each CryptBlocks call.
-	// TODO[EPIC]
-	// TODO: This contract might be too restrictive. What do I really need to know?
-	// Do I need that dst is low, or only that its length is low?
 	requires  len(src) <= len(dst)
 	requires  acc(sl.Bytes(dst, 0, len(dst)), 1 - R10)
 	requires  dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)
 	requires  acc(sl.Bytes(src, 0, len(src)), R10)
-	requires  low(len(dst)) &&
-		forall i int :: { sl.GetByte(dst, 0, len(dst), i) } 0 <= i && i < len(dst) &&
-			low(i) ==> low(sl.GetByte(dst, 0, len(dst), i))
-	requires  low(len(src)) &&
-		forall i int :: { sl.GetByte(src, 0, len(src), i) } 0 <= i && i < len(src) &&
-			low(i) ==> low(sl.GetByte(src, 0, len(src), i))
-	preserves Mem() && IsLow()
+	preserves Mem()
 	ensures   acc(sl.Bytes(dst, 0, len(dst)), 1 - R10)
 	ensures   dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)
 	ensures   acc(sl.Bytes(src, 0, len(src)), R10)
-	ensures   low(len(dst)) &&
-		forall i int :: { sl.GetByte(dst, 0, len(dst), i) } 0 <= i && i < len(dst) &&
-			low(i) ==> low(sl.GetByte(dst, 0, len(dst), i))
 	ensures   BlockSize() == old(BlockSize())
+	ensures   len(dst) == old(len(dst))
+	ensures   old(IsLow()) && (low(len(old(src))) &&
+		forall i int :: { sl.GetByte(src, 0, len(src), i) } 0 <= i && i < len(old(src)) &&
+			low(i) ==> low(old(sl.GetByte(src, 0, len(src), i)))) ==>
+		IsLow() && 
+			(forall i int :: { sl.GetByte(dst, 0, len(dst), i) } 0 <= i && i < len(src) &&
+				low(i) ==> low(sl.GetByte(dst, 0, len(dst), i)))
 	decreases
 	CryptBlocks(dst, src []byte)
 }

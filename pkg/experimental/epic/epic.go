@@ -168,8 +168,11 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	// @ assert low(len(input)) && 
 	// @ 	forall i int :: { sl.GetByte(input, 0, len(input), i) } 0 <= i && i < len(input) &&
 	// @ 		low(i) ==> low(sl.GetByte(input, 0, len(input), i))
+	// TODO[assert]
+	// @ assert f.IsLow()
 	f.CryptBlocks(input, input)
 	// TODO[assert]
+	// @ assert f.IsLow()
 	// @ assert low(len(input)) && 
 	// @ 	forall i int :: { sl.GetByte(input, 0, len(input), i) } 0 <= i && i < len(input) &&
 	// @ 		low(i) ==> low(sl.GetByte(input, 0, len(input), i))
@@ -197,6 +200,9 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 // @ requires  acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ requires  acc(sl.Bytes(auth, 0, len(auth)), R30)
 // @ requires  acc(sl.Bytes(hvf, 0, len(hvf)), R50)
+// In router/dataplane.go, `VerifyHVF` is called with the (cached) MAC that is
+// computed in `verifyCurrentMAC` -- where it is also declassified; 
+// consequently, we may require `auth` to be low here.
 // @ requires  low(len(auth)) &&
 // @ 	forall i int :: { sl.GetByte(auth, 0, len(auth), i) } 0 <= i && i < len(auth) &&
 // @ 		low(i) ==> low(sl.GetByte(auth, 0, len(auth), i))
@@ -231,10 +237,6 @@ func VerifyHVF(auth []byte, pktID epic.PktID, s *slayers.SCION,
 		return err
 	}
 
-	// TODO[EPIC]
-	// TODO: I'm unsure whetehr it makes sense to require hvf and mac to be low
-	// here. Maybe we should declassify (but we're outside of IO spec ...).
-	// Though EPIC verification works differently anyway, so this might be OK
 	if subtle.ConstantTimeCompare(hvf, mac /*@, R51 @*/) == 0 {
 		// @ apply sl.Bytes(mac, 0, len(mac)) --* sl.Bytes(buffer, 0, len(buffer))
 		return serrors.New("epic hop validation field verification failed",
@@ -260,9 +262,8 @@ func CoreFromPktCounter(counter uint32) (uint8, uint32) {
 
 // @ requires  len(key) == 16
 // @ requires  acc(sl.Bytes(key, 0, len(key)), R50)
-// TODO[EPIC]
-// TODO: I'm unsure whether it makes sense to require the key to be low here?
-// We need it, but maybe the contract of `aes.NewCipher` needs to be changed
+// `key` is set to `auth` in `CalcMac`; consequently, we may require `key` to be 
+// low (cf. comment on `VerifyHVF`).
 // @ requires  low(len(key)) && 
 // @ 	forall i int :: { sl.GetByte(key, 0, len(key), i) } 0 <= i && i < len(key) &&
 // @ 		low(i) ==> low(sl.GetByte(key, 0, len(key), i))
@@ -289,8 +290,6 @@ func initEpicMac(key []byte) (res cipher.BlockMode, reserr error) {
 // @ requires  acc(sl.Bytes(ub, 0, len(ub)), R20)
 // @ requires  acc(s.Mem(ub), R20)
 // @ requires  low(pktID)
-// NOTE[henri]: Should I abstract this using an `IsLow` function?
-// TODO: yes
 // @ requires  low(s == nil) && 
 // @ 	low(s.GetDstAddrType(ub)) && low(s.GetSrcAddrType(ub)) && 
 // @ 	low(s.GetPayloadLen(ub)) && low(s.GetSrcIA(ub))
