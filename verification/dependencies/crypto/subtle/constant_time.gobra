@@ -11,13 +11,6 @@ package subtle
 
 import sl "github.com/scionproto/scion/verification/utils/slices"
 
-// TODO[DOC]
-// NOTE[henri]: Due to Gobra issue 965, I can't mark this functions as 
-// `hyper pure` yet (as, on import, Gobra will complain that a (non-`hyper`) 
-// `pure` function can't have `low` in its contract). I could add a 
-// corresponding TODO here to mark it as `hyper pure` once possible. 
-// Or we keep it as non-`pure`. In that case I could also introduce the body
-// and prove the contract (see comment below).
 // ConstantTimeCompare returns 1 if the two slices, x and y, have equal contents
 // and 0 otherwise. The time taken is a function of the length of the slices and
 // is independent of the contents.

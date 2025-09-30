@@ -149,6 +149,10 @@ requires acc(Bytes(s, 0, start), p)
 requires acc(Bytes(s, end, len(s)), p)
 requires low(start) && low(end)
 ensures  acc(Bytes(s, 0, len(s)), p)
+// NOTE: Although this postcondition is OK (verifying `slices.gobra` directly
+// succeeds), when verifying `pkg/experimental/epic`, Gobra will almost always
+// complain that the call to `GetByte(s, 0, start, i)` has insufficient 
+// permissions to `Bytes(s, 0, start)`
 ensures  forall i int :: { GetByte(s, 0, len(s), i) }{ GetByte(s, 0, start, i) } 0 <= i && i < start ==>
     GetByte(s, 0, len(s), i) == old(GetByte(s, 0, start, i))
 ensures  forall i int :: { GetByte(s, 0, len(s), i) } start <= i && i < end ==>

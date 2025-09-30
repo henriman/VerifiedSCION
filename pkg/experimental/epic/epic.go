@@ -159,19 +159,15 @@ func CalcMac(auth []byte, pktID epic.PktID, s *slayers.SCION,
 	// @ assert 16 <= inputLength
 	// @ assert f.BlockSize() == 16
 	// Calculate Epic MAC = first 4 bytes of the last CBC block
-	// TODO[assert]
 	// @ assert forall i int :: { sl.GetByte(buffer, 0, len(buffer), i) } 0 <= i && i < inputLength &&
 	// @ 	low(i) ==> low(sl.GetByte(buffer, 0, len(buffer), i))
 	// @ sl.SplitRange_Bytes(buffer, 0, inputLength, writePerm)
 	input := buffer[:inputLength]
-	// TODO[assert]
 	// @ assert low(len(input)) && 
 	// @ 	forall i int :: { sl.GetByte(input, 0, len(input), i) } 0 <= i && i < len(input) &&
 	// @ 		low(i) ==> low(sl.GetByte(input, 0, len(input), i))
-	// TODO[assert]
 	// @ assert f.IsLow()
 	f.CryptBlocks(input, input)
-	// TODO[assert]
 	// @ assert f.IsLow()
 	// @ assert low(len(input)) && 
 	// @ 	forall i int :: { sl.GetByte(input, 0, len(input), i) } 0 <= i && i < len(input) &&
@@ -367,6 +363,7 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
 	offset += addr.IABytes
 	// Without isolating this snippet using an `outline` block, verification
 	// takes significantly longer.
+	// NOTE: This is still somewhat unstable.
     // @ requires acc(sl.Bytes(ub, 0, len(ub)), R20)
     // @ requires low(len(ub)) && 
     // @     forall i int :: { sl.GetByte(ub, 0, len(ub), i) } 0 <= i && i < len(ub) &&
@@ -395,8 +392,6 @@ func prepareMacInput(pktID epic.PktID, s *slayers.SCION, timestamp uint32,
     // @ outline(
         // @ unfold acc(s.Mem(ub), R22)
         // @ unfold acc(s.HeaderMem(ub[slayers.CmnHdrLen:]), R22)
-
-		// TODO[assert]
 
         // @ assert srcAddr === ub[start:end]
 		// @ assert forall i int :: { sl.GetByte(ub, 0, len(ub), i) } start <= i && i < end &&
