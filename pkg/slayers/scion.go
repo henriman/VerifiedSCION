@@ -1093,7 +1093,6 @@ func (s *SCION) DecodeAddrHdr(data []byte) (res error) {
 // @ requires  acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 // @ requires  acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
 // @ requires  acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
-// TOOD: wrap in IsLow
 // @ requires low(len(s.RawSrcAddr)) && 
 // @ 	forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) &&
 // @ 		low(i) ==> low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))

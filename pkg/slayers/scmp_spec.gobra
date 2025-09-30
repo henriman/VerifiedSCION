@@ -20,7 +20,8 @@ import (
 	"github.com/google/gopacket"
 
 	. "github.com/scionproto/scion/verification/utils/definitions"
-	"github.com/scionproto/scion/verification/utils/slices"
+	sl "github.com/scionproto/scion/verification/utils/slices"
+	"github.com/scionproto/scion/pkg/addr"
 )
 
 pred (s *SCMP) NonInitMem() {
@@ -39,11 +40,76 @@ pred (s *SCMP) Mem(ub []byte) {
 	(s.scn != nil ==> s.scn.ChecksumMem())
 }
 
-requires s.Mem(ub)
+ghost
+requires  init ==> s.Mem(ub)
+requires !init ==> s.NonInitMem()
 decreases
-pure func (s *SCMP) GetTypeCode(ghost ub []byte) SCMPTypeCode {
-	return unfolding s.Mem(ub) in s.TypeCode
+pure func (s *SCMP) GetTypeCode(init bool, ghost ub []byte) SCMPTypeCode {
+	return init ? (unfolding s.Mem(ub) in s.TypeCode) : (unfolding s.NonInitMem() in s.TypeCode)
 }
+
+ghost
+requires  init ==> s.Mem(ub)
+requires !init ==> s.NonInitMem()
+decreases
+pure func (s *SCMP) GetScn(init bool, ghost ub []byte) *SCION {
+	return init ? (unfolding s.Mem(ub) in s.scn) : (unfolding s.NonInitMem() in s.scn)
+}
+
+// TODO: I could replace this by introducing getter-functions in scion.go
+// taking s.scn.ChecksumMem() and then calling this here. Not necessarily nicer, tho
+// TODO: this would only be potentially nicer if I could unfold in contract of
+// reveal/assertislow and then call that function there. try
+requires s.Mem(ub) && s.GetScn(true, ub) != nil
+decreases
+pure func (s *SCMP) GetScnRawSrcAddrLen(ghost ub []byte) int {
+	return unfolding s.Mem(ub) in 
+		unfolding s.scn.ChecksumMem() in len(s.scn.RawSrcAddr)
+}
+
+requires s.Mem(ub) && s.GetScn(true, ub) != nil
+requires 0 <= i && i < s.GetScnRawSrcAddrLen(ub)
+decreases
+pure func (s *SCMP) GetScnRawSrcAddrByte(ghost ub []byte, i int) byte {
+	return unfolding s.Mem(ub) in 
+		unfolding s.scn.ChecksumMem() in sl.GetByte(s.scn.RawSrcAddr, 0, len(s.scn.RawSrcAddr), i)
+}
+
+requires s.Mem(ub) && s.GetScn(true, ub) != nil
+decreases
+pure func (s *SCMP) GetScnRawDstAddrLen(ghost ub []byte) int {
+	return unfolding s.Mem(ub) in 
+		unfolding s.scn.ChecksumMem() in len(s.scn.RawDstAddr)
+}
+
+requires s.Mem(ub) && s.GetScn(true, ub) != nil
+requires 0 <= i && i < s.GetScnRawDstAddrLen(ub)
+decreases
+pure func (s *SCMP) GetScnRawDstAddrByte(ghost ub []byte, i int) byte {
+	return unfolding s.Mem(ub) in 
+		unfolding s.scn.ChecksumMem() in sl.GetByte(s.scn.RawDstAddr, 0, len(s.scn.RawDstAddr), i)
+}
+
+requires s.Mem(ub) && s.GetScn(true, ub) != nil
+decreases
+pure func (s *SCMP) GetScnSrcIA(ghost ub []byte) addr.IA {
+	return unfolding s.Mem(ub) in 
+		unfolding s.scn.ChecksumMem() in s.scn.SrcIA
+}
+
+requires s.Mem(ub) && s.GetScn(true, ub) != nil
+decreases
+pure func (s *SCMP) GetScnDstIA(ghost ub []byte) addr.IA {
+	return unfolding s.Mem(ub) in 
+		unfolding s.scn.ChecksumMem() in s.scn.DstIA
+}
+
+// NOTE[henri]: We need to define IsLowDecodingLayer (for gopacket.DecodingLayer)
+// /and/ IsLow (for gopacket.SerializableLayer).
+
+// TODO: might want to instead have IsLow->IsLowSerializableLayer and
+// IsLowDecodingLayer->IsLow bc. for DecodingLayer we have the more modular 
+// version (with init bool) which should be taken as the base.
 
 // TODO: add hyper or proper TODO add hyper / TODO implement
 ghost
@@ -53,12 +119,54 @@ requires !init ==> s.NonInitMem()
 decreases
 pure func (s *SCMP) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO: might want to call IsLow from here, or just implement as true?
+// TODO: add hyper
 ghost
-trusted
 requires s.Mem(ub)
 decreases
-pure func (s *SCMP) IsLow(ghost ub []byte) bool
+pure func (s *SCMP) IsLow(ghost ub []byte) bool {
+	return s.IsLowDecodingLayer(true, ub)
+}
+
+// TODO: add TODO
+ghost
+trusted
+requires p > 0
+requires  init ==> acc(s.Mem(ub), p)
+requires !init ==> acc(s.NonInitMem(), p)
+requires s.IsLowDecodingLayer(init, ub)
+ensures   init ==> acc(s.Mem(ub), p)
+ensures  !init ==> acc(s.NonInitMem(), p)
+ensures  low(s.GetTypeCode(init, ub)) && low(s.GetScn(init, ub) != nil)
+// TODO: could make these more general
+ensures  init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawSrcAddrLen(ub)) &&
+	forall i int :: { s.GetScnRawSrcAddrByte(ub, i) } 0 <= i && i < s.GetScnRawSrcAddrLen(ub) &&
+		low(i) ==> low(s.GetScnRawSrcAddrByte(ub, i))
+ensures  init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawDstAddrLen(ub)) &&
+	forall i int :: { s.GetScnRawDstAddrByte(ub, i) } 0 <= i && i < s.GetScnRawDstAddrLen(ub) &&
+		low(i) ==> low(s.GetScnRawDstAddrByte(ub, i))
+ensures  init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnSrcIA(ub)) && low(s.GetScnDstIA(ub))
+decreases
+func (s *SCMP) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+
+// TODO: add TODO
+ghost
+trusted
+requires p > 0
+requires  init ==> acc(s.Mem(ub), p)
+requires !init ==> acc(s.NonInitMem(), p)
+requires low(s.GetTypeCode(init, ub)) && low(s.GetScn(init, ub) != nil)
+requires init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawSrcAddrLen(ub)) &&
+	forall i int :: { s.GetScnRawSrcAddrByte(ub, i) } 0 <= i && i < s.GetScnRawSrcAddrLen(ub) &&
+		low(i) ==> low(s.GetScnRawSrcAddrByte(ub, i))
+requires init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawDstAddrLen(ub)) &&
+	forall i int :: { s.GetScnRawDstAddrByte(ub, i) } 0 <= i && i < s.GetScnRawDstAddrLen(ub) &&
+		low(i) ==> low(s.GetScnRawDstAddrByte(ub, i))
+requires init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnSrcIA(ub)) && low(s.GetScnDstIA(ub))
+ensures   init ==> acc(s.Mem(ub), p)
+ensures  !init ==> acc(s.NonInitMem(), p)
+ensures  s.IsLowDecodingLayer(init, ub)
+decreases
+func (s *SCMP) AssertIsLow(init bool, ghost ub []byte, p perm)
 
 ghost
 requires s.Mem(ub)

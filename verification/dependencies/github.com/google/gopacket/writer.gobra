@@ -20,11 +20,20 @@ type SerializableLayer interface {
 	decreases
 	pure IsLow(ghost ubuf []byte) bool
 
+	// TODO: reorder?
 	requires  !opts.FixLengths
 	requires  b != nil && b.Mem()
 	requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 	requires  Mem(ubuf) && IsLow(ubuf)
-	preserves sl.Bytes(ubuf, 0, len(ubuf))
+	requires  sl.Bytes(ubuf, 0, len(ubuf))
+	requires  low(len(ubuf)) && 
+		forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
+			low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
+	requires  low(opts.ComputeChecksums)
+	requires  low(len(b.UBuf())) && 
+		forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) &&
+			low(i) ==> low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+	ensures   sl.Bytes(ubuf, 0, len(ubuf))
 	ensures   err == nil ==> (Mem(ubuf) && b.Mem())
 	ensures   err == nil ==> sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 	ensures   err != nil ==> err.ErrorMem()
@@ -75,7 +84,15 @@ type SerializeBuffer interface {
 	// NOTE: I justified this by looking at the default implementation of 
 	// SerializeBuffer which doesn't take into account the internal state
 	// for success. however, we might want to
+	// TODO: might want ot put num as precondition
 	ensures   low(num) ==> low(err != nil)
+	// TODO: maybe turn into pre+post condition
+	ensures   err == nil && low(num) && (low(len(UBuf())) && 
+		forall i int :: { sl.GetByte(UBuf(), 0, len(UBuf()), i) } 0 <= i && i < len(old(UBuf())) &&
+			low(i) ==> low(old(sl.GetByte(UBuf(), 0, len(UBuf()), i)))) ==> 
+		low(len(UBuf())) &&
+			forall i int :: { sl.GetByte(UBuf(), 0, len(UBuf()), i) } num <= i && i < len(UBuf()) &&
+				low(i) ==> low(sl.GetByte(UBuf(), 0, len(UBuf()), i))
 	decreases
 	PrependBytes(num int) (res []byte, err error)
 

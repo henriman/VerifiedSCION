@@ -241,12 +241,32 @@ pure func (s *SCION) GetPathPoolRaw() path.Path {
 	return unfolding s.NonInitMem() in s.pathPoolRaw
 }
 
-
 // requires s.NonInitMem()
 // decreases
 // pure func (s *SCION) GetPathType() path.Type {
 // 	return unfolding s.NonInitMem() in s.PathType
 // }
+
+ghost
+requires !headerMem ==> s.Mem(ubuf)
+requires  headerMem ==> s.HeaderMem(ubuf)
+decreases
+pure func (s *SCION) GetSrcAddrType(ubuf []byte, headerMem bool) AddrType {
+	return !headerMem ? (
+		// NOTE: unfolding headermem should not be necessary here?
+		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.SrcAddrType) : (
+		unfolding s.HeaderMem(ubuf) in s.SrcAddrType)
+}
+
+ghost
+requires !headerMem ==> s.Mem(ubuf)
+requires  headerMem ==> s.HeaderMem(ubuf)
+decreases
+pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
+	return !headerMem ? (
+		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.DstAddrType) : (
+		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
+}
 
 // TODO: add hyper or proper TODO add hyper / TODO implement
 ghost
@@ -364,6 +384,32 @@ pred (s *SCION) ChecksumMem() {
 	acc(&s.SrcIA) && acc(&s.DstIA) &&
 	sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)) &&
 	sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr))
+}
+
+requires s.ChecksumMem()
+decreases
+pure func (s *SCION) GetRawSrcAddrLen() int {
+	return unfolding s.ChecksumMem() in len(s.RawSrcAddr)
+}
+
+requires s.ChecksumMem()
+requires 0 <= i && i < s.GetRawSrcAddrLen()
+decreases
+pure func (s *SCION) GetRawSrcAddrByte(i int) byte {
+	return unfolding s.ChecksumMem() in sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i)
+}
+
+requires s.ChecksumMem()
+decreases
+pure func (s *SCION) GetRawDstAddrLen() int {
+	return unfolding s.ChecksumMem() in len(s.RawDstAddr)
+}
+
+requires s.ChecksumMem()
+requires 0 <= i && i < s.GetRawDstAddrLen()
+decreases
+pure func (s *SCION) GetRawDstAddrByte(i int) byte {
+	return unfolding s.ChecksumMem() in sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i)
 }
 
 pred (b *BaseLayer) Mem(ghost ub []byte, ghost breakPoint int) {
@@ -942,25 +988,4 @@ decreases
 pure func (s *SCION) ValidSizeOhpUb(ub []byte) (b bool) {
 	return unfolding s.Mem(ub) in
 		s.ValidSizeOhpUbOpenInv(ub)
-}
-
-ghost
-requires !headerMem ==> s.Mem(ubuf)
-requires  headerMem ==> s.HeaderMem(ubuf)
-decreases
-pure func (s *SCION) GetSrcAddrType(ubuf []byte, headerMem bool) AddrType {
-	return !headerMem ? (
-		// NOTE: unfolding headermem should not be necessary here?
-		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.SrcAddrType) : (
-		unfolding s.HeaderMem(ubuf) in s.SrcAddrType)
-}
-
-ghost
-requires !headerMem ==> s.Mem(ubuf)
-requires  headerMem ==> s.HeaderMem(ubuf)
-decreases
-pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
-	return !headerMem ? (
-		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.DstAddrType) : (
-		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
 }

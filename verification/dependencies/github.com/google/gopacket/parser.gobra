@@ -28,8 +28,6 @@ type DecodingLayer interface {
 
 	// TODO: Add explanation
 	// TODO: add hyper (or properTODO add hyper)
-	// TODO: might want to split this up into IsLowDecodingLayer/IsLowDecodingLayerNonInit
-	// TODO: might want ghost init bool
 	ghost
 	requires  init ==> Mem(ubuf)
 	requires !init ==> NonInitMem()

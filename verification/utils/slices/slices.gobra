@@ -60,7 +60,12 @@ ghost
 requires 0 < p
 requires acc(Bytes(s, start, idx), p)
 requires acc(Bytes(s, idx,   end), p)
+requires start <= idx && idx <= end
 ensures  acc(Bytes(s, start, end), p)
+ensures  forall i int :: { GetByte(s, start, end, i) }{ GetByte(s, start, idx, i) } start <= i && i < idx ==>
+    GetByte(s, start, end, i) == old(GetByte(s, start, idx, i))
+ensures  forall i int :: { GetByte(s, start, end, i) }{ GetByte(s, idx, end, i) } idx <= i && i < end ==>
+    GetByte(s, start, end, i) == old(GetByte(s, idx, end, i))
 decreases
 func CombineAtIndex_Bytes(s []byte, start int, end int, idx int, p perm) {
 	unfold acc(Bytes(s, start, idx), p)
@@ -75,6 +80,7 @@ requires acc(Bytes(s, start, end), p)
 // the slice operation is well-formed
 requires unfolding acc(Bytes(s, start, end), p) in true
 ensures  acc(Bytes(s[start:end], 0, len(s[start:end])), p)
+// TODO: might want to replace end-start by len(s[start:end])
 ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) }{ GetByte(s, start, end, i + start) } 0 <= i && i < end-start ==>
     GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, start, end, i + start))
 // NOTE: Might be useful to also have this with `+` in `GetByte(s[start:end], ...)`
