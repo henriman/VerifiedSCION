@@ -20,11 +20,17 @@ import (
 type Addr interface {
 	pred Mem()
 
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	ghost
+	requires Mem()
+	decreases
+	pure IsLow() bool
+
 	requires acc(Mem(), 1/1000)
 	ensures acc(Mem(), 1/1000)
 	Network() string
 
-	requires acc(Mem(), 1/1000)
+	requires acc(Mem(), 1/1000) && IsLow()
 	ensures acc(Mem(), 1/1000)
 	String() string
 }

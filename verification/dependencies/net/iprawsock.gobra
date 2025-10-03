@@ -21,6 +21,13 @@ pred (a *IPAddr) Mem() {
 	acc(a) && forall i int :: { &a.IP[i] } 0 <= i && i < len(a.IP) ==> acc(&a.IP[i])
 }
 
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires a.Mem()
+decreases
+pure func (a *IPAddr) IsLow() bool
+
 ghost
 requires a.Mem()
 decreases

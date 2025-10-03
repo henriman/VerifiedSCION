@@ -734,6 +734,7 @@ func (s *SCION) SrcAddr() (res net.Addr, err error) {
 // @ requires  wildcard ==> acc(dst.Mem(), _)
 // @ requires  !wildcard ==> acc(dst.Mem(), R18)
 // @ requires  low(wildcard) && low(isIP(dst)) && low(typeOf(dst))
+// TODO: Now that we introduce (*net.IPAddr).IsLow anyway, could wrap this in there
 // @ requires  typeOf(dst) == type[*net.IPAddr] ==> low(dst.(*net.IPAddr).GetIPLen()) && 
 // @ 	forall i int :: { dst.(*net.IPAddr).GetIPByte(i) } 0 <= i && i < dst.(*net.IPAddr).GetIPLen() &&
 // @ 		low(i) ==> low(dst.(*net.IPAddr).GetIPByte(i))
