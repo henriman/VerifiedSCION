@@ -34,6 +34,7 @@ import (
 	"github.com/scionproto/scion/private/underlay/sockctrl"
 	//@ . "github.com/scionproto/scion/verification/utils/definitions"
 	//@ sl "github.com/scionproto/scion/verification/utils/slices"
+	//@ "github.com/scionproto/scion/verification/utils/sif"
 )
 
 // Messages is a list of ipX.Messages. It is necessary to hide the type alias
@@ -142,6 +143,7 @@ func New(listen, remote *net.UDPAddr, cfg *Config) (res Conn, e error) {
 	// @ unfold acc(sl.Bytes(a.IP, 0, len(a.IP)), R15)
 	// @ assert forall i int :: { &a.IP[i] } 0 <= i && i < len(a.IP) ==>
 	// @ 	a.GetIPByte(i) == a.IP[i]
+	// @ assert reveal sif.IsLowByteSlice(a.IP)
 	if a.IP.To4( /*@ false @*/ ) != nil {
 		return newConnUDPIPv4(listen, remote, cfg)
 	}

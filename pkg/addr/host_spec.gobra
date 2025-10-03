@@ -21,6 +21,7 @@ import (
 
 	"github.com/scionproto/scion/verification/utils/errors"
 	"github.com/scionproto/scion/verification/utils/slices"
+	"github.com/scionproto/scion/verification/utils/sif"
 )
 
 pred (h HostNone) Mem() { len(h) == HostLenNone }
@@ -61,6 +62,10 @@ trusted
 requires p > 0
 requires acc(h.Mem(), p) && h.IsLow()
 ensures  acc(h.Mem(), p)
+// NOTE[henri]: Should we introduce a hyper function for this specific case?
+// Or leave as is? Alternatively, once Gobra issue #955 is resolved, we could
+// implement this postcondition as:
+// ensures  unfolding acc(h.Mem(), p) in sif.IsLowBytes(h, 0, len(h))
 ensures  low(len(h)) && forall i int :: { h.GetByte(i) } 0 <= i && i < len(h) &&
 	low(i) ==> low(h.GetByte(i))
 decreases

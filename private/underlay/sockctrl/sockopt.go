@@ -25,7 +25,10 @@ import (
 // overspecify this function to recover low(inputs) ==> low(outputs).
 // @ trusted
 // @ requires  low(level) && low(opt)
-// @ preserves c.Mem() && c.IsLow()
+// NOTE[henri]: Due to Gobra issue #955, we have to put the call to `IsLow`
+// in its own `preserves`.
+// @ preserves c.Mem()
+// @ preserves c.IsLow()
 // @ ensures   e != nil ==> e.ErrorMem()
 // @ ensures   low(r) && low(e != nil)
 // @ decreases _

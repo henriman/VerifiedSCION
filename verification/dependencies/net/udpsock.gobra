@@ -40,6 +40,7 @@ pure func (a *UDPAddr) GetIPByte(i int) byte {
 }
 
 // TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+// TODO: Once Gobra issue #955 and/or #963 are resolved, implement `IsLow`.
 // - Here, `IsLow` will need to cover all fields (of `UDPAddr`), since we use 
 //   this information in `DialUDP` and `ListenUDP` to imply that all fields of 
 //   the resulting `UDPConn` object are low. 
@@ -56,6 +57,7 @@ trusted
 requires acc(a.Mem(), R15) && a.IsLow()
 ensures  acc(a.Mem(), R15)
 ensures  low(len(a.GetIP()))
+// TODO: Once Gobra issue #963 is resolved, introduce `IsLowIP` function.
 ensures  forall i int :: { a.GetIPByte(i) } 0 <= i && i < len(a.GetIP()) ==>
 	low(i) ==> low(a.GetIPByte(i))
 decreases
@@ -90,10 +92,14 @@ pred (u *UDPConn) Mem() {
 	acc(u)
 }
 
-// TODO: Once Gobra issue #846 is resolved, mark as `hyper`.
+// As we don't model the fields of `UDPConn`, `IsLow` is kept abstract.
 // We assume that `IsLow` covers all fields of `UDPConn`, since we use this
 // information in `private/underlay/sockctrl/sockopt.go`, `GetsocketoptInt`
+// The only way to create an instance of `*UDPConn` is by calling `ListenUDP`
+// or `DialUDP`. We require their input to be low; in return, we ensure that
+// `IsLow` holds for the returned instance.
 ghost
+hyper
 requires c.Mem()
 decreases
 pure func (c *UDPConn) IsLow() bool
@@ -156,30 +162,46 @@ func (c *UDPConn) Close() (err error)
 
 requires acc(laddr.Mem(), _)
 requires low(network) && laddr.IsLow()
-ensures  err == nil ==> conn.Mem() && conn.IsLow()
-ensures  err != nil ==> err.ErrorMem()
+// NOTE[henri]: While Gobra issue #955, persists, `low(err != nil)` needs to
+// come before the other sensitivity annotations.
 ensures  low(err != nil)
+// NOTE[henri]: Due to Gobra issue #955, we have to put the call to `IsLow`
+// in its own `ensures`.
+ensures  err == nil ==> conn.Mem()
+ensures  err == nil ==> conn.IsLow()
+ensures  err != nil ==> err.ErrorMem()
 decreases _
 func ListenUDP(network string, laddr *UDPAddr) (conn *UDPConn, err error)
 
 requires acc(laddr.Mem(), _)
 requires acc(raddr.Mem(), _)
 requires low(network) && laddr.IsLow() && raddr.IsLow()
-ensures  err == nil ==> conn.Mem() && conn.IsLow()
-ensures  err != nil ==> err.ErrorMem()
+// NOTE[henri]: While Gobra issue #955, persists, `low(err != nil)` needs to
+// come before the other sensitivity annotations.
 ensures  low(err != nil)
+// NOTE[henri]: Due to Gobra issue #955, we have to put the call to `IsLow`
+// in its own `ensures`.
+ensures  err == nil ==> conn.Mem()
+ensures  err == nil ==> conn.IsLow()
+ensures  err != nil ==> err.ErrorMem()
 decreases _
 func DialUDP(network string, laddr, raddr *UDPAddr) (conn *UDPConn, err error)
 
 requires  low(bytes)
-preserves c.Mem() && c.IsLow()
+// NOTE[henri]: Due to Gobra issue #955, we have to put the call to `IsLow`
+// in its own `preserves`.
+preserves c.Mem()
+preserves c.IsLow()
 ensures   err != nil ==> err.ErrorMem()
 ensures   low(err != nil)
 decreases _
 func (c *UDPConn) SetWriteBuffer(bytes int) (err error)
 
 requires  low(bytes)
-preserves c.Mem() && c.IsLow()
+// NOTE[henri]: Due to Gobra issue #955, we have to put the call to `IsLow`
+// in its own `preserves`.
+preserves c.Mem()
+preserves c.IsLow()
 ensures   low(err != nil)
 ensures   err != nil ==> err.ErrorMem()
 decreases _

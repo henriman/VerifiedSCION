@@ -1,0 +1,72 @@
+// +gobra
+
+package sif
+
+import sl "github.com/scionproto/scion/verification/utils/slices"
+
+ghost
+opaque
+hyper
+requires acc(s)
+decreases
+pure func IsLowByteSlice(s []byte) bool {
+    return low(len(s)) && forall i int :: { &s[i] } 0 <= i && i < len(s) &&
+        low(i) ==> low(s[i])
+}
+
+ghost
+opaque
+hyper
+requires acc(s)
+decreases
+pure func IsLowStringSlice(s []string) bool {
+    return low(len(s)) && forall i int :: { &s[i] } 0 <= i && i < len(s) &&
+        low(i) ==> low(s[i])
+}
+
+ghost
+opaque
+hyper
+requires sl.Bytes(s, start, end)
+decreases
+pure func IsLowBytes(s []byte, start, end int) bool {
+    return low(len(s)) &&
+        // TODO: Once Gobra issue #964 is resolved, specify trigger.
+        forall i int :: start <= i && i < end &&
+            low(i) ==> low(sl.GetByte(s, start, end, i))
+}
+
+// NOTE[henri]: Due to Gobra issue #955, we have to split the pre- and 
+// postcondition across two `requires`/`ensures` (resp.).
+requires acc(s)
+requires IsLowByteSlice(s)
+ensures  sl.Bytes(s, 0, len(s))
+ensures  IsLowBytes(s, 0, len(s))
+decreases
+func FoldLowByteSlice(s []byte) {
+    reveal IsLowByteSlice(s)
+    fold acc(sl.Bytes(s, 0, len(s)), 1/2)
+    assert forall i int :: { &s[i] } 0 <= i && i < len(s) ==>
+        sl.GetByte(s, 0, len(s), i) == s[i]
+    fold acc(sl.Bytes(s, 0, len(s)), 1/2)
+    assert reveal IsLowBytes(s, 0, len(s))
+}
+
+// NOTE[henri]: Due to Gobra issue #955, we have to split the pre- and 
+// postcondition across two lines (resp.).
+requires p > 0 && acc(sl.Bytes(s, 0, len(s)), p)
+requires IsLowBytes(s, 0, len(s))
+ensures  acc(s, p)
+ensures  IsLowByteSlice(s)
+decreases
+func UnfoldLowBytes(s []byte, ghost p perm) {
+    reveal IsLowBytes(s, 0, len(s))
+    unfold acc(sl.Bytes(s, 0, len(s)), p/2)
+    // TODO: Once Gobra issue #964 is resolved, specify trigger.
+    assert forall i int :: 0 <= i && i < len(s) &&
+        low(i) ==> low(sl.GetByte(s, 0, len(s), i))
+    assert forall i int :: { &s[i] } 0 <= i && i < len(s) ==>
+        sl.GetByte(s, 0, len(s), i) == s[i]
+    unfold acc(sl.Bytes(s, 0, len(s)), p/2)
+    assert reveal IsLowByteSlice(s)
+}

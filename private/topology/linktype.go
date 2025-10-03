@@ -66,7 +66,8 @@ func (l LinkType) String() string {
 func LinkTypeFromString(s string) (res LinkType) {
 	var l /*@@@*/ LinkType
 	tmp := []byte(s)
-	//@ fold sl.Bytes(tmp, 0, len(tmp))
+	//@ assert reveal sif.IsLowByteSlice(tmp)
+	//@ sif.FoldLowByteSlice(tmp)
 	if err := l.UnmarshalText(tmp); err != nil {
 		return Unset
 	}
@@ -101,21 +102,17 @@ func (l LinkType) MarshalText() (res []byte, err error) {
 	}
 }
 
-// @ requires  acc(sl.Bytes(data, 0, len(data)), R15)
-// @ requires  low(len(data)) && 
-// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) && low(i) ==>
-// @ 		low(sl.GetByte(data, 0, len(data), i))
+// @ requires acc(sl.Bytes(data, 0, len(data)), R15)
+// @ requires sif.IsLowBytes(data, 0, len(data))
 // @ preserves acc(l)
 // @ ensures   acc(sl.Bytes(data, 0, len(data)), R15)
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ ensures   low(err != nil)
 // @ decreases
 func (l *LinkType) UnmarshalText(data []byte) (err error) {
-	//@ unfold acc(sl.Bytes(data, 0, len(data)), R16)
-	//@ ghost defer fold acc(sl.Bytes(data, 0, len(data)), R16)
-	//@ assert forall i int :: { &data[i] } 0 <= i && i < len(data) ==>
-	//@ 	sl.GetByte(data, 0, len(data), i) == data[i]
-	//@ sif.LowSliceImpliesLowString(data, R16)
+	//@ sif.UnfoldLowBytes(data, R15)
+	//@ ghost defer fold acc(sl.Bytes(data, 0, len(data)), R15)
+	//@ sif.LowSliceImpliesLowString(data, R15)
 	switch strings.ToLower(string(data)) {
 	case "core":
 		*l = Core

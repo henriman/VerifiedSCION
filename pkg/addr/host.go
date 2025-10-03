@@ -36,6 +36,7 @@ import (
 	"github.com/scionproto/scion/pkg/private/serrors"
 	//@ . "github.com/scionproto/scion/verification/utils/definitions"
 	//@ sl "github.com/scionproto/scion/verification/utils/slices"
+	//@ "github.com/scionproto/scion/verification/utils/sif"
 )
 
 type HostAddrType uint8
@@ -224,6 +225,7 @@ func (h HostIPv4) IP() (res net.IP) {
 	//@ 	h.GetByte(i) == h[i]
 	//@ unfold acc(h.Mem(), R13/2)
 	//@ unfold acc(sl.Bytes(h, 0, len(h)), R13/2)
+	//@ assert reveal sif.IsLowByteSlice(h)
 	return net.IP(h).To4( /*@ false @*/ )
 }
 
@@ -507,8 +509,7 @@ func HostFromRaw(b []byte, htype HostAddrType) (res HostAddr, err error) {
 
 // @ requires acc(ip)
 // @ requires len(ip) == HostLenIPv4 || len(ip) == HostLenIPv6
-// @ requires low(len(ip)) && forall i int :: { &ip[i] } 0 <= i && i < len(ip) &&
-// @ 	low(i) ==> low(ip[i])
+// @ requires sif.IsLowByteSlice(ip)
 // @ ensures  res.Mem()
 // @ decreases
 func HostFromIP(ip net.IP) (res HostAddr) {

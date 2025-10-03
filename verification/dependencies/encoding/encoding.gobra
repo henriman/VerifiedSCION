@@ -16,12 +16,13 @@
 
 package encoding
 
+import "github.com/scionproto/scion/verification/utils/sif"
+
 type TextUnmarshaler interface {
 	pred Mem()
 	
 	requires  acc(text)
-	requires  low(len(text)) && forall i int :: { text[i] } 0 <= i && i < len(text) &&
-		low(i) ==> low(text[i])
+	requires  sif.IsLowByteSlice(text)
 	preserves Mem()
 	ensures   acc(text)
 	decreases
