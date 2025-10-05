@@ -116,7 +116,8 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // @ requires  b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // TODO[henri]: probably want to turn this into IsLow. Though I have no object for
 // which to implement RevealIsLow ... could make this part of interface
-// TODO[henri]: IsLowSlice (whole method probably)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
 // @ requires  low(len(b.UBuf())) && 
 // @ 	forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) &&
 // @ 		low(i) ==> low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
@@ -226,7 +227,7 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 // @ requires  s.NonInitMem() && s.IsLowDecodingLayer(false, nil)
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -313,7 +314,7 @@ func (s *SCMP) SetNetworkLayerForChecksum(scn *SCION) {
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
-// TODO[henri]: IsLowSLice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))

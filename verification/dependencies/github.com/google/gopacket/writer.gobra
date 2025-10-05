@@ -27,7 +27,7 @@ type SerializableLayer interface {
 	requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 	requires  Mem(ubuf) && IsLow(ubuf)
 	requires  sl.Bytes(ubuf, 0, len(ubuf))
-	// TODO[henri]: IsLowSlice
+	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 	requires  low(len(ubuf)) && 
 		forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
 			low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
@@ -90,7 +90,8 @@ type SerializeBuffer interface {
 	// TODO[henri]: I think I would want to? at least add comment here
 	ensures   low(num) ==> low(err != nil)
 	// TODO[henri]: maybe turn into pre+post condition (then num needs to be there too)
-	// TODO[henri]: IsLowSlice (or IsLow for UBuf?)
+	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+	// (or using IsLow for UBuf?)
 	ensures   err == nil && low(num) && (low(len(UBuf())) && 
 		forall i int :: { sl.GetByte(UBuf(), 0, len(UBuf()), i) } 0 <= i && i < len(old(UBuf())) &&
 			low(i) ==> low(old(sl.GetByte(UBuf(), 0, len(UBuf()), i)))) ==> 

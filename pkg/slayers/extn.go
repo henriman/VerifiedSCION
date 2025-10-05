@@ -107,7 +107,7 @@ func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
 
 // @ requires  1 <= len(data)
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R42)
-// TODO[henri]: Add TODO wrap in IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -264,7 +264,7 @@ func (e *extnBase) serializeToWithTLVOptions(b gopacket.SerializeBuffer,
 
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R41)
-// TODO[henri]: add TODO for wrapping in IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -390,7 +390,8 @@ func (h *HopByHopExtn) SerializeTo(b gopacket.SerializeBuffer,
 // @ requires  h.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
-// TODO[henri]: TODO IsLowSlice (whole method)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -472,7 +473,7 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 // @ requires  p != nil
 // @ requires  sl.Bytes(data, 0, len(data))
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -558,7 +559,8 @@ func (e *EndToEndExtn) LayerPayload( /*@ ghost ub []byte @*/ ) (res []byte /*@ ,
 // @ requires  e.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
-// TODO[henri]: IsLowSlice (whole method)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -640,7 +642,7 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 // @ requires  p != nil
 // @ requires  sl.Bytes(data, 0, len(data))
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -714,7 +716,7 @@ type HopByHopExtnSkipper struct {
 // @ requires  s.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -776,7 +778,7 @@ type EndToEndExtnSkipper struct {
 // @ requires  s.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))

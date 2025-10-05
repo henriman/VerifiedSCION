@@ -216,7 +216,7 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 // @ requires  acc(s.Mem(ubuf), R0)
 // @ requires  sl.Bytes(ubuf, 0, len(ubuf))
 // @ requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(ubuf)) && 
 // @ 	forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
 // @ 		low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
@@ -343,7 +343,8 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 // before the SCION layer is discarded.
 // @ requires  s.NonInitMem()
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
-// TODO[henri]: IsLowSlice (whole method)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -580,7 +581,7 @@ func (s *SCION) getPath(pathType path.Type) (res path.Path, err error) {
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -854,7 +855,8 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 // @ requires  low(typeOf(hostAddr)) && low(wildcard)
 // TODO[henri]: Now that we introduce (*net.IPAddr).IsLow anyway, could wrap this in there
 // - maybe also parts of what's above
-// TODO[henri]: IsLowSlice (in whole method; explain problems with this)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in method body; explain difficulties with this)
 // @ requires  typeOf(hostAddr) == type[*net.IPAddr] ==> low(hostAddr.(*net.IPAddr).GetIPLen()) && 
 // @ 	forall i int :: { hostAddr.(*net.IPAddr).GetIPByte(i) } 0 <= i && i < hostAddr.(*net.IPAddr).GetIPLen() &&
 // @ 		low(i) ==> low(hostAddr.(*net.IPAddr).GetIPByte(i))
@@ -1092,7 +1094,7 @@ func (s *SCION) DecodeAddrHdr(data []byte) (res error) {
 // @ requires  acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 // @ requires  acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
 // @ requires  acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires low(len(s.RawSrcAddr)) && 
 // @ 	forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) &&
 // @ 		low(i) ==> low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))
@@ -1133,7 +1135,8 @@ func (s *SCION) computeChecksum(upperLayer []byte, protocol uint8) (res uint16, 
 // @ requires acc(&s.SrcIA, R20) && acc(&s.DstIA, R20)
 // @ requires acc(sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)), R20)
 // @ requires acc(sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr)), R20)
-// TODO[henri]: IsLowSlice (whole method)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
 // @ requires low(len(s.RawSrcAddr)) && 
 // @ 	forall i int :: { sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i) } 0 <= i && i < len(s.RawSrcAddr) &&
 // @ 		low(i) ==> low(sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i))
@@ -1257,7 +1260,7 @@ func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, er
 }
 
 // @ requires acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R20)
-// TODO[henri]: IsLowSlice
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 // @ requires low(len(upperLayer)) && 
 // @ 	forall i int :: { sl.GetByte(upperLayer, 0, len(upperLayer), i) } 0 <= i && i < len(upperLayer) &&
 // @ 		low(i) ==> low(sl.GetByte(upperLayer, 0, len(upperLayer), i))

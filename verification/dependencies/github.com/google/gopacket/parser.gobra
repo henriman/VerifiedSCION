@@ -37,7 +37,7 @@ type DecodingLayer interface {
 	requires  NonInitMem() && IsLowDecodingLayer(false, nil)
 	requires  df != nil
 	requires  acc(sl.Bytes(data, 0, len(data)), R40)
-	// TODO[henri]: IsLowSLice
+	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 	requires  low(len(data)) && 
 		forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 			low(i) ==> low(sl.GetByte(data, 0, len(data), i))
