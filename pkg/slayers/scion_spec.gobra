@@ -272,7 +272,7 @@ pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
 		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
 }
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
 ghost
 trusted
 requires  init ==> s.Mem(ub)
@@ -287,13 +287,16 @@ pure func (s *SCION) IsLow(ghost ub []byte) bool {
 	return s.IsLowDecodingLayer(true, ub)
 }
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// "Reveal the body" of `s.IsLowDecodingLayer` (necessary bc. we can't implement 
+// `s.IsLowDecodingLayer` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
 // TODO: it would be nicer in a way if we named IsLowDecodingLayer IsLow and
 // IsLow IsLowSerializable..., bc. then here we could require IsLow which
 // would be more consistent
 // TODO[henri]: 
 // - I'm not sure that would work as well for other packages having both
 //   an IsLow and an IsLowDecodingLayer (check, though!)
+//   - somewhere else I have similar comment
 // - might want to rename this to RevealIsLowDecodingLayer (or not)
 ghost
 trusted
@@ -319,7 +322,9 @@ ensures  !init ==> acc(s.NonInitMem(), p) &&
 decreases
 func (s *SCION) RevealIsLow(init bool, ghost ub []byte, p perm)
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// Assert `s.IsLowDecodingLayer` (necessary bc. we can't implement 
+// `s.IsLowDecodingLayer` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0

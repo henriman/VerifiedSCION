@@ -57,7 +57,7 @@ pure func (h *HopByHopExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding h.extnBase.Mem(ub) in h.NextHdr
 }
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
 ghost
 trusted
 requires  init ==> h.Mem(ub)
@@ -65,10 +65,9 @@ requires !init ==> h.NonInitMem()
 decreases
 pure func (h *HopByHopExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO[henri]: add proper TODO to implement
-// NOTE: (for this and following RevealIsLowDecodingLayer) as we only call revealislow with
-// init == true, we don't specify anything for init == false
-// TODO[henri]: Might want to just call this RevealIsLow?
+// "Reveal the body" of `h.IsLowDecodingLayer` (necessary bc. we can't implement 
+// `h.IsLowDecodingLayer` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
@@ -117,7 +116,7 @@ pure func (h *HopByHopExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding h.extnBase.Mem(ub) in h.NextHdr
 }
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
 ghost
 trusted
 requires  init ==> h.Mem(ub)
@@ -125,7 +124,9 @@ requires !init ==> h.NonInitMem()
 decreases
 pure func (h *HopByHopExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO[henri]: add proper TODO to implement
+// "Reveal the body" of `h.IsLowDecodingLayer` (necessary bc. we can't implement 
+// `h.IsLowDecodingLayer` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
@@ -196,7 +197,7 @@ pure func (e *EndToEndExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding e.extnBase.Mem(ub) in e.NextHdr
 }
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
 ghost
 trusted
 requires  init ==> e.Mem(ub)
@@ -204,7 +205,9 @@ requires !init ==> e.NonInitMem()
 decreases
 pure func (e *EndToEndExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO[henri]: add proper TODO to implement
+// "Reveal the body" of `e.IsLowDecodingLayer` (necessary bc. we can't implement 
+// `e.IsLowDecodingLayer` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
@@ -255,7 +258,7 @@ pure func (e *EndToEndExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding e.extnBase.Mem(ub) in e.NextHdr
 }
 
-// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
 ghost
 trusted
 requires  init ==> e.Mem(ub)
@@ -263,7 +266,9 @@ requires !init ==> e.NonInitMem()
 decreases
 pure func (e *EndToEndExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO[henri]: add proper TODO to implement
+// "Reveal the body" of `e.IsLowDecodingLayer` (necessary bc. we can't implement 
+// `e.IsLowDecodingLayer` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0

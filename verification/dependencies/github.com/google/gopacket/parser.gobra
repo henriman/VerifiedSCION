@@ -26,8 +26,7 @@ type DecodingLayer interface {
 	pred NonInitMem()
 	pred Mem(ubuf []byte)
 
-	// TODO[henri]: add TODO for adding hyper
-	// TODO[henri]: add docstring explaining (maybe)
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
 	ghost
 	requires  init ==> Mem(ubuf)
 	requires !init ==> NonInitMem()

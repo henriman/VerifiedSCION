@@ -15,7 +15,7 @@ import "verification/utils/seqs"
 type SerializableLayer interface {
 	pred Mem(ubuf []byte)
 
-	// TODO[henri]: add TODO add hyper
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
 	ghost
 	requires Mem(ubuf)
 	decreases
