@@ -80,11 +80,8 @@ requires acc(Bytes(s, start, end), p)
 // the slice operation is well-formed
 requires unfolding acc(Bytes(s, start, end), p) in true
 ensures  acc(Bytes(s[start:end], 0, len(s[start:end])), p)
-// TODO[henri]: might want to replace end-start by len(s[start:end])
-// - though need ot be careful as then first trigger would be a valid trigger
-//   and maybe worse than automatically chosen triggers
-ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) }{ GetByte(s, start, end, i + start) } 0 <= i && i < end-start ==>
-    GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, start, end, i + start))
+ensures  forall i int :: { GetByte(s[start:end], 0, len(s[start:end]), i) }{ GetByte(s, start, end, i + start) } 0 <= i && i < end-start ==>
+    GetByte(s[start:end], 0, len(s[start:end]), i) == old(GetByte(s, start, end, i + start))
 decreases
 func Reslice_Bytes(s []byte, start int, end int, p perm) {
 	unfold acc(Bytes(s, start, end), p)
@@ -129,8 +126,8 @@ ensures  acc(Bytes(s, 0, start), p)
 ensures  acc(Bytes(s, end, len(s)), p)
 ensures  forall i int :: { GetByte(s, 0, start, i) }{ GetByte(s, 0, len(s), i) } 0 <= i && i < start ==>
     GetByte(s, 0, start, i) == old(GetByte(s, 0, len(s), i))
-ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) } 0 <= i && i < end-start ==>
-    GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, 0, len(s), i+start))
+ensures  forall i int :: { GetByte(s[start:end], 0, len(s[start:end]), i) } 0 <= i && i < end-start ==>
+    GetByte(s[start:end], 0, len(s[start:end]), i) == old(GetByte(s, 0, len(s), i+start))
 decreases
 func SplitRange_Bytes(s []byte, start int, end int, p perm) {
 	SplitByIndex_Bytes(s, 0, len(s), start, p)
