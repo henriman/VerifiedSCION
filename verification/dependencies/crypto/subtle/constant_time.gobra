@@ -14,9 +14,51 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 // ConstantTimeCompare returns 1 if the two slices, x and y, have equal contents
 // and 0 otherwise. The time taken is a function of the length of the slices and
 // is independent of the contents.
-trusted
-requires sl.Bytes(x, 0, len(x))
-requires sl.Bytes(y, 0, len(y))
+requires p > 0
+requires acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
+requires low(len(x)) && 
+    forall i int :: { sl.GetByte(x, 0, len(x), i) } 0 <= i && i < len(x) &&
+        low(i) ==> low(sl.GetByte(x, 0, len(x), i))
+requires low(len(y)) && 
+    forall i int :: { sl.GetByte(y, 0, len(y), i) } 0 <= i && i < len(y) &&
+        low(i) ==> low(sl.GetByte(y, 0, len(y), i))
+ensures  acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
 ensures  len(x) != len(y) ==> res == 0
+ensures  low(res)
 decreases
-pure func ConstantTimeCompare(x, y []byte) (res int)
+func ConstantTimeCompare(x, y []byte, ghost p perm) (res int) {
+    if len(x) != len(y) {
+		return 0
+	}
+
+	var v byte
+
+    unfold acc(sl.Bytes(x, 0, len(x)), p/2)
+    unfold acc(sl.Bytes(y, 0, len(y)), p/2)
+    defer fold acc(sl.Bytes(x, 0, len(x)), p/2)
+    defer fold acc(sl.Bytes(y, 0, len(y)), p/2)
+
+    assert forall i int :: { sl.GetByte(x, 0, len(x), i) }{ x[i] } 0 <= i && i < len(x) ==>
+        sl.GetByte(x, 0, len(x), i) == x[i]
+    assert forall i int :: { sl.GetByte(y, 0, len(y), i) }{ y[i] } 0 <= i && i < len(y) ==>
+        sl.GetByte(y, 0, len(y), i) == y[i]
+
+    invariant forall i int :: { &x[i] } 0 <= i && i < len(x) ==> acc(&x[i], p/2)
+    invariant forall i int :: { &y[i] } 0 <= i && i < len(y) ==> acc(&y[i], p/2)
+    invariant forall i int :: { &x[i] } 0 <= i && i < len(x) && low(i) ==> low(x[i])
+    invariant forall i int :: { &y[i] } 0 <= i && i < len(y) && low(i) ==> low(y[i])
+    invariant low(v)
+    invariant 0 <= i
+    invariant low(i)
+    decreases len(x) - i
+	for i := 0; i < len(x); i++ {
+		v |= x[i] ^ y[i]
+	}
+
+	return ConstantTimeByteEq(v, 0)
+}
+
+decreases
+pure func ConstantTimeByteEq(x, y uint8) int {
+	return int((uint32(x^y) - 1) >> 31)
+}

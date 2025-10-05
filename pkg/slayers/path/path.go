@@ -84,7 +84,7 @@ type Path interface {
 	// SerializeTo serializes the path into the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface that modify the underlying
 	// structure when serializing (e.g. scion.Raw)
-	//@ requires  low(len(b))
+	//@ requires  low(len(b)) && low(len(ub))
 	//@ requires  acc(Mem(ub), R1)
 	//@ requires  IsLow(ub)
 	//@ preserves sl.Bytes(ub, 0, len(ub))
@@ -114,6 +114,7 @@ type Path interface {
 	// Reverse reverses a path such that it can be used in the reversed direction.
 	// XXX(shitz): This method should possibly be moved to a higher-level path manipulation package.
 	//@ requires  Mem(ub) && IsLow(ub)
+	//@ requires  low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)

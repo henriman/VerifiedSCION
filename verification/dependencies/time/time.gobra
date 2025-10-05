@@ -15,9 +15,16 @@ type Time struct {
     privateFields def.PrivateField
 }
 
-// After reports whether the time instant t is after u.
+ghost
+hyper
 decreases
-pure func (t Time) After(u Time) bool
+pure func (t Time) IsLow() bool
+
+// After reports whether the time instant t is after u.
+// TODO: Once Gobra issue #965 is resolved, mark this as (`hyper`) `pure` again.
+ensures t.IsLow() && u.IsLow() ==> low(res)
+decreases
+func (t Time) After(u Time) (res bool)
 
 // Before reports whether the time instant t is before u.
 decreases
@@ -188,12 +195,14 @@ decreases
 pure func (d Duration) Round(m Duration) Duration
 
 // Add returns the time t+d.
+ensures t.IsLow() && low(d) ==> res.IsLow()
 decreases
-func (t Time) Add(d Duration) Time
+func (t Time) Add(d Duration) (res Time)
 
 // Sub returns the duration t-u.
+ensures t.IsLow() && u.IsLow() ==> low(res)
 decreases
-func (t Time) Sub(u Time) Duration
+func (t Time) Sub(u Time) (res Duration)
 
 // Since returns the time elapsed since t.
 // It is shorthand for time.Now().Sub(t).

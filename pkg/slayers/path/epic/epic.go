@@ -78,7 +78,7 @@ type Path struct {
 
 // SerializeTo serializes the Path into buffer b. On failure, an error is returned, otherwise
 // SerializeTo will return nil.
-// @ requires  low(len(b))
+// @ requires  low(len(b)) && low(len(ubuf))
 // @ requires  acc(p.Mem(ubuf), R1)
 // @ requires  p.IsLow(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
@@ -184,12 +184,13 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 
 // Reverse reverses the EPIC path. In particular, this means that the SCION path type subheader
 // is reversed.
-// @ requires p.Mem(ubuf)
+// @ requires  p.Mem(ubuf)
+// @ requires  low(len(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
-// @ ensures  r == nil ==> ret != nil
-// @ ensures  r == nil ==> ret.Mem(ubuf)
-// @ ensures  r == nil ==> ret != nil
-// @ ensures  r != nil ==> r.ErrorMem()
+// @ ensures   r == nil ==> ret != nil
+// @ ensures   r == nil ==> ret.Mem(ubuf)
+// @ ensures   r == nil ==> ret != nil
+// @ ensures   r != nil ==> r.ErrorMem()
 // @ decreases
 func (p *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (ret path.Path, r error) {
 	//@ unfold p.Mem(ubuf)
@@ -261,6 +262,9 @@ func (i *PktID) DecodeFromBytes(raw []byte) {
 // @ requires  len(b) >= PktIDLen
 // @ preserves acc(i, R1)
 // @ preserves sl.Bytes(b, 0, len(b))
+// @ ensures   low(*i) ==>
+// @ 	forall i int :: { sl.GetByte(b, 0, len(b), i) } 0 <= i && i < PktIDLen &&
+// @ 		low(i) ==> low(sl.GetByte(b, 0, len(b), i))
 // @ decreases
 func (i *PktID) SerializeTo(b []byte) {
 	//@ unfold sl.Bytes(b, 0, len(b))

@@ -20,10 +20,14 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 // NewCBCEncrypter returns a BlockMode which encrypts in cipher block chaining
 // mode, using the given Block. The length of iv must be the same as the
 // Block's block size.
-requires  b != nil && b.Mem()
-requires  len(iv) == b.BlockSize()
-preserves acc(sl.Bytes(iv, 0, len(iv)), _)
-ensures   result != nil && result.Mem()
-ensures   result.BlockSize() == old(b.BlockSize())
+requires b != nil && b.Mem()
+requires acc(sl.Bytes(iv, 0, len(iv)), _)
+requires len(iv) == b.BlockSize()
+requires b.IsLow() && low(len(iv)) &&
+    forall i int :: { sl.GetByte(iv, 0, len(iv), i) } 0 <= i && i < len(iv) &&
+        low(i) ==> low(sl.GetByte(iv, 0, len(iv), i))
+ensures  acc(sl.Bytes(iv, 0, len(iv)), _)
+ensures  result != nil && result.Mem() && result.IsLow()
+ensures  result.BlockSize() == old(b.BlockSize())
 decreases _
 func NewCBCEncrypter(b Block, iv []byte) (result BlockMode)

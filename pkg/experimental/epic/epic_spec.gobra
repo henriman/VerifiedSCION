@@ -21,7 +21,9 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 pred postInitInvariant() {
 	acc(&zeroInitVector) &&
 	len(zeroInitVector[:]) == 16 &&
-	acc(sl.Bytes(zeroInitVector[:], 0, len(zeroInitVector[:])))
+	acc(sl.Bytes(zeroInitVector[:], 0, len(zeroInitVector[:]))) &&
+	forall i int :: { sl.GetByte(zeroInitVector[:], 0, 16, i) } 0 <= i && i < 16 ==>
+		sl.GetByte(zeroInitVector[:], 0, 16, i) == 0
 }
 
 // learn the invariant established by init

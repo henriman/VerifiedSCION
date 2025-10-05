@@ -23,6 +23,15 @@ import sl "github.com/scionproto/scion/verification/utils/slices"
 type Block interface {
 	pred Mem()
 
+	// Return whether the `Block`s internal state is low; in particular,
+	// for the `Block` returned by `aes.NewCipher`, whether the key used to
+	// initialize the `Block` was low.
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	ghost
+	requires Mem()
+	decreases
+	pure IsLow() bool
+
 	// BlockSize returns the cipher's block size.
 	pure
 	requires Mem()
@@ -74,6 +83,18 @@ type Stream interface {
 type BlockMode interface {
 	pred Mem()
 
+	// Return whether the `BlockMode`s internal state is low; in particular,
+	// for CBC mode, whether it was initialized from a low `Block` and IV
+	// (cf. `NewCBCEncrypter`), and whether all `src` buffers that have been
+	// encrypted were low (see below). For CBC mode, the relevant state would
+	// be the most recently encrypted block which will be xor-ed to the next
+	// block to encrypt.
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	ghost
+	requires Mem()
+	decreases
+	pure IsLow() bool
+
 	// BlockSize returns the mode's block size.
 	pure
 	requires Mem()
@@ -98,6 +119,13 @@ type BlockMode interface {
 	preserves dst !== src ==> acc(sl.Bytes(dst, 0, len(dst)), R10)
 	preserves acc(sl.Bytes(src, 0, len(src)), R10)
 	ensures   BlockSize() == old(BlockSize())
+	ensures   len(dst) == old(len(dst))
+	ensures   old(IsLow()) && (low(len(old(src))) &&
+		forall i int :: { sl.GetByte(src, 0, len(src), i) } 0 <= i && i < len(old(src)) &&
+			low(i) ==> low(old(sl.GetByte(src, 0, len(src), i)))) ==>
+		IsLow() && 
+			(forall i int :: { sl.GetByte(dst, 0, len(dst), i) } 0 <= i && i < len(src) &&
+				low(i) ==> low(sl.GetByte(dst, 0, len(dst), i)))
 	decreases
 	CryptBlocks(dst, src []byte)
 }
