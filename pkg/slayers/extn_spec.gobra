@@ -57,7 +57,7 @@ pure func (h *HopByHopExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding h.extnBase.Mem(ub) in h.NextHdr
 }
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 ghost
 trusted
 requires  init ==> h.Mem(ub)
@@ -65,10 +65,10 @@ requires !init ==> h.NonInitMem()
 decreases
 pure func (h *HopByHopExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO: add proper TODO to implement
+// TODO[henri]: add proper TODO to implement
 // NOTE: (for this and following RevealIsLowDecodingLayer) as we only call revealislow with
 // init == true, we don't specify anything for init == false
-// TODO: might just want to call this IsLow?
+// TODO[henri]: Might want to just call this RevealIsLow?
 ghost
 trusted
 requires p > 0
@@ -117,7 +117,7 @@ pure func (h *HopByHopExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding h.extnBase.Mem(ub) in h.NextHdr
 }
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 ghost
 trusted
 requires  init ==> h.Mem(ub)
@@ -125,7 +125,7 @@ requires !init ==> h.NonInitMem()
 decreases
 pure func (h *HopByHopExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO: add proper TODO to implement
+// TODO[henri]: add proper TODO to implement
 ghost
 trusted
 requires p > 0
@@ -196,7 +196,7 @@ pure func (e *EndToEndExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding e.extnBase.Mem(ub) in e.NextHdr
 }
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 ghost
 trusted
 requires  init ==> e.Mem(ub)
@@ -204,7 +204,7 @@ requires !init ==> e.NonInitMem()
 decreases
 pure func (e *EndToEndExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO: add proper TODO to implement
+// TODO[henri]: add proper TODO to implement
 ghost
 trusted
 requires p > 0
@@ -255,7 +255,7 @@ pure func (e *EndToEndExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding e.extnBase.Mem(ub) in e.NextHdr
 }
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 ghost
 trusted
 requires  init ==> e.Mem(ub)
@@ -263,7 +263,7 @@ requires !init ==> e.NonInitMem()
 decreases
 pure func (e *EndToEndExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// TODO: add proper TODO to implement
+// TODO[henri]: add proper TODO to implement
 ghost
 trusted
 requires p > 0

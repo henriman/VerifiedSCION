@@ -32,13 +32,6 @@ pred (o *Path) Mem(ubuf []byte) {
 	PathLen <= len(ubuf)
 }
 
-// TODO: Once Gobra issue #846 is resolved, implement `IsLow`.
-ghost
-trusted
-requires o.Mem(ub)
-decreases
-pure func (o *Path) IsLow(ub []byte) bool
-
 ghost
 requires o.Mem(ub)
 decreases

@@ -176,7 +176,7 @@ pred (b *BFD) NonInitMem() {
 
 pred (b *BFD) Mem(ub []byte)
 
-// TODO
+// TODO[henri]: might be able to already implement with true
 ghost
 trusted
 requires b.Mem(ub)

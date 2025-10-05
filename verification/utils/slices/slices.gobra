@@ -80,11 +80,11 @@ requires acc(Bytes(s, start, end), p)
 // the slice operation is well-formed
 requires unfolding acc(Bytes(s, start, end), p) in true
 ensures  acc(Bytes(s[start:end], 0, len(s[start:end])), p)
-// TODO: might want to replace end-start by len(s[start:end])
+// TODO[henri]: might want to replace end-start by len(s[start:end])
+// - though need ot be careful as then first trigger would be a valid trigger
+//   and maybe worse than automatically chosen triggers
 ensures  forall i int :: { GetByte(s[start:end], 0, end-start, i) }{ GetByte(s, start, end, i + start) } 0 <= i && i < end-start ==>
     GetByte(s[start:end], 0, end-start, i) == old(GetByte(s, start, end, i + start))
-// NOTE: Might be useful to also have this with `+` in `GetByte(s[start:end], ...)`
-// and just `i` in `GetByte(s, ...)`
 decreases
 func Reslice_Bytes(s []byte, start int, end int, p perm) {
 	unfold acc(Bytes(s, start, end), p)

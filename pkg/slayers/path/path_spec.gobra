@@ -85,6 +85,7 @@ pred PkgMem() {
 		registeredPaths[t].inUse == registeredKeys.FContains(int64(t))) &&
 	(forall t Type :: { &registeredPaths[t].inUse } (0 <= t && t < maxPathType && registeredPaths[t].inUse) ==>
 		registeredPaths[t].Metadata.New implements NewPathSpec) &&
+	// TODO[henri]: this might need proving (probably find out by verifiying path.go)
 	low(strictDecoding) && 
 	(forall t Type :: { &registeredPaths[t].inUse } 0 <= t && t < maxPathType &&
 		low(t) ==> low(registeredPaths[t].inUse))

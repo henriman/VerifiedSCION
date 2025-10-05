@@ -112,11 +112,11 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  s.Mem(ubufMem) && s.IsLow(ubufMem)
-// NOTE[henri]: Leave as-is or wrap in its own IsLow?
 // @ requires  low(opts.ComputeChecksums)
 // @ requires  b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
-// TODO: probably want to turn this into IsLow. Though I have no object for
+// TODO[henri]: probably want to turn this into IsLow. Though I have no object for
 // which to implement RevealIsLow ... could make this part of interface
+// TODO[henri]: IsLowSlice (whole method probably)
 // @ requires  low(len(b.UBuf())) && 
 // @ 	forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) &&
 // @ 		low(i) ==> low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
@@ -131,9 +131,7 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 	if err != nil {
 		return err
 	}
-	//  assert low(len(underlyingBufRes)) &&
-	//  	forall i int :: { sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i) } 4 <= i && i < len(underlyingBufRes) &&
-	//  		low(i) ==> low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i))
+	// TODO[henri]: minimize assertions
 	// @ unfold acc(s.Mem(ubufMem), 1/2)
 	// @ ghost if s.GetScn(true, ubufMem) != nil {
 	// @ 	assert forall i int :: { s.GetScnRawSrcAddrByte(ubufMem, i) }{ s.scn.GetRawSrcAddrByte(i) } 0 <= i && i < s.scn.GetRawSrcAddrLen() ==>
@@ -225,12 +223,10 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 }
 
 // DecodeFromBytes decodes the given bytes into this layer.
-// TODO: arguably it would make more sense to require that relevant fields 
-// (that will be populated in here) are not initialized (and thus some default,
-// low value) yet
 // @ requires  s.NonInitMem() && s.IsLowDecodingLayer(false, nil)
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO[henri]: IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -239,11 +235,11 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
-// TODO: This would be the case e.g. when calling from decodeSCMP. Maybe
-// we can put GetScn(data) == nil in precondition
-// @ ensures   res == nil ==> old(s.GetScn(false, nil)) == nil ==> s.IsLowDecodingLayer(true, data)
+// @ ensures   res == nil ==> 
+// @ 	old(s.GetScn(false, nil)) == nil ==> s.IsLowDecodingLayer(true, data)
 // @ decreases
 func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
+	// TODO[henri]: minimize assertions
 	// @ assert s.GetScn(false, nil) == old(s.GetScn(false, nil))
 	// @ s.RevealIsLowDecodingLayer(false, nil, HalfPerm)
 	if size := len(data); size < 4 {
@@ -317,6 +313,7 @@ func (s *SCMP) SetNetworkLayerForChecksum(scn *SCION) {
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO[henri]: IsLowSLice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -326,6 +323,7 @@ func (s *SCMP) SetNetworkLayerForChecksum(scn *SCION) {
 func decodeSCMP(data []byte, pb gopacket.PacketBuilder) (res error) {
 	scmp := &SCMP{}
 	// @ fold scmp.NonInitMem()
+	// TODO[henri]: minimize assertions
 	// @ assert scmp.GetScn(false, nil) == nil
 	// @ scmp.AssertIsLow(false, nil, HalfPerm)
 	// @ assert scmp.GetScn(false, nil) == nil

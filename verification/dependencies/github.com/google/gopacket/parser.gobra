@@ -26,8 +26,8 @@ type DecodingLayer interface {
 	pred NonInitMem()
 	pred Mem(ubuf []byte)
 
-	// TODO: Add explanation
-	// TODO: add hyper (or properTODO add hyper)
+	// TODO[henri]: add TODO for adding hyper
+	// TODO[henri]: add docstring explaining (maybe)
 	ghost
 	requires  init ==> Mem(ubuf)
 	requires !init ==> NonInitMem()
@@ -37,6 +37,7 @@ type DecodingLayer interface {
 	requires  NonInitMem() && IsLowDecodingLayer(false, nil)
 	requires  df != nil
 	requires  acc(sl.Bytes(data, 0, len(data)), R40)
+	// TODO[henri]: IsLowSLice
 	requires  low(len(data)) && 
 		forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 			low(i) ==> low(sl.GetByte(data, 0, len(data), i))

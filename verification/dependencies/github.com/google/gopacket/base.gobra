@@ -35,8 +35,7 @@ type Payload []byte
 
 pred (p Payload) Mem(ub []byte) { ub === p }
 
-// TODO: might be able to already implement with true
-// - but not hyper I suppose
+// TODO[henri]: might be able to already implement with true
 ghost
 trusted
 requires p.Mem(ub)

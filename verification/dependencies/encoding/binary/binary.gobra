@@ -223,8 +223,9 @@ pure func (e bigEndian) PutUint64Spec(b0, b1, b2, b3, b4, b5, b6, b7 byte, v uin
 		b7 == byte(v)
 }
 
-// TODO: I essentially copied the annotations of PutUint32. I suppose this
-// would require me to also prove this in Dafny
+// TODO[henri]: write proper TODO comment and add this to the issues I describe
+// in PR (TODOs)
+// - Didn't I already write a more proper TODO for this?
 trusted
 preserves acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 preserves acc(&b[4]) && acc(&b[5]) && acc(&b[6]) && acc(&b[7])

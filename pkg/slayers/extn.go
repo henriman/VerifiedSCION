@@ -49,7 +49,7 @@ type tlvOption struct {
 }
 
 // @ requires  acc(o, R20)
-// TODO[henri]: Would this be considered too implementation-specific?
+// TODO[henri]: Too implementation-specific? Or wrap in IsLow?
 // @ requires  low(o.OptType) && low(fixLengths)
 // @ ensures   acc(o, R20)
 // @ ensures   0 < res
@@ -74,6 +74,7 @@ func (o *tlvOption) length(fixLengths bool) (res int) {
 // @ requires  2 <= len(data)
 // @ requires  acc(o)
 // @ requires  acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
+// TODO[henri]: Too implementation-specific? Wrap in IsLow if I decide to above
 // @ requires  low(o.OptType) && low(data == nil) && low(fixLengths)
 // @ ensures   acc(o)
 // @ ensures   acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
@@ -106,6 +107,7 @@ func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
 
 // @ requires  1 <= len(data)
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R42)
+// TODO[henri]: Add TODO wrap in IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -115,10 +117,12 @@ func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
 // @ 	2 <= res.ActualLength && res.ActualLength <= len(data) && res.OptData === data[2:res.ActualLength])
 // @ ensures   err == nil ==> 0 < res.ActualLength
 // @ ensures   err != nil ==> err.ErrorMem()
+// TODO[henri]: If I introduce IsLow, use this here too
 // @ ensures   err == nil ==> low(res.ActualLength)
 // @ ensures   low(err != nil)
 // @ decreases
 func decodeTLVOption(data []byte) (res *tlvOption, err error) {
+	// TODO[henri]: might be able to remove low assertions (just not == assertion likely)
 	// @ assert low(sl.GetByte(data, 0, len(data), 0))
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R43)
 	// @ defer fold acc(sl.Bytes(data, 0, len(data)), R43)
@@ -259,8 +263,8 @@ func (e *extnBase) serializeToWithTLVOptions(b gopacket.SerializeBuffer,
 }
 
 // @ requires  df != nil
-// NOTE[henri]: reduced permissions s.t. we can establish that data is still low after call to this
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R41)
+// TODO[henri]: add TODO for wrapping in IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -275,6 +279,7 @@ func (e *extnBase) serializeToWithTLVOptions(b gopacket.SerializeBuffer,
 // @ 	res.BaseLayer.Contents === data[:res.ActualLen] &&
 // @ 	res.BaseLayer.Payload === data[res.ActualLen:])
 // @ ensures   low(resErr != nil)
+// TODO[henri]: consider wrapping in Islow
 // @ ensures   resErr == nil ==> low(res.NextHdr) && low(res.ActualLen)
 // @ decreases
 func decodeExtnBase(data []byte, df gopacket.DecodeFeedback) (res extnBase, resErr error) {
@@ -285,6 +290,7 @@ func decodeExtnBase(data []byte, df gopacket.DecodeFeedback) (res extnBase, resE
 			len(data)))
 	}
 
+	// TODO[henri]: Try to minimize asserts
 	// @ assert low(sl.GetByte(data, 0, len(data), 0))
 	// @ assert low(sl.GetByte(data, 0, len(data), 1))
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R42)
@@ -337,7 +343,6 @@ func (h *HopByHopExtn) CanDecode() (res gopacket.LayerClass) {
 }
 
 // @ requires acc(h.Mem(ubuf), R20) && h.IsLowDecodingLayer(true, ubuf)
-//  requires low(h.GetNextHdr(ubuf))
 // @ ensures  acc(h.Mem(ubuf), R20)
 // @ decreases
 func (h *HopByHopExtn) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
@@ -385,6 +390,7 @@ func (h *HopByHopExtn) SerializeTo(b gopacket.SerializeBuffer,
 // @ requires  h.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO[henri]: TODO IsLowSlice (whole method)
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -393,6 +399,7 @@ func (h *HopByHopExtn) SerializeTo(b gopacket.SerializeBuffer,
 // @ ensures   res == nil ==> h.Mem(data)
 // @ ensures   res != nil ==> (h.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
+// TODO[henri]: IsLow maybe
 // @ ensures   res == nil ==> low(h.GetNextHdr(data))
 // @ decreases
 func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
@@ -400,6 +407,7 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ unfold h.NonInitMem()
 	h.Options = nil
 	h.extnBase, err = decodeExtnBase(data, df)
+	// TODO[henri]: minimize asserts
 	// @ assert low(len(data)) &&
 	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -419,8 +427,8 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 	// @ ghost lenOptions := 0
 
-	// TODO: check if this is the right issue again
-	// TODO: Once Gobra issue #888 is resolved, use directly in loop condition.
+	// TODO: Once Gobra issue #888 is resolved, remove `actualLen` and use
+	// `h.ActualLen` directly in loop invariant.
 	actualLen := h.ActualLen
 
 	// @ assert low(offset)
@@ -464,6 +472,7 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 // @ requires  p != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO[henri]: IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -484,9 +493,9 @@ func decodeHopByHopExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 }
 
 // @ requires low(t)
-// @ ensures (t == HopByHopClass) == (err != nil)
-// @ ensures err != nil ==> err.ErrorMem()
-// @ ensures low(err != nil)
+// @ ensures  (t == HopByHopClass) == (err != nil)
+// @ ensures  err != nil ==> err.ErrorMem()
+// @ ensures  low(err != nil)
 // @ decreases
 func checkHopByHopExtnNextHdr(t L4ProtocolType) (err error) {
 	if t == HopByHopClass {
@@ -519,7 +528,6 @@ func (e *EndToEndExtn) CanDecode() (res gopacket.LayerClass) {
 }
 
 // @ requires acc(e.Mem(ubuf), R20) && e.IsLowDecodingLayer(true, ubuf)
-//  requires low(e.GetNextHdr(ubuf))
 // @ ensures  acc(e.Mem(ubuf), R20)
 // @ decreases
 func (e *EndToEndExtn) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
@@ -550,6 +558,7 @@ func (e *EndToEndExtn) LayerPayload( /*@ ghost ub []byte @*/ ) (res []byte /*@ ,
 // @ requires  e.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO[henri]: IsLowSlice (whole method)
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -558,6 +567,7 @@ func (e *EndToEndExtn) LayerPayload( /*@ ghost ub []byte @*/ ) (res []byte /*@ ,
 // @ ensures   res == nil ==> e.Mem(data)
 // @ ensures   res != nil ==> (e.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
+// TODO[henri]: IsLow?
 // @ ensures   res == nil ==> low(e.GetNextHdr(data))
 // @ decreases
 func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
@@ -565,6 +575,7 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ unfold e.NonInitMem()
 	e.Options = nil
 	e.extnBase, err = decodeExtnBase(data, df)
+	// TODO: minimize assertions
 	// @ assert low(len(data)) &&
 	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -584,8 +595,8 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 	// @ ghost lenOptions := 0
 
-	// TODO: check if this is the right issue again
-	// TODO: Once Gobra issue #888 is resolved, use directly in loop condition.
+	// TODO: Once Gobra issue #888 is resolved, remove `actualLen` and use
+	// `e.ActualLen` directly in loop invariant.
 	actualLen := e.ActualLen
 
 	// @ assert low(offset)
@@ -629,6 +640,7 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 // @ requires  p != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO[henri]: IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -649,8 +661,8 @@ func decodeEndToEndExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 }
 
 // @ requires low(t)
-// @ ensures (err != nil) == (t == HopByHopClass || t == End2EndClass)
-// @ ensures err != nil ==> err.ErrorMem()
+// @ ensures  (err != nil) == (t == HopByHopClass || t == End2EndClass)
+// @ ensures  err != nil ==> err.ErrorMem()
 // @ decreases
 func checkEndToEndExtnNextHdr(t L4ProtocolType) (err error) {
 	if t == HopByHopClass {
@@ -702,6 +714,7 @@ type HopByHopExtnSkipper struct {
 // @ requires  s.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO[henri]: IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -744,7 +757,6 @@ func (s *HopByHopExtnSkipper) CanDecode() (res gopacket.LayerClass) {
 }
 
 // @ requires acc(h.Mem(ubuf), R20) && h.IsLowDecodingLayer(true, ubuf)
-//  requires low(h.GetNextHdr(ubuf))
 // @ ensures  acc(h.Mem(ubuf), R20)
 // @ decreases
 func (h *HopByHopExtnSkipper) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
@@ -764,6 +776,7 @@ type EndToEndExtnSkipper struct {
 // @ requires  s.NonInitMem()
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO[henri]: IsLowSlice
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
@@ -806,7 +819,6 @@ func (s *EndToEndExtnSkipper) CanDecode() (res gopacket.LayerClass) {
 }
 
 // @ requires acc(e.Mem(ubuf), R20) && e.IsLowDecodingLayer(true, ubuf)
-//  requires low(e.GetNextHdr(ubuf))
 // @ ensures  acc(e.Mem(ubuf), R20)
 // @ decreases
 func (e *EndToEndExtnSkipper) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {

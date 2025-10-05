@@ -31,7 +31,7 @@ pred (s *SCMPExternalInterfaceDown) Mem(ub []byte) {
 	acc(&s.IA) && acc(&s.IfID) && s.BaseLayer.Mem(ub, addr.IABytes+scmpRawInterfaceLen)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)
@@ -70,7 +70,7 @@ pred (s *SCMPInternalConnectivityDown) Mem(ub []byte) {
 	acc(&s.IA) && acc(&s.Ingress) && acc(&s.Egress) && s.BaseLayer.Mem(ub, addr.IABytes+2*scmpRawInterfaceLen)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)
@@ -108,7 +108,7 @@ pred (s *SCMPEcho) Mem(ub []byte) {
 	acc(&s.Identifier) && acc(&s.SeqNumber) && s.BaseLayer.Mem(ub, 4)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)
@@ -146,7 +146,7 @@ pred (s *SCMPParameterProblem) Mem(ub []byte) {
 	acc(&s.Pointer) && s.BaseLayer.Mem(ub, 4)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)
@@ -188,7 +188,7 @@ pred (s *SCMPTraceroute) Mem(ub []byte) {
 	s.BaseLayer.Mem(ub, 4+addr.IABytes+scmpRawInterfaceLen)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)
@@ -228,7 +228,7 @@ pred (s *SCMPDestinationUnreachable) Mem(ub []byte) {
 	s.BaseLayer.Mem(ub, 4)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)
@@ -266,7 +266,7 @@ pred (s *SCMPPacketTooBig) Mem(ub []byte) {
 	acc(&s.MTU) && s.BaseLayer.Mem(ub, 4)
 }
 
-// TODO
+// TODO[henri]: add proper TODO (or maybe implement already?)?
 ghost
 trusted
 requires s.Mem(ub)

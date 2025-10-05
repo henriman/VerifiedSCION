@@ -64,7 +64,8 @@ pred PathPoolMem(pathPool []path.Path, pathPoolRaw path.Path) {
 		pathPoolRaw.NonInitMem()))
 }
 
-// TODO: maybe find better name, cf. getpath below
+// TODO[henri]: merge this and the following into one GetPathPoolPath with
+// init parameter.
 ghost
 requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
 requires PathPoolMem(s.pathPool, s.pathPoolRaw)
@@ -133,7 +134,7 @@ pure func (s *SCION) PathPoolInitializedNonInitMem() bool {
 		s.pathPool != nil
 }
 
-// NOTE[henri]: Could be bundled with other pathpoolinitialized but i dont wanna bother rn
+// TOOD[henri]: merge with above pathpoolinitializednoninitmem and use init parameter
 ghost
 requires s.Mem(ub)
 decreases
@@ -249,19 +250,13 @@ pure func (s *SCION) GetPathPoolRaw() path.Path {
 	return unfolding s.NonInitMem() in s.pathPoolRaw
 }
 
-// requires s.NonInitMem()
-// decreases
-// pure func (s *SCION) GetPathType() path.Type {
-// 	return unfolding s.NonInitMem() in s.PathType
-// }
-
 ghost
 requires !headerMem ==> s.Mem(ubuf)
 requires  headerMem ==> s.HeaderMem(ubuf)
 decreases
 pure func (s *SCION) GetSrcAddrType(ubuf []byte, headerMem bool) AddrType {
 	return !headerMem ? (
-		// NOTE: unfolding headermem should not be necessary here?
+		// TODO[henri]: Try if I can access s.SrcAddrType without unfolding HeaderMem
 		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.SrcAddrType) : (
 		unfolding s.HeaderMem(ubuf) in s.SrcAddrType)
 }
@@ -272,11 +267,12 @@ requires  headerMem ==> s.HeaderMem(ubuf)
 decreases
 pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
 	return !headerMem ? (
+		// TODO[henri]: Try if I can access s.SrcAddrType without unfolding HeaderMem
 		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.DstAddrType) : (
 		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
 }
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 ghost
 trusted
 requires  init ==> s.Mem(ub)
@@ -284,8 +280,6 @@ requires !init ==> s.NonInitMem()
 decreases
 pure func (s *SCION) IsLowDecodingLayer(init bool, ghost ub []byte) bool
 
-// NOTE: alternatively, could leave this separate from IsLow 
-// (would need its own Reveal)
 ghost
 requires s.Mem(ub)
 decreases
@@ -293,10 +287,14 @@ pure func (s *SCION) IsLow(ghost ub []byte) bool {
 	return s.IsLowDecodingLayer(true, ub)
 }
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 // TODO: it would be nicer in a way if we named IsLowDecodingLayer IsLow and
 // IsLow IsLowSerializable..., bc. then here we could require IsLow which
 // would be more consistent
+// TODO[henri]: 
+// - I'm not sure that would work as well for other packages having both
+//   an IsLow and an IsLowDecodingLayer (check, though!)
+// - might want to rename this to RevealIsLowDecodingLayer (or not)
 ghost
 trusted
 requires p > 0
@@ -306,12 +304,13 @@ requires s.IsLowDecodingLayer(init, ub)
 ensures   init ==> acc(s.Mem(ub), p) &&
 	low(s.GetNextHdr(ub)) &&
 	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
+	// TODO[henri]: Might want to instead mark HdrLen as low
 	low(s.PathEndIdx(ub)) &&
 	low(s.GetPathType(ub)) &&
 	s.PathIsLow(ub) &&
+	// TODO[henri]: consider replacing this by low(getpathpool() == nil)
 	low(s.PathPoolInitializedMem(ub))
 ensures  !init ==> acc(s.NonInitMem(), p) &&
-	// TODO: could replace this by low(GetPathPool != nil)
 	low(s.PathPoolInitializedNonInitMem()) &&
 	(s.GetPathPool() != nil ==> low(len(s.GetPathPool())) &&
 		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool()) &&
@@ -320,12 +319,12 @@ ensures  !init ==> acc(s.NonInitMem(), p) &&
 decreases
 func (s *SCION) RevealIsLow(init bool, ghost ub []byte, p perm)
 
-// TODO: add hyper or proper TODO add hyper / TODO implement
+// TODO[henri]: add hyper or proper TODO add hyper / TODO implement
 ghost
 trusted
 requires p > 0
 requires !init ==> acc(s.NonInitMem(), p) &&
-	// TODO: could replace this by low(GetPathPool != nil)
+	// TODO[henri]: could replace this by low(GetPathPool != nil) (see above)
 	low(s.PathPoolInitializedNonInitMem()) &&
 	(s.GetPathPool() != nil ==> low(len(s.GetPathPool())) &&
 		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool()) &&
@@ -438,6 +437,7 @@ func (s *SCION) ExtractAcc(ghost ub []byte) (start, end int) {
 	start = CmnHdrLen+2*addr.IABytes
 	end = CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
 	assert s.RawDstAddr === ub[start:end]
+	// TODO[henri]: add proper comment here
 	// cf. #946
 	// package acc(s, R16) --* acc(s.Mem(ub), R15) {
 	// 	unfold acc(s.Mem(ub), R16)

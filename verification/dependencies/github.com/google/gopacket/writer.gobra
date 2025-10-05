@@ -15,6 +15,7 @@ import "verification/utils/seqs"
 type SerializableLayer interface {
 	pred Mem(ubuf []byte)
 
+	// TODO[henri]: add TODO add hyper
 	ghost
 	requires Mem(ubuf)
 	decreases
@@ -26,10 +27,12 @@ type SerializableLayer interface {
 	requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 	requires  Mem(ubuf) && IsLow(ubuf)
 	requires  sl.Bytes(ubuf, 0, len(ubuf))
+	// TODO[henri]: IsLowSlice
 	requires  low(len(ubuf)) && 
 		forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
 			low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
 	requires  low(opts.ComputeChecksums)
+	// TODO[henri]: Might have introduced IsLow for this
 	requires  low(len(b.UBuf())) && 
 		forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) &&
 			low(i) ==> low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
@@ -84,9 +87,10 @@ type SerializeBuffer interface {
 	// NOTE: I justified this by looking at the default implementation of 
 	// SerializeBuffer which doesn't take into account the internal state
 	// for success. however, we might want to
-	// TODO: might want ot put num as precondition
+	// TODO[henri]: I think I would want to? at least add comment here
 	ensures   low(num) ==> low(err != nil)
-	// TODO: maybe turn into pre+post condition
+	// TODO[henri]: maybe turn into pre+post condition (then num needs to be there too)
+	// TODO[henri]: IsLowSlice (or IsLow for UBuf?)
 	ensures   err == nil && low(num) && (low(len(UBuf())) && 
 		forall i int :: { sl.GetByte(UBuf(), 0, len(UBuf()), i) } 0 <= i && i < len(old(UBuf())) &&
 			low(i) ==> low(old(sl.GetByte(UBuf(), 0, len(UBuf()), i)))) ==> 
