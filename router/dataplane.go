@@ -218,8 +218,6 @@ type DataPlane struct {
 	// (VerifiedSCION) This is stored in the dataplane in order to retain
 	// knowledge that macFactory will not fail.
 	// @ ghost key *[]byte
-	// TODO: See if there is a way to circumvent storing `asid`, considering
-	// that this can be generated from `localIA`.
 	// @ ghost asid gpointer[io.AS]
 	external          map[uint16]BatchConn
 	linkTypes         map[uint16]topology.LinkType
@@ -370,7 +368,7 @@ func (d *DataPlane) SetKey(key []byte) (res error) {
 		// @ requires acc(&asid, _)
 		// @ ensures  acc(&key, _) && acc(sl.Bytes(key, 0, len(key)), _)
 		// @ ensures  h != nil && h.Mem()
-		// @ ensures  acc(&asid, _) && sh === h && sh.Asid() == asid
+		// @ ensures  acc(&asid, _) && sh === h && sh.AsidMem() && sh.Asid() == asid
 		// @ decreases
 		func /*@ f @*/ () (h hash.Hash /*@, ghost sh hash.ScionHashSpec @*/) {
 			mac /*@, macSpec @*/, _ := scrypto.InitMac(key /*@, asid @*/)
@@ -565,7 +563,6 @@ func (d *DataPlane) AddExternalInterfaceBFD(ifID uint16, conn BatchConn,
 			PacketsReceived: d.Metrics.BFDPacketsReceived.With(labels),
 		}
 	}
-	// TODO: Now that macFactory returns two values, might want to move this call out?
 	s := newBFDSend(conn, src.IA, dst.IA, src.Addr, dst.Addr, ifID, d.macFactory())
 	return d.addBFDController(ifID, s, cfg, m)
 }
@@ -584,8 +581,8 @@ func (d *DataPlane) getInterfaceState(interfaceID uint16) control.InterfaceState
 	// @ 	defer fold acc(accBfdSession(d.bfdSessions), R20)
 	// @ }
 	if bfdSession, ok := bfdSessions[interfaceID]; ok {
-		// @ assert interfaceID in domain(d.bfdSessions)
-		// @ assert bfdSession in range(d.bfdSessions)
+		// @ assert interfaceID elem domain(d.bfdSessions)
+		// @ assert bfdSession elem range(d.bfdSessions)
 		// @ assert bfdSession != nil
 		// (VerifiedSCION) This checked used to be conjoined with 'ok' in the condition
 		// of the if stmt above. We broke it down to perform intermediate asserts.
@@ -784,7 +781,6 @@ func (d *DataPlane) AddNextHopBFD(ifID uint16, src, dst *net.UDPAddr, cfg contro
 			PacketsReceived: d.Metrics.SiblingBFDPacketsReceived.With(labels),
 		}
 	}
-	// TODO: Now that macFactory returns two values, might want to move this call out?
 	s := newBFDSend(d.internal, d.localIA, d.localIA, src, dst, 0, d.macFactory())
 	return d.addBFDController(ifID, s, cfg, m)
 }
@@ -855,12 +851,12 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 		// dPtr as an helper parameter. It always receives the value &d.
 		// @ requires acc(dPtr, _)
 		// @ requires let d := *dPtr in
-		// @ 	acc(d.Mem(), _)                            &&
-		// @ 	d.WellConfigured()                         &&
-		// @ 	d.getValSvc() != nil                       &&
-		// @ 	d.getValForwardingMetrics() != nil         &&
-		// @ 	(0 in d.getDomForwardingMetrics())         &&
-		// @ 	(ingressID in d.getDomForwardingMetrics()) &&
+		// @ 	acc(d.Mem(), _)                              &&
+		// @ 	d.WellConfigured()                           &&
+		// @ 	d.getValSvc() != nil                         &&
+		// @ 	d.getValForwardingMetrics() != nil           &&
+		// @ 	(0 elem d.getDomForwardingMetrics())         &&
+		// @ 	(ingressID elem d.getDomForwardingMetrics()) &&
 		// @ 	d.getMacFactory() != nil
 		// @ requires rd != nil && acc(rd.Mem(), _)
 		// contracts for IO-spec
@@ -939,8 +935,8 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 			// @ invariant acc(d.Mem(), _) && d.WellConfigured()
 			// @ invariant d.getValSvc() != nil
 			// @ invariant d.getValForwardingMetrics() != nil
-			// @ invariant 0 in d.getDomForwardingMetrics()
-			// @ invariant ingressID in d.getDomForwardingMetrics()
+			// @ invariant 0 elem d.getDomForwardingMetrics()
+			// @ invariant ingressID elem d.getDomForwardingMetrics()
 			// @ invariant d.KeyIsSet()
 			// @ invariant acc(rd.Mem(), _)
 			// @ invariant processor.sInit() && processor.sInitD() === d
@@ -1012,8 +1008,8 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 				// @ invariant acc(d.Mem(), _) && d.WellConfigured()
 				// @ invariant d.getValSvc() != nil
 				// @ invariant d.getValForwardingMetrics() != nil
-				// @ invariant 0 in d.getDomForwardingMetrics()
-				// @ invariant ingressID in d.getDomForwardingMetrics()
+				// @ invariant 0 elem d.getDomForwardingMetrics()
+				// @ invariant ingressID elem d.getDomForwardingMetrics()
 				// @ invariant d.KeyIsSet()
 				// @ invariant acc(rd.Mem(), _)
 				// @ invariant pkts <= len(msgs)
@@ -1169,7 +1165,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 					// @ ghost t, s := *ioSharedArg.Place, *ioSharedArg.State
 					// @ ghost if(newAbsPkt.isValPkt) {
 					// @ 	ApplyElemWitness(s.obuf, ioSharedArg.OBufY, newAbsPkt.ValPkt_1, newAbsPkt.ValPkt_2)
-					// @ 	assert newAbsPkt.ValPkt_2 in AsSet(s.obuf[newAbsPkt.ValPkt_1])
+					// @ 	assert newAbsPkt.ValPkt_2 elem AsSet(s.obuf[newAbsPkt.ValPkt_1])
 					// @ 	assert dp.dp3s_iospec_bio3s_send_guard(s, t, newAbsPkt)
 					// @ } else { assert newAbsPkt.isValUnsupported }
 					// @ unfold dp.dp3s_iospec_ordered(s, t)
@@ -1210,7 +1206,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 					}
 					// @ requires acc(dPtr, _) && *dPtr === d
 					// @ requires acc(d.Mem(), _)
-					// @ requires result.EgressID in d.getDomForwardingMetrics()
+					// @ requires result.EgressID elem d.getDomForwardingMetrics()
 					// @ decreases
 					// @ outline(
 					// ok metric
@@ -1230,7 +1226,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 		}
 	// @ unfold acc(d.Mem(), R1)
 	// @ assert d.WellConfigured()
-	// @ assert 0 in d.getDomForwardingMetrics()
+	// @ assert 0 elem d.getDomForwardingMetrics()
 	// @ ghost if d.bfdSessions != nil { unfold acc(accBfdSession(d.bfdSessions), R2) }
 
 	// (VerifiedSCION) we introduce this to avoid problems with the invariants that
@@ -1279,7 +1275,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 	// @ invariant acc(d.Mem(), _) && d.WellConfigured()
 	// @ invariant d.getValSvc() != nil
 	// @ invariant d.getValForwardingMetrics() != nil
-	// @ invariant 0 in d.getDomForwardingMetrics()
+	// @ invariant 0 elem d.getDomForwardingMetrics()
 	// @ invariant d.getMacFactory() != nil
 	// @ invariant dp.Valid()
 	// @ invariant d.DpAgreesWithSpec(dp)
@@ -1293,8 +1289,8 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 			// @ requires acc(d.Mem(), _) && d.WellConfigured()
 			// @ requires d.getValSvc() != nil
 			// @ requires d.getValForwardingMetrics() != nil
-			// @ requires 0 in d.getDomForwardingMetrics()
-			// @ requires i in d.getDomForwardingMetrics()
+			// @ requires 0 elem d.getDomForwardingMetrics()
+			// @ requires i elem d.getDomForwardingMetrics()
 			// @ requires d.getMacFactory() != nil
 			// @ requires c != nil && acc(c.Mem(), _)
 			// contracts for IO-spec
@@ -1307,7 +1303,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 				read(i, c, &d /*@, ioLock, ioSharedArg, dp @*/) //@ as rc
 			}
 		// @ ghost if d.external != nil { unfold acc(accBatchConn(d.external), R50) }
-		// @ assert v in range(d.external)
+		// @ assert v elem range(d.external)
 		// @ assert acc(v.Mem(), _)
 		// @ d.InDomainExternalInForwardingMetrics3(ifID)
 		// @ ghost if d.external != nil { fold acc(accBatchConn(d.external), R50) }
@@ -1319,7 +1315,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 		// @ requires acc(d.Mem(), _) && d.WellConfigured()
 		// @ requires d.getValSvc() != nil
 		// @ requires d.getValForwardingMetrics() != nil
-		// @ requires 0 in d.getDomForwardingMetrics()
+		// @ requires 0 elem d.getDomForwardingMetrics()
 		// @ requires d.getMacFactory() != nil
 		// @ requires c != nil && acc(c.Mem(), _)
 		// contracts for IO-spec
@@ -1356,7 +1352,7 @@ func (d *DataPlane) Run(ctx context.Context /*@, ghost place io.Place, ghost sta
 // @ ensures   d.Mem()
 // @ ensures   d.MetricsAreSet()
 // @ ensures   d.WellConfigured()
-// @ ensures   0 in d.DomainForwardingMetrics()
+// @ ensures   0 elem d.DomainForwardingMetrics()
 // @ ensures   d.InternalConnIsSet()
 // @ ensures   d.KeyIsSet()
 // @ ensures   d.SvcsAreSet()
@@ -1408,14 +1404,14 @@ func (d *DataPlane) initMetrics( /*@ ghost dp io.DataPlaneSpec @*/ ) {
 	// @ invariant d.external === dExternal
 	// @ invariant acc(&d.forwardingMetrics) && acc(d.forwardingMetrics)
 	// @ invariant domain(d.forwardingMetrics) == set[uint16]{0} union visitedSet
-	// @ invariant 0 in domain(d.forwardingMetrics)
+	// @ invariant 0 elem domain(d.forwardingMetrics)
 	// @ invariant acc(&d.internalNextHops, R15)
 	// @ invariant d.internalNextHops === dInternalNextHops
 	// @ invariant d.internalNextHops != nil ==> acc(d.internalNextHops, R20)
 	// @ invariant domain(d.internalNextHops) intersection domain(d.external) == set[uint16]{}
 	// @ invariant acc(&d.neighborIAs, R15)
 	// @ invariant d.neighborIAs != nil ==> acc(d.neighborIAs, R15)
-	// @ invariant forall i uint16 :: { d.forwardingMetrics[i] } i in domain(d.forwardingMetrics) ==>
+	// @ invariant forall i uint16 :: { d.forwardingMetrics[i] } i elem domain(d.forwardingMetrics) ==>
 	// @ 	acc(forwardingMetricsMem(d.forwardingMetrics[i], i), _)
 	// @ invariant acc(&d.Metrics, R15)
 	// @ invariant acc(d.Metrics.Mem(), _)
@@ -1457,12 +1453,7 @@ type processResult struct {
 // @ decreases
 func newPacketProcessor(d *DataPlane, ingressID uint16) (res *scionPacketProcessor) {
 	var verScionTmp gopacket.SerializeBuffer
-	//  unfold acc(d.Mem(), _)
-	//  assert d.localIA == d.LocalIA()
 	// @ d.getNewPacketProcessorFootprint()
-	//  assert d.macFactory implements MacFactorySpec{d.key, d.asid}
-	//  assert d.localIA == d.LocalIA()
-	//  assert io.AS{uint(d.localIA)} == io.AS{uint(d.LocalIA())}
 	verScionTmp = gopacket.NewSerializeBuffer()
 	// @ sl.PermsImplyIneqWithWildcard(verScionTmp.UBuf(), *d.key)
 	mac /*@, macSpec @*/ := (d.macFactory() /*@ as MacFactorySpec{d.key, d.asid} @*/)
@@ -1476,9 +1467,6 @@ func newPacketProcessor(d *DataPlane, ingressID uint16) (res *scionPacketProcess
 			epicInput:  make([]byte, libepic.MACBufferSize),
 		},
 	}
-	// TODO: Doing this "right in initialization" makes Gobra think `p` is a 
-	// TODO: should it be a gpointer?
-	// `gpointer` and not a "normal" pointer.
 	// @ p.macSpec = macSpec
 	// @ fold sl.Bytes(p.macBuffers.scionInput, 0, len(p.macBuffers.scionInput))
 	// @ fold slayers.PathPoolMem(p.scionLayer.pathPool, p.scionLayer.pathPoolRaw)
@@ -1529,7 +1517,7 @@ func (p *scionPacketProcessor) reset() (err error) {
 // @ 	d.getValSvc() != nil      &&
 // @ 	d.getValForwardingMetrics() != nil &&
 // @ 	d.DpAgreesWithSpec(dp)    &&
-// @    d.KeyIsSet()
+// @ 	d.KeyIsSet()
 // @ requires let ubuf := p.sInitBufferUBuf() in
 // @ 	acc(sl.Bytes(ubuf, 0, len(ubuf)), writePerm)
 // @ ensures  p.sInit()
@@ -1669,18 +1657,9 @@ func (p *scionPacketProcessor) processPkt(rawPkt []byte,
 		// @ }
 		// @ assert sl.Bytes(p.rawPkt, 0, len(p.rawPkt))
 		// @ unfold acc(p.d.Mem(), _)
-		// @ assert p.d.macFactory != nil
-		// @ assert *p.d.asid == io.AS{uint(p.d.localIA)}
 		// @ assert reveal p.scionLayer.EqPathType(p.rawPkt)
 		// @ assert !(reveal slayers.IsSupportedPkt(p.rawPkt))
-		// TODO: we seem to be going over three "corners" here, maybe that can be improved
 		// @ reveal p.d.DpAgreesWithSpec(dp)
-		// @ assert p.d.dpSpecWellConfiguredLocalIA(dp)
-		// @ assert dp.Asid() == io.AS{uint(p.d.localIA)}
-		// @ assert *p.d.asid == io.AS{uint(p.d.localIA)}
-		// @ assert dp.Asid() == *p.d.asid
-		// @ assert p.macSpec.Asid() == *p.d.asid
-		// @ assert p.macSpec.Asid() == dp.Asid()
 		v1, v2 /*@, aliasesPkt, newAbsPkt @*/ := p.processOHP(/*@ dp @*/)
 		// @ ResetDecodingLayers(&p.scionLayer, &p.hbhLayer, &p.e2eLayer, ubScionLayer, ubHbhLayer, ubE2eLayer, true, hasHbhLayer, hasE2eLayer)
 		// @ fold p.sInit()
@@ -1692,17 +1671,9 @@ func (p *scionPacketProcessor) processPkt(rawPkt []byte,
 		// @ 	sl.CombineRange_Bytes(p.rawPkt, o.start, o.end, HalfPerm)
 		// @ }
 		// @ assert sl.Bytes(p.rawPkt, 0, len(p.rawPkt))
-		// TODO: minimize assertions etc.
 		// @ unfold acc(p.d.Mem(), _)
-		// @ assert p.d.macFactory != nil
-		// @ assert *p.d.asid == io.AS{uint(p.d.localIA)}
 		// @ reveal p.d.DpAgreesWithSpec(dp)
 		// @ assert p.d.dpSpecWellConfiguredLocalIA(dp)
-		// @ assert dp.Asid() == io.AS{uint(p.d.localIA)}
-		// @ assert *p.d.asid == io.AS{uint(p.d.localIA)}
-		// @ assert dp.Asid() == *p.d.asid
-		// @ assert p.macSpec.Asid() == *p.d.asid
-		// @ assert p.macSpec.Asid() == dp.Asid()
 		v1, v2 /*@ , addrAliasesPkt, newAbsPkt @*/ := p.processSCION( /*@ p.rawPkt, ub == nil, llStart, llEnd, ioLock, ioSharedArg, dp @*/ )
 		// @ ResetDecodingLayers(&p.scionLayer, &p.hbhLayer, &p.e2eLayer, ubScionLayer, ubHbhLayer, ubE2eLayer, v2 == nil, hasHbhLayer, hasE2eLayer)
 		// @ fold p.sInit()
@@ -1748,7 +1719,7 @@ func (p *scionPacketProcessor) processInterBFD(oh *onehop.Path, data []byte) (er
 	}
 
 	if v, ok := p.d.bfdSessions[p.ingressID]; ok {
-		// @ assert v in range(p.d.bfdSessions)
+		// @ assert v elem range(p.d.bfdSessions)
 		v.ReceiveMessage(bfd /*@ , data @*/)
 		return nil
 	}
@@ -1796,12 +1767,12 @@ func (p *scionPacketProcessor) processIntraBFD(data []byte) (res error) {
 	// @ invariant acc(&p.d.internalNextHops, _)
 	// @ invariant m === p.d.internalNextHops
 	// @ invariant m != nil ==> acc(m, R20)
-	// @ invariant m != nil ==> forall a *net.UDPAddr :: { a in range(m) } a in range(m) ==> acc(a.Mem(), _)
+	// @ invariant m != nil ==> forall a *net.UDPAddr :: { a elem range(m) } a elem range(m) ==> acc(a.Mem(), _)
 	// @ invariant acc(&p.srcAddr, R20) && acc(p.srcAddr.Mem(), _)
 	// @ decreases len(p.d.internalNextHops) - len(keys)
 	for k, v := range p.d.internalNextHops /*@ with keys @*/ {
 		// @ assert acc(&p.d.internalNextHops, _)
-		// @ assert forall a *net.UDPAddr :: { a in range(m) } a in range(m) ==> acc(a.Mem(), _)
+		// @ assert forall a *net.UDPAddr :: { a elem range(m) } a elem range(m) ==> acc(a.Mem(), _)
 		// @ assert acc(v.Mem(), _)
 		// @ unfold acc(v.Mem(), _)
 		// @ unfold acc(p.srcAddr.Mem(), _)
@@ -1817,7 +1788,7 @@ func (p *scionPacketProcessor) processIntraBFD(data []byte) (res error) {
 	// @ assert acc(&p.d.bfdSessions, _)
 	// @ ghost if p.d.bfdSessions != nil { unfold acc(accBfdSession(p.d.bfdSessions), _) }
 	if v, ok := p.d.bfdSessions[ifID]; ok {
-		// @ assert v in range(p.d.bfdSessions)
+		// @ assert v elem range(p.d.bfdSessions)
 		v.ReceiveMessage(bfd /*@ , data @*/)
 		return nil
 	}
@@ -1852,7 +1823,8 @@ func (p *scionPacketProcessor) processIntraBFD(data []byte) (res error) {
 // @ preserves acc(&p.infoField)
 // @ preserves acc(&p.hopField)
 // @ preserves acc(&p.mac, R10) && p.mac != nil && p.mac.Mem()
-// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && p.macSpec.Asid() == dp.Asid()
+// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && 
+// @ 	p.macSpec.AsidMem() && p.macSpec.Asid() == dp.Asid()
 // @ preserves acc(&p.macBuffers.scionInput, R10)
 // @ preserves sl.Bytes(p.macBuffers.scionInput, 0, len(p.macBuffers.scionInput))
 // @ preserves acc(&p.cachedMac)
@@ -2602,8 +2574,8 @@ func (p *scionPacketProcessor) validateTransitUnderlaySrc( /*@ ghost ub []byte @
 	// @ ghost if p.d.internalNextHops != nil { unfold acc(accAddr(p.d.internalNextHops), _) }
 	expectedSrc, ok := p.d.internalNextHops[pktIngressID]
 	// @ ghost if ok {
-	// @ 	assert expectedSrc in range(p.d.internalNextHops)
-	// @    unfold acc(expectedSrc.Mem(), _)
+	// @ 	assert expectedSrc elem range(p.d.internalNextHops)
+	// @ 	unfold acc(expectedSrc.Mem(), _)
 	// @ }
 	// @ unfold acc(p.srcAddr.Mem(), _)
 	if !ok || !expectedSrc.IP.Equal(p.srcAddr.IP) {
@@ -2915,7 +2887,8 @@ func (p *scionPacketProcessor) currentHopPointer( /*@ ghost ubScionL []byte @*/ 
 // @ requires  acc(&p.infoField, R20)
 // @ requires  acc(&p.hopField, R20)
 // @ preserves acc(&p.mac, R20) && p.mac != nil && p.mac.Mem()
-// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && p.macSpec.Asid() == dp.Asid()
+// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec &&
+// @ 	p.macSpec.AsidMem() && p.macSpec.Asid() == dp.Asid()
 // @ preserves acc(&p.macBuffers.scionInput, R20)
 // @ preserves sl.Bytes(p.macBuffers.scionInput, 0, len(p.macBuffers.scionInput))
 // @ preserves acc(&p.cachedMac)
@@ -3896,7 +3869,8 @@ func (p *scionPacketProcessor) validatePktLen( /*@ ghost ubScionL []byte, ghost 
 // @ preserves acc(&p.infoField)
 // @ preserves acc(&p.hopField)
 // @ preserves acc(&p.mac, R10) && p.mac != nil && p.mac.Mem()
-// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && p.macSpec.Asid() == dp.Asid()
+// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && 
+// @ 	p.macSpec.AsidMem() && p.macSpec.Asid() == dp.Asid()
 // @ preserves acc(&p.macBuffers.scionInput, R10)
 // @ preserves sl.Bytes(p.macBuffers.scionInput, 0, len(p.macBuffers.scionInput))
 // @ preserves acc(&p.cachedMac)
@@ -4141,7 +4115,8 @@ func (p *scionPacketProcessor) process(
 // @ requires  sl.Bytes(p.rawPkt, 0, len(p.rawPkt))
 // @ preserves acc(&p.mac, R10)
 // @ preserves p.mac != nil && p.mac.Mem()
-// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && p.macSpec.Asid() == dp.Asid()
+// @ preserves acc(&p.macSpec, R20) && p.mac === p.macSpec && 
+// @ 	p.macSpec.AsidMem() && p.macSpec.Asid() == dp.Asid()
 // @ preserves acc(&p.macBuffers.scionInput, R10)
 // @ preserves sl.Bytes(p.macBuffers.scionInput, 0, len(p.macBuffers.scionInput))
 // @ preserves acc(&p.buffer, R10) && p.buffer != nil && p.buffer.Mem()
@@ -4226,7 +4201,8 @@ func (p *scionPacketProcessor) processOHP(/*@ ghost dp io.DataPlaneSpec @*/) (re
 		// @ preserves acc(&ohp.Info, R55) && acc(&ohp.FirstHop, R55)
 		// @ preserves acc(&p.macBuffers.scionInput, R55)
 		// @ preserves acc(&p.mac, R55) && p.mac != nil && p.mac.Mem()
-		// @ preserves acc(&p.macSpec, R55) && p.mac === p.macSpec && p.macSpec.Asid() == dp.Asid()
+		// @ preserves acc(&p.macSpec, R55) && p.mac === p.macSpec && 
+		// @ 	p.macSpec.AsidMem() && p.macSpec.Asid() == dp.Asid()
 		// @ preserves sl.Bytes(p.macBuffers.scionInput, 0, len(p.macBuffers.scionInput))
 		// @ decreases
 		// @ outline (
@@ -4263,7 +4239,7 @@ func (p *scionPacketProcessor) processOHP(/*@ ghost dp io.DataPlaneSpec @*/) (re
 		// @ ghost if p.d.external != nil { unfold acc(accBatchConn(p.d.external), _) }
 		if c, ok := p.d.external[ohp.FirstHop.ConsEgress]; ok {
 			// @ p.d.getDomExternalLemma()
-			// @ assert ohp.FirstHop.ConsEgress in p.d.getDomExternal()
+			// @ assert ohp.FirstHop.ConsEgress elem p.d.getDomExternal()
 			// @ p.d.InDomainExternalInForwardingMetrics(ohp.FirstHop.ConsEgress)
 			// @ fold p.d.validResult(processResult{EgressID: ohp.FirstHop.ConsEgress, OutConn: c, OutPkt: p.rawPkt}, false)
 			return processResult{EgressID: ohp.FirstHop.ConsEgress, OutConn: c, OutPkt: p.rawPkt},

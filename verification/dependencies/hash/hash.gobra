@@ -8,12 +8,8 @@
 
 package hash
 
-// TODO: Remove as this is not used here anymore (and clashes with our `io`)
-// import "io"
-
-// TODO: Maybe find a different solution s.t. we don't have to import that here;
-// note that we can't define `ScionHashSpec` elsewhere as Gobra doesn't support
-// embedding imported types yet.
+// As Gobra doesn't support embedding imported types yet, we have to define
+// `ScionHashSpec` here; consequently, there is no way around importing `io`.
 import "github.com/scionproto/scion/verification/io"
 
 // Hash is the common interface implemented by all hash functions.
@@ -35,6 +31,9 @@ import "github.com/scionproto/scion/verification/io"
 type Hash interface {
 	pred Mem()
 
+	// Due to Gobra issue #959, we need to repeat `pred AsidMem()` here.
+	pred AsidMem()
+
 	// Write (via the embedded io.Writer interface) adds more data to the running hash.
 	// It never returns an error.
 
@@ -53,7 +52,7 @@ type Hash interface {
 	// It does not change the underlying hash state.
 	preserves acc(Mem(), 1/1000)
 	requires acc(b)
-	ensures  acc(res) && len(res) == Size()
+	ensures  acc(res) && len(res) == len(b) + Size()
 	decreases
 	Sum(b []byte) (res []byte)
 
@@ -78,20 +77,28 @@ type Hash interface {
 	BlockSize() (res int)
 }
 
-// TODO: Explain need for ScionHashSpec
+// In order to adequately relate the abstract computation of a MAC tag (using
+// `io.nextMsgtermSpec`) to the concrete computation (using `path.FullMAC` and 
+// `path.MAC`), we need to relate the key used by `io.nextMsgtermSpec` -- which 
+// is simply "indexed" by the AS identifier -- to the key used by the `Hash` 
+// instance passed to `path.FullMAC`/`path.MAC` (VerifiedSCION uses a keyed hash). 
+// To this end, during the creation of the `Hash` instance, we not only pass
+// the key but also the associated AS ID (cf. `scrypto.InitMac`) which can then
+// later be accessed using `Asid()`.
+// As this specification is specific to VerifiedSCION, we don't add it to `Hash`
+// directly, but instead in this interface which embeds `Hash`.
 type ScionHashSpec interface {
 	Hash
 
-	// Due to a bug (?) in Gobra, this needs to be repeated here.
-	// TODO: Check again whether this is a bug, if so open an issue and update
-	// the comment here to refer to it.
+	// Due to Gobra issue #958, we need to repeat `pred Mem()` here.
 	pred Mem()
 
+	// Memory footprint for `Asid`. Needed s.t. we can establish that the result
+	// of `Asid()` does not change after a call to `Write` or `Reset`.
+	pred AsidMem()
+
 	ghost
-	// TODO: If `Asid` depends on `Mem()`, then we don't know whether the result
-	// may change after call to `FullMAC` (as it consumes `Mem`). 
-	// However, we likely don't need to require `Mem` here anyway.
-	// requires Mem()
+	requires AsidMem()
 	decreases
 	pure Asid() (ghost io.AS)
 }
