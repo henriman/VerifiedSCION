@@ -233,9 +233,6 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 // @ 	IsSupportedRawPkt(b.View()) == old(IsSupportedPkt(ubuf))
 // @ decreases
 func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOptions /* @ , ghost ubuf []byte @*/) (e error) {
-	// TODO[henri]: minimize asserts
-	// @ assert s.IsLow(ubuf)
-	// @ assert s.IsLow(ubuf) == s.IsLowDecodingLayer(true, ubuf)
 	// @ s.RevealIsLow(true, ubuf, R1)
 	// @ unfold acc(s.Mem(ubuf), R1)
 	// @ defer fold acc(s.Mem(ubuf), R1)
@@ -275,13 +272,8 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 	// @ assert &buf[10:12][0] == &buf[10] && &buf[10:12][1] == &buf[11]
 	binary.BigEndian.PutUint16(buf[10:12], 0)
 	// @ fold acc(sl.Bytes(uSerBufN, 0, len(uSerBufN)), writePerm)
-	// @ assert low(len(ubuf))
 	// @ assert low(sl.GetByte(ubuf, 0, len(ubuf), 8))
-	// @ assert low(GetPathType(ubuf))
-	// @ assert low(s.PathType)
 	// @ assert low(sl.GetByte(ubuf, 0, len(ubuf), 4))
-	// @ assert low(GetNextHdr(ubuf))
-	// @ assert low(s.NextHdr)
 	// @ assert low(reveal s.EqPathTypeWithBuffer(ubuf, ubuf))
 	// @ assert low(reveal s.EqPathType(ubuf))
 	// @ ghost if s.EqPathType(ubuf) {
@@ -404,12 +396,6 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 	// @ assert low(sl.GetByte(data, 0, len(data), 8))
 	// @ assert low(sl.GetByte(data, 0, len(data), 9))
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R41)
-	// TODO[henri]: can probably remove these assertions, but not the ones before unfold
-	// - can replace them with ghost calls, however
-	// @ assert low(data[4])
-	// @ assert low(data[5])
-	// @ assert low(data[8])
-	// @ assert low(data[9])
 	s.NextHdr = L4ProtocolType(data[4])
 	s.HdrLen = data[5]
 	// @ assert &data[6:8][0] == &data[6] && &data[6:8][1] == &data[7]
@@ -553,10 +539,7 @@ func (s *SCION) RecyclePaths() {
 // @ ensures  low(typeOf(res))
 // @ decreases
 func (s *SCION) getPath(pathType path.Type) (res path.Path, err error) {
-	// TODO[henri]: minimize assertions
-	// @ assert low(s.pathPool == nil)
 	// @ unfold PathPoolMem(s.pathPool, s.pathPoolRaw)
-	// @ assert low(s.pathPool == nil)
 	if s.pathPool == nil {
 		// @ ghost defer fold PathPoolMem(s.pathPool, s.pathPoolRaw)
 		// @ EstablishPathPkgMem()
@@ -886,9 +869,6 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType, b []byte, err error) {
 	switch a := hostAddr.(type) {
 	case *net.IPAddr:
-		// TODO[henri]: minimize assertions
-		// @ assert forall i int :: { a.GetIPByte(i) } 0 <= i && i < a.GetIPLen() &&
-		// @ 	low(i) ==> low(a.GetIPByte(i))
 		// @ ghost if wildcard {
 		// @ 	unfold acc(hostAddr.Mem(), _)
 		// @ } else {
@@ -896,8 +876,6 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 		// @ }
 		// @ assert forall i int :: { a.GetIPByte(i) }{ &a.IP[i] } 0 <= i && i < len(a.IP) ==>
 		// @ 	a.GetIPByte(i) == a.IP[i]
-		// @ assert forall i int :: { &a.IP[i] } 0 <= i && i < len(a.IP) &&
-		// @ 	low(i) ==> low(a.IP[i])
 		if ip := a.IP.To4( /*@ wildcard @*/ ); ip != nil {
 			// @ ghost if !wildcard && isIPv6(a) {
 			// @ 	assert isConvertibleToIPv4(hostAddr) ==>
@@ -926,13 +904,13 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 		// @ 	fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), _)
 		// @ } else {
 		// @ 	fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
-			// TODO[henri]: try if this still needs to be like this
+		// TODO[henri]: try if this still needs to be like this
 		// TODO: Once Gobra issue #946 is resolved, uncomment this.
 		//  	package acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20) {
 		//  		unfold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
 		//  		fold acc(hostAddr.Mem(), R20)
 		//  	}
-			// TODO[henri]: if still needed, replace by exhale/inhale
+		// TODO[henri]: if still needed, replace by exhale/inhale
 		// @	assume acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20)
 		// @ }
 		return T16Ip, verScionTmp, nil
@@ -993,9 +971,6 @@ func (s *SCION) AddrHdrLen( /*@ ghost ubuf []byte, ghost insideSlayers bool @*/ 
 // @ decreases
 func (s *SCION) SerializeAddrHdr(buf []byte /*@ , ghost ubuf []byte @*/) (err error) {
 	// @ unfold acc(s.HeaderMem(ubuf), R10)
-	// TODO[henri]: minimize assertions
-	// @ assert low(s.SrcAddrType)
-	// @ assert low(s.DstAddrType)
 	// @ defer fold acc(s.HeaderMem(ubuf), R10)
 	if len(buf) < s.AddrHdrLen( /*@ nil, true @*/ ) {
 		return serrors.New("provided buffer is too small", "expected", s.AddrHdrLen( /*@ nil, true @*/ ),
@@ -1167,11 +1142,7 @@ func (s *SCION) pseudoHeaderChecksum(length int, protocol uint8) (res uint32, er
 	var srcIA /*@@@*/, dstIA /*@@@*/ [8]byte
 	binary.BigEndian.PutUint64(srcIA[:], uint64(s.SrcIA))
 	binary.BigEndian.PutUint64(dstIA[:], uint64(s.DstIA))
-	// TODO[henri]: minimize assertions
-	// @ assert low(len(srcIA)) && forall i int :: { &srcIA[i] } 0 <= i && i < len(srcIA) &&
-	// @ 	low(i) ==> low(srcIA[i])
-	// @ assert low(len(dstIA)) && forall i int :: { &dstIA[i] } 0 <= i && i < len(dstIA) &&
-	// @ 	low(i) ==> low(dstIA[i])
+
 	// @ invariant forall j int :: { &srcIA[j] } 0 <= j && j < 8 ==> acc(&srcIA[j])
 	// @ invariant forall j int :: { &dstIA[j] } 0 <= j && j < 8 ==> acc(&dstIA[j])
 	// @ invariant i % 2 == 0
@@ -1273,12 +1244,9 @@ func (s *SCION) upperLayerChecksum(upperLayer []byte, csum uint32) (res uint32) 
 	// Odd lengths are handled at the end.
 	safeBoundary := len(upperLayer) - 1
 	// @ unfold acc(sl.Bytes(upperLayer, 0, len(upperLayer)), R21)
-	// TODO[henri]: minimize assertions
 	// @ assert forall i int :: { &upperLayer[i] }{ sl.GetByte(upperLayer, 0, len(upperLayer), i) } 0 <= i && i < len(upperLayer) ==>
 	// @ 	upperLayer[i] == sl.GetByte(upperLayer, 0, len(upperLayer), i)
-	// @ assert low(len(upperLayer)) && 
-	// @ 	forall i int :: { &upperLayer[i] } 0 <= i && i < len(upperLayer) &&
-	// @ 		low(i) ==> low(upperLayer[i])
+	
 	// @ invariant 0 <= i && i < safeBoundary + 2
 	// @ invariant i % 2 == 0
 	// @ invariant forall i int :: { &upperLayer[i] } 0 <= i && i < len(upperLayer) ==> acc(&upperLayer[i], R21)

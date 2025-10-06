@@ -132,7 +132,6 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 	if err != nil {
 		return err
 	}
-	// TODO[henri]: minimize assertions
 	// @ unfold acc(s.Mem(ubufMem), 1/2)
 	// @ ghost if s.GetScn(true, ubufMem) != nil {
 	// @ 	assert forall i int :: { s.GetScnRawSrcAddrByte(ubufMem, i) }{ s.scn.GetRawSrcAddrByte(i) } 0 <= i && i < s.scn.GetRawSrcAddrLen() ==>
@@ -145,23 +144,11 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 	// @ unfold sl.Bytes(underlyingBufRes, 0, 2)
 	// @ assert forall i int :: { &bytes[i] } 0 <= i && i < 2 ==> &bytes[i] == &underlyingBufRes[i]
 	// @ fold sl.Bytes(bytes, 0, 2)
-	// @ assert low(s.TypeCode)
 	s.TypeCode.SerializeTo(bytes)
-	// @ assert low(sl.GetByte(bytes, 0, 2, 0))
-	// @ assert low(sl.GetByte(bytes, 0, 2, 1))
 	// @ unfold sl.Bytes(bytes, 0, 2)
-	// @ assert low(bytes[0])
-	// @ assert low(bytes[1])
 	// @ fold sl.Bytes(underlyingBufRes, 0, 2)
-	// @ assert low(sl.GetByte(underlyingBufRes, 0, 2, 0))
-	// @ assert low(sl.GetByte(underlyingBufRes, 0, 2, 1))
 	// @ sl.CombineAtIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 2, writePerm)
-	// @ assert low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), 0))
-	// @ assert low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), 1))
 
-	//  assert low(len(underlyingBufRes)) &&
-	//  	forall i int :: { sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i) } 4 <= i && i < len(underlyingBufRes) &&
-	//  		low(i) ==> low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i))
 	if opts.ComputeChecksums {
 		if s.scn == nil {
 			// @ fold s.Mem(ubufMem)
@@ -169,35 +156,13 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 		}
 		// zero out checksum bytes
 		// @ sl.SplitByIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 4, writePerm)
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, 4, 0))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, 4, 1))
 		// @ unfold sl.Bytes(underlyingBufRes, 0, 4)
 		// @ assert forall i int :: { &bytes[i] } 0 <= i && i < 4 ==> &bytes[i] == &underlyingBufRes[i]
 		bytes[2] = 0
 		bytes[3] = 0
-		// @ assert low(bytes[0])
-		// @ assert low(bytes[1])
-		// @ assert low(bytes[2])
-		// @ assert low(bytes[3])
 		// @ fold sl.Bytes(underlyingBufRes, 0, 4)
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, 4, 0))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, 4, 1))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, 4, 2))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, 4, 3))
 		// @ sl.CombineAtIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 4, writePerm)
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), 0))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), 1))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), 2))
-		// @ assert low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), 3))
-		//  assert low(len(underlyingBufRes)) &&
-		//  	forall i int :: { sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i) } 4 <= i && i < len(underlyingBufRes) &&
-		//  		low(i) ==> low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i))
-		//  assert forall i int :: { sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i) } 0 <= i && i < 4 &&
-		//  	low(i) ==> low(sl.GetByte(underlyingBufRes, 0, len(underlyingBufRes), i))
 		verScionTmp := b.Bytes()
-		//  assert low(len(verScionTmp)) &&
-		//  	forall i int :: { sl.GetByte(verScionTmp, 0, len(verScionTmp), i) } 0 <= i && i < len(verScionTmp) &&
-		//  		low(i) ==> low(sl.GetByte(verScionTmp, 0, len(verScionTmp), i))
 		// @ unfold acc(s.scn.ChecksumMem(), 1/2)
 		// @ assert forall i int :: { s.scn.GetRawSrcAddrByte(i) }{ sl.GetByte(s.scn.RawSrcAddr, 0, len(s.scn.RawSrcAddr), i) } 0 <= i && i < len(s.scn.RawSrcAddr) ==>
 		// @ 	s.scn.GetRawSrcAddrByte(i) == sl.GetByte(s.scn.RawSrcAddr, 0, len(s.scn.RawSrcAddr), i)
@@ -240,16 +205,12 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 // @ 	old(s.GetScn(false, nil)) == nil ==> s.IsLowDecodingLayer(true, data)
 // @ decreases
 func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
-	// TODO[henri]: minimize assertions
-	// @ assert s.GetScn(false, nil) == old(s.GetScn(false, nil))
 	// @ s.RevealIsLowDecodingLayer(false, nil, HalfPerm)
 	if size := len(data); size < 4 {
 		df.SetTruncated()
 		return serrors.New("SCMP layer length is less then 4 bytes", "minimum", 4, "actual", size)
 	}
-	// @ assert s.GetScn(false, nil) == old(s.GetScn(false, nil))
 	// @ unfold s.NonInitMem()
-	// @ assert s.scn == old(s.GetScn(false, nil))
 	// @ requires len(data) >= 4
 	// @ requires acc(sl.Bytes(data, 0, len(data)), R40)
 	// @ requires low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1))
@@ -282,14 +243,9 @@ func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res err
 	// @ sl.CombineAtIndex_Bytes(data, 0, 4, 2, R40)
 	// @ sl.CombineAtIndex_Bytes(data, 0, len(data), 4, R40)
 	// @ )
-	// @ assert s.scn == old(s.GetScn(false, nil))
 	s.BaseLayer = BaseLayer{Contents: data[:4], Payload: data[4:]}
 	// @ fold s.BaseLayer.Mem(data, 4)
-	// @ assert low(s.TypeCode)
-	// @ assert s.scn == old(s.GetScn(false, nil))
 	// @ fold s.Mem(data)
-	// @ assert s.GetScn(true, data) == old(s.GetScn(false, nil))
-	// @ assert low(s.GetTypeCode(true, data))
 	// @ ghost if s.GetScn(true, data) == nil {
 	// @ 	s.AssertIsLow(true, data, writePerm)
 	// @ }
@@ -324,10 +280,7 @@ func (s *SCMP) SetNetworkLayerForChecksum(scn *SCION) {
 func decodeSCMP(data []byte, pb gopacket.PacketBuilder) (res error) {
 	scmp := &SCMP{}
 	// @ fold scmp.NonInitMem()
-	// TODO[henri]: minimize assertions
-	// @ assert scmp.GetScn(false, nil) == nil
 	// @ scmp.AssertIsLow(false, nil, HalfPerm)
-	// @ assert scmp.GetScn(false, nil) == nil
 	err := scmp.DecodeFromBytes(data, pb)
 	if err != nil {
 		return err

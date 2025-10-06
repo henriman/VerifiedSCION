@@ -122,12 +122,9 @@ func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
 // @ ensures   low(err != nil)
 // @ decreases
 func decodeTLVOption(data []byte) (res *tlvOption, err error) {
-	// TODO[henri]: might be able to remove low assertions (just not == assertion likely)
-	// @ assert low(sl.GetByte(data, 0, len(data), 0))
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R43)
 	// @ defer fold acc(sl.Bytes(data, 0, len(data)), R43)
 	// @ assert sl.GetByte(data, 0, len(data), 0) == data[0]
-	// @ assert low(data[0])
 	o := &tlvOption{OptType: OptionType(data[0])}
 	if OptionType(data[0]) == OptTypePad1 {
 		o.ActualLength = 1
@@ -136,9 +133,7 @@ func decodeTLVOption(data []byte) (res *tlvOption, err error) {
 	if len(data) < 2 {
 		return nil, serrors.New("buffer too short", "expected", 2, "actual", len(data))
 	}
-	// @ assert low(sl.GetByte(data, 0, len(data), 1))
 	// @ assert sl.GetByte(data, 0, len(data), 1) == data[1]
-	// @ assert low(data[1])
 	o.OptDataLen = data[1]
 	// (VerifiedSCION) Gobra cannot prove this even though it must hold, given the type of o.OptDataLen
 	// @ assume 0 <= o.OptDataLen
@@ -290,22 +285,14 @@ func decodeExtnBase(data []byte, df gopacket.DecodeFeedback) (res extnBase, resE
 			len(data)))
 	}
 
-	// TODO[henri]: Try to minimize asserts
-	// @ assert low(sl.GetByte(data, 0, len(data), 0))
-	// @ assert low(sl.GetByte(data, 0, len(data), 1))
 	// @ unfold acc(sl.Bytes(data, 0, len(data)), R42)
 	// @ assert sl.GetByte(data, 0, len(data), 0) == data[0]
 	// @ assert sl.GetByte(data, 0, len(data), 1) == data[1]
-	// @ assert low(data[0])
 	e.NextHdr = L4ProtocolType(data[0])
-	// @ assert low(e.NextHdr)
-	// @ assert low(data[1])
 	e.ExtLen = data[1]
-	// @ assert low(e.ExtLen)
 	// @ fold acc(sl.Bytes(data, 0, len(data)), R42)
-	// @ assert low(e.ExtLen)
 	e.ActualLen = (int(e.ExtLen) + 1) * LineLen
-	// @ assert low(e.ActualLen)
+	//  assert low(e.ActualLen)
 	if len(data) < e.ActualLen {
 		return extnBase{}, serrors.New(fmt.Sprintf("invalid extension header. "+
 			"Length %d less than specified length %d", len(data), e.ActualLen))
@@ -408,10 +395,6 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ unfold h.NonInitMem()
 	h.Options = nil
 	h.extnBase, err = decodeExtnBase(data, df)
-	// TODO[henri]: minimize asserts
-	// @ assert low(len(data)) &&
-	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
-	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 	if err != nil {
 		// @ fold h.NonInitMem()
 		return err
@@ -422,18 +405,11 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	}
 	offset := 2
 
-	// @ assert low(len(data)) &&
-	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
-	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
-
 	// @ ghost lenOptions := 0
 
 	// TODO: Once Gobra issue #888 is resolved, remove `actualLen` and use
 	// `h.ActualLen` directly in loop invariant.
 	actualLen := h.ActualLen
-
-	// @ assert low(offset)
-	// @ assert low(actualLen)
 
 	// @ invariant 2 <= offset
 	// @ invariant acc(h)
