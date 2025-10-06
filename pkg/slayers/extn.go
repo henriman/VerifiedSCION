@@ -49,7 +49,6 @@ type tlvOption struct {
 }
 
 // @ requires  acc(o, R20)
-// TODO[henri]: Too implementation-specific? Or wrap in IsLow?
 // @ requires  low(o.OptType) && low(fixLengths)
 // @ ensures   acc(o, R20)
 // @ ensures   0 < res
@@ -74,7 +73,6 @@ func (o *tlvOption) length(fixLengths bool) (res int) {
 // @ requires  2 <= len(data)
 // @ requires  acc(o)
 // @ requires  acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
-// TODO[henri]: Too implementation-specific? Wrap in IsLow if I decide to above
 // @ requires  low(o.OptType) && low(data == nil) && low(fixLengths)
 // @ ensures   acc(o)
 // @ ensures   acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
@@ -117,7 +115,6 @@ func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
 // @ 	2 <= res.ActualLength && res.ActualLength <= len(data) && res.OptData === data[2:res.ActualLength])
 // @ ensures   err == nil ==> 0 < res.ActualLength
 // @ ensures   err != nil ==> err.ErrorMem()
-// TODO[henri]: If I introduce IsLow, use this here too
 // @ ensures   err == nil ==> low(res.ActualLength)
 // @ ensures   low(err != nil)
 // @ decreases
@@ -274,7 +271,6 @@ func (e *extnBase) serializeToWithTLVOptions(b gopacket.SerializeBuffer,
 // @ 	res.BaseLayer.Contents === data[:res.ActualLen] &&
 // @ 	res.BaseLayer.Payload === data[res.ActualLen:])
 // @ ensures   low(resErr != nil)
-// TODO[henri]: consider wrapping in Islow
 // @ ensures   resErr == nil ==> low(res.NextHdr) && low(res.ActualLen)
 // @ decreases
 func decodeExtnBase(data []byte, df gopacket.DecodeFeedback) (res extnBase, resErr error) {
@@ -387,8 +383,7 @@ func (h *HopByHopExtn) SerializeTo(b gopacket.SerializeBuffer,
 // @ ensures   res == nil ==> h.Mem(data)
 // @ ensures   res != nil ==> (h.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
-// TODO[henri]: IsLow maybe
-// @ ensures   res == nil ==> low(h.GetNextHdr(data))
+// @ ensures   res == nil ==> h.IsLowDecodingLayer(true, data)
 // @ decreases
 func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	var err error
@@ -444,6 +439,7 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ fold h.extnBase.BaseLayer.Mem(data, h.extnBase.ActualLen)
 	// @ fold h.extnBase.Mem(data)
 	// @ fold h.Mem(data)
+	// @ h.AssertIsLowDecodingLayer(true, data, HalfPerm)
 	return nil
 }
 
@@ -464,6 +460,7 @@ func decodeHopByHopExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 	if err != nil {
 		return err
 	}
+	// @ h.RevealIsLowDecodingLayer(true, data, HalfPerm)
 	nextTmp := scionNextLayerTypeAfterHBH(( /*@ unfolding h.Mem(data) in (unfolding h.extnBase.Mem(data) in @*/ h.NextHdr /*@ ) @*/))
 	// @ fold nextTmp.Mem()
 	return p.NextDecoder(nextTmp)
@@ -545,18 +542,13 @@ func (e *EndToEndExtn) LayerPayload( /*@ ghost ub []byte @*/ ) (res []byte /*@ ,
 // @ ensures   res == nil ==> e.Mem(data)
 // @ ensures   res != nil ==> (e.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
-// TODO[henri]: IsLow?
-// @ ensures   res == nil ==> low(e.GetNextHdr(data))
+// @ ensures   res == nil ==> e.IsLowDecodingLayer(true, data)
 // @ decreases
 func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	var err error
 	// @ unfold e.NonInitMem()
 	e.Options = nil
 	e.extnBase, err = decodeExtnBase(data, df)
-	// TODO: minimize assertions
-	// @ assert low(len(data)) &&
-	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
-	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 	if err != nil {
 		// @ fold e.NonInitMem()
 		return err
@@ -567,18 +559,11 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	}
 	offset := 2
 
-	// @ assert low(len(data)) &&
-	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
-	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
-
 	// @ ghost lenOptions := 0
 
 	// TODO: Once Gobra issue #888 is resolved, remove `actualLen` and use
 	// `e.ActualLen` directly in loop invariant.
 	actualLen := e.ActualLen
-
-	// @ assert low(offset)
-	// @ assert low(actualLen)
 
 	// @ invariant 2 <= offset
 	// @ invariant acc(e)
@@ -613,6 +598,7 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ fold e.extnBase.BaseLayer.Mem(data, e.ActualLen)
 	// @ fold e.extnBase.Mem(data)
 	// @ fold e.Mem(data)
+	// @ e.AssertIsLowDecodingLayer(true, data, HalfPerm)
 	return nil
 }
 
@@ -633,6 +619,7 @@ func decodeEndToEndExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 	if err != nil {
 		return err
 	}
+	// @ e.RevealIsLowDecodingLayer(true, data, HalfPerm)
 	nextTmp := scionNextLayerTypeAfterE2E( /*@ unfolding e.Mem(data) in (unfolding e.extnBase.Mem(data) in @*/ e.NextHdr /*@ ) @*/)
 	// @ fold nextTmp.Mem()
 	return p.NextDecoder(nextTmp)
