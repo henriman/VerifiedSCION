@@ -21,21 +21,19 @@ type SerializableLayer interface {
 	decreases
 	pure IsLow(ghost ubuf []byte) bool
 
-	// TODO: reorder?
 	requires  !opts.FixLengths
-	requires  b != nil && b.Mem()
+	requires  b != nil && b.Mem() && b.IsLow()
 	requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 	requires  Mem(ubuf) && IsLow(ubuf)
 	requires  sl.Bytes(ubuf, 0, len(ubuf))
 	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
-	requires  low(len(ubuf)) && 
-		forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
-			low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
-	requires  low(opts.ComputeChecksums)
-	// TODO[henri]: Might have introduced IsLow for this
 	requires  low(len(b.UBuf())) && 
 		forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) &&
 			low(i) ==> low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+	requires  low(opts.ComputeChecksums)
+	requires  low(len(ubuf)) && 
+		forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
+			low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
 	ensures   sl.Bytes(ubuf, 0, len(ubuf))
 	ensures   err == nil ==> (Mem(ubuf) && b.Mem())
 	ensures   err == nil ==> sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
@@ -55,6 +53,15 @@ type SerializeOptions struct {
 
 type SerializeBuffer interface {
 	pred Mem()
+
+	// Return whether the internal state of the buffer is low.
+	// TODO: Once Gobra issue #846 is resolved, mark as `hyper`.
+	// TODO: Once Gobra issue #846 is resolved, extend `IsLow` to also cover
+	// the contents of `UBuf()` (or introduce separate function for this).
+	ghost
+	requires Mem()
+	decreases
+	pure IsLow() bool
 
 	ghost
 	pure
@@ -84,15 +91,10 @@ type SerializeBuffer interface {
 	ensures   err == nil ==> old(View()) == View()[num:]
 	ensures   err != nil ==> UBuf() === old(UBuf())
 	ensures   err != nil ==> err.ErrorMem()
-	// NOTE: I justified this by looking at the default implementation of 
-	// SerializeBuffer which doesn't take into account the internal state
-	// for success. however, we might want to
-	// TODO[henri]: I think I would want to? at least add comment here
-	ensures   low(num) ==> low(err != nil)
-	// TODO[henri]: maybe turn into pre+post condition (then num needs to be there too)
+	ensures   old(IsLow()) && low(num) ==> IsLow() && low(err != nil)
 	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
-	// (or using IsLow for UBuf?)
-	ensures   err == nil && low(num) && (low(len(UBuf())) && 
+	// (i.e. IsLowSlice, or by calling IsLow of SerializeBuffer).
+	ensures   err == nil ==> low(num) && (low(len(old(UBuf()))) && 
 		forall i int :: { sl.GetByte(UBuf(), 0, len(UBuf()), i) } 0 <= i && i < len(old(UBuf())) &&
 			low(i) ==> low(old(sl.GetByte(UBuf(), 0, len(UBuf()), i)))) ==> 
 		low(len(UBuf())) &&
@@ -128,7 +130,7 @@ type SerializeBuffer interface {
 	PushLayer(LayerType)
 }
 
-ensures res != nil && res.Mem()
+ensures res != nil && res.Mem() && res.IsLow()
 ensures sl.Bytes(res.UBuf(), 0, len(res.UBuf()))
 decreases
 func NewSerializeBuffer() (res SerializeBuffer)

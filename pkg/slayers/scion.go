@@ -212,7 +212,7 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 }
 
 // @ requires  !opts.FixLengths
-// @ requires  b != nil && b.Mem()
+// @ requires  b != nil && b.Mem() && b.IsLow()
 // @ requires  acc(s.Mem(ubuf), R0)
 // @ requires  sl.Bytes(ubuf, 0, len(ubuf))
 // @ requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))

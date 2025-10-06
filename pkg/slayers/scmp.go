@@ -113,9 +113,7 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // @ requires  b != nil
 // @ requires  s.Mem(ubufMem) && s.IsLow(ubufMem)
 // @ requires  low(opts.ComputeChecksums)
-// @ requires  b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
-// TODO[henri]: probably want to turn this into IsLow. Though I have no object for
-// which to implement RevealIsLow ... could make this part of interface
+// @ requires  b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf())) && b.IsLow()
 // TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
 // (here and in the method body).
 // @ requires  low(len(b.UBuf())) && 

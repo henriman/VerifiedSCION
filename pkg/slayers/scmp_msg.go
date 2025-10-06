@@ -111,7 +111,7 @@ func (i *SCMPExternalInterfaceDown) DecodeFromBytes(data []byte,
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -262,7 +262,7 @@ func (i *SCMPInternalConnectivityDown) DecodeFromBytes(data []byte,
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -433,7 +433,7 @@ func (i *SCMPEcho) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -569,7 +569,7 @@ func (i *SCMPParameterProblem) DecodeFromBytes(data []byte, df gopacket.DecodeFe
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -755,7 +755,7 @@ func (i *SCMPTraceroute) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -892,7 +892,7 @@ func (i *SCMPDestinationUnreachable) DecodeFromBytes(data []byte,
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -1018,7 +1018,7 @@ func (i *SCMPPacketTooBig) DecodeFromBytes(data []byte, df gopacket.DecodeFeedba
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
