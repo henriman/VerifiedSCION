@@ -86,7 +86,7 @@ type Path interface {
 	// structure when serializing (e.g. scion.Raw)
 	//@ requires  low(len(b))
 	//@ requires  acc(Mem(ub), R1)
-	//@ requires  IsLow(ub)
+	//@ requires  IsLow(ub) && low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ preserves sl.Bytes(b, 0, len(b))
 	//@ ensures   acc(Mem(ub), R1)
@@ -103,7 +103,6 @@ type Path interface {
 	//@ ensures   err == nil ==> IsValidResultOfDecoding(b)
 	//@ ensures   err != nil ==> err.ErrorMem()
 	//@ ensures   err != nil ==> NonInitMem()
-	// TODO[henri]: Would need to re-verify other already-verified packages ... 
 	//@ ensures   low(err != nil)
 	//@ decreases
 	DecodeFromBytes(b []byte) (err error)
@@ -116,6 +115,7 @@ type Path interface {
 	// Reverse reverses a path such that it can be used in the reversed direction.
 	// XXX(shitz): This method should possibly be moved to a higher-level path manipulation package.
 	//@ requires  Mem(ub) && IsLow(ub)
+	//@ requires  low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)
@@ -130,13 +130,9 @@ type Path interface {
 	//@ LenSpec(ghost ub []byte) (l int)
 
 	// Len returns the length of a path in bytes.
-	//@ preserves acc(Mem(ub), R50)
-	//@ ensures   l == LenSpec(ub)
-	// TODO[henri]: Add appropriate preconditions to ensure that the length
-	// will be low (maybe it is constant for a type of path?)
-	// - might need IsLow
-	// - "can't put this on LenSpec (yet) since it would need to be hyper"
-	// TODO[henri]: Would need to re-verify other already-verified packages ... 
+	//@ requires acc(Mem(ub), R50) && IsLow(ub)
+	//@ ensures  acc(Mem(ub), R50)
+	//@ ensures  l == LenSpec(ub)
 	//@ ensures  low(l)
 	//@ decreases
 	Len( /*@ ghost ub []byte @*/ ) (l int)
@@ -173,6 +169,7 @@ type Metadata struct {
 // @ requires PkgMem()
 // @ requires RegisteredTypes().DoesNotContain(int64(pathMeta.Type))
 // @ requires pathMeta.New implements NewPathSpec
+// @ requires low(pathMeta.Type)
 // @ ensures  PkgMem()
 // @ ensures  RegisteredTypes().Contains(int64(pathMeta.Type))
 // @ decreases
@@ -197,7 +194,7 @@ func RegisterPath(pathMeta Metadata) {
 // Strict parsing is enabled by default.
 //
 // Experimental: This function is experimental and might be subject to change.
-// @ requires PkgMem()
+// @ requires PkgMem() && low(strict)
 // @ ensures  PkgMem()
 // @ decreases
 func StrictDecoding(strict bool) {
@@ -209,6 +206,7 @@ func StrictDecoding(strict bool) {
 // NewPath returns a new path object of pathType.
 // @ requires 0 <= pathType && pathType < maxPathType
 // @ requires acc(PkgMem(), _)
+// @ requires low(pathType)
 // @ ensures  e != nil ==> e.ErrorMem()
 // @ ensures  e == nil ==> p != nil && p.NonInitMem()
 // @ ensures  low(e != nil)
@@ -277,10 +275,13 @@ func (p *rawPath) Reverse( /*@ ghost ub []byte @*/ ) (r Path, e error) {
 	return nil, serrors.New("not supported")
 }
 
-// @ preserves acc(p.Mem(ub), R50)
-// @ ensures   l == p.LenSpec(ub)
+// @ requires acc(p.Mem(ub), R50) && p.IsLow(ub)
+// @ ensures  acc(p.Mem(ub), R50)
+// @ ensures  l == p.LenSpec(ub)
+// @ ensures  low(l)
 // @ decreases
 func (p *rawPath) Len( /*@ ghost ub []byte @*/ ) (l int) {
+	//@ p.RevealIsLow(ub, R50)
 	return /*@ unfolding acc(p.Mem(ub), R50) in @*/ len(p.raw)
 }
 

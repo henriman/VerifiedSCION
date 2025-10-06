@@ -26,6 +26,10 @@ import (
 requires acc(&s.RawSrcAddr)
 requires acc(&s.SrcAddrType)
 requires acc(src.Mem())
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+requires low(src.GetIPLen()) && 
+	forall i int :: { src.GetIPByte(i) } 0 <= i && i < src.GetIPLen() &&
+		low(i) ==> low(src.GetIPByte(i))
 func testSrcSetter(s *SCION, src *net.IPAddr) {
 	res := s.SetSrcAddr(src, false)
 	// unfolding src.Mem() grants us permission to s.RawSrcAddr since they are aliased
@@ -36,6 +40,10 @@ func testSrcSetter(s *SCION, src *net.IPAddr) {
 requires acc(&s.RawSrcAddr)
 requires acc(&s.SrcAddrType)
 requires acc(src.Mem(), _)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+requires low(src.GetIPLen()) && 
+	forall i int :: { src.GetIPByte(i) } 0 <= i && i < src.GetIPLen() &&
+		low(i) ==> low(src.GetIPByte(i))
 func testSrcSetterWildcard(s *SCION, src *net.IPAddr) {
 	res := s.SetSrcAddr(src, true)
 	// in the wildcard case we have wildcard access to the address in the SCION struct
@@ -69,6 +77,10 @@ func testSrcSetterSVCWildcard(s *SCION, src addr.HostSVC) {
 requires acc(&s.RawDstAddr)
 requires acc(&s.DstAddrType)
 requires acc(dst.Mem())
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+requires low(dst.GetIPLen()) && 
+	forall i int :: { dst.GetIPByte(i) } 0 <= i && i < dst.GetIPLen() &&
+		low(i) ==> low(dst.GetIPByte(i))
 func testDstSetter(s *SCION, dst *net.IPAddr) {
 	res := s.SetDstAddr(dst, false)
 	// unfolding dst.Mem() grants us permission to s.RawDstAddr since they are aliased
@@ -79,6 +91,10 @@ func testDstSetter(s *SCION, dst *net.IPAddr) {
 requires acc(&s.RawDstAddr)
 requires acc(&s.DstAddrType)
 requires acc(dst.Mem(), _)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+requires low(dst.GetIPLen()) && 
+	forall i int :: { dst.GetIPByte(i) } 0 <= i && i < dst.GetIPLen() &&
+		low(i) ==> low(dst.GetIPByte(i))
 func testDstSetterWildcard(s *SCION, dst *net.IPAddr) {
 	res := s.SetDstAddr(dst, true)
 	// in the wildcard case we have wildcard access to the address in the SCION struct

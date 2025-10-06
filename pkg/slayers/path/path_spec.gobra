@@ -31,12 +31,27 @@ pred (r *rawPath) NonInitMem() {
 	acc(r)
 }
 
-ghost
 requires r.Mem(ub)
 decreases
-pure func (r *rawPath) IsLow(ub []byte) bool {
-	return true
+pure func (r *rawPath) GetRawLen(ub []byte) int {
+	return unfolding r.Mem(ub) in len(r.raw)
 }
+
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires r.Mem(ub)
+decreases
+pure func (r *rawPath) IsLow(ub []byte) bool
+
+// TODO: Once Gobra issue #846 is resolved, actually implement this.
+ghost
+trusted
+requires p > 0
+requires acc(r.Mem(ub), p) && r.IsLow(ub)
+ensures  acc(r.Mem(ub), p) && low(r.GetRawLen(ub))
+decreases
+func (r *rawPath) RevealIsLow(ub []byte, p perm)
 
 ghost
 requires p.Mem(buf)
@@ -85,10 +100,10 @@ pred PkgMem() {
 		registeredPaths[t].inUse == registeredKeys.FContains(int64(t))) &&
 	(forall t Type :: { &registeredPaths[t].inUse } (0 <= t && t < maxPathType && registeredPaths[t].inUse) ==>
 		registeredPaths[t].Metadata.New implements NewPathSpec) &&
-	// TODO[henri]: this might need proving (probably find out by verifiying path.go)
 	low(strictDecoding) && 
 	(forall t Type :: { &registeredPaths[t].inUse } 0 <= t && t < maxPathType &&
 		low(t) ==> low(registeredPaths[t].inUse))
+
 }
 
 ghost
@@ -120,7 +135,7 @@ pure func IsStrictDecoding() (b bool) {
 // without passing `writePerm` explicitely below, we run into
 // exceptions when verifying method RegisterPath in package 'empty'
 ensures acc(p.NonInitMem(), writePerm)
-ensures p != nil
+ensures p != nil && low(typeOf(p))
 decreases
 func NewPathSpec() (p Path)
 

@@ -37,7 +37,7 @@ func RegisterPath() {
 		Desc: "Empty",
 		New:
 		//@ ensures p.NonInitMem()
-		//@ ensures p != nil
+		//@ ensures p != nil && low(typeOf(p))
 		//@ decreases
 		func /*@ newPath @*/ () (p path.Path) {
 			emptyTmp := Path{}
