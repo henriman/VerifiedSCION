@@ -62,7 +62,8 @@ trusted
 requires p > 0
 requires acc(h.Mem(), p) && h.IsLow()
 ensures  acc(h.Mem(), p)
-ensures  low(h.GetEgressRouterAlert()) && low(h.GetIngressRouterAlert())
+ensures  low(h.GetEgressRouterAlert()) && low(h.GetIngressRouterAlert()) &&
+	low(h.GetConsIngress())
 decreases
 func (h *HopField) RevealIsLow(p perm)
 
@@ -72,7 +73,8 @@ ghost
 trusted
 requires p > 0
 requires acc(h.Mem(), p)
-requires low(h.GetEgressRouterAlert()) && low(h.GetIngressRouterAlert())
+requires low(h.GetEgressRouterAlert()) && low(h.GetIngressRouterAlert()) &&
+	low(h.GetConsIngress())
 ensures  acc(h.Mem(), p) && h.IsLow()
 decreases
 func (h *HopField) AssertIsLow(p perm)

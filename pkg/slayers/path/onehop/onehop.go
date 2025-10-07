@@ -150,8 +150,8 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 
 // ToSCIONDecoded converts the one hop path in to a normal SCION path in the
 // decoded format.
-// @ requires  o.Mem(ubuf)
-// @ requires  low(o.GetSecondHopConsIngress(ubuf))
+// @ requires  o.Mem(ubuf) && o.IsLow(ubuf)
+//  requires  low(o.GetSecondHopConsIngress(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   o.Mem(ubuf)
 // @ ensures   err == nil ==> (sd != nil && sd.Mem(ubuf))
@@ -159,7 +159,9 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 // @ ensures   low(err != nil)
 // @ decreases
 func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, err error) {
+	//@ o.RevealIsLow(ubuf, HalfPerm)
 	//@ unfold acc(o.Mem(ubuf), R1)
+	//@ o.SecondHop.RevealIsLow(R2)
 	//@ unfold acc(o.SecondHop.Mem(), R10)
 	if o.SecondHop.ConsIngress == 0 {
 		//@ fold acc(o.SecondHop.Mem(), R10)
@@ -224,7 +226,7 @@ func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, e
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func (o *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, err error) {
-	//@ o.RevealIsLow(ubuf, writePerm)
+	// o.RevealIsLow(ubuf, writePerm)
 	sp, err := o.ToSCIONDecoded( /*@ ubuf @*/ )
 	if err != nil {
 		return nil, serrors.WrapStr("converting to scion path", err)

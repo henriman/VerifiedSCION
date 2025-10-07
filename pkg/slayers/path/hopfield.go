@@ -85,8 +85,7 @@ type HopField struct {
 // @ ensures  err == nil
 // @ ensures  BytesToIO_HF(raw, 0, 0, HopLen) ==
 // @ 	unfolding acc(h.Mem(), R10) in h.Abs()
-// TODO[henri]: Move into IsLow
-// @ ensures  low(h.GetConsIngress()) && h.IsLow()
+// @ ensures  h.IsLow()
 // @ decreases
 func (h *HopField) DecodeFromBytes(raw []byte) (err error) {
 	if len(raw) < HopLen {

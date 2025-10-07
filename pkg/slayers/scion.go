@@ -856,7 +856,7 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType, b []byte, err error) {
 	switch a := hostAddr.(type) {
 	case *net.IPAddr:
-		// @ a.RevealIsLow(wildcard)
+		// @ a.RevealIsLow(wildcard, R20)
 		// @ ghost if wildcard {
 		// @ 	unfold acc(hostAddr.Mem(), _)
 		// @ } else {
