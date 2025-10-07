@@ -490,7 +490,6 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 // DecodeFromBytes. No references to Path should be kept in use between
 // invocations of DecodeFromBytes.
 // @ requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
-// TODO[henri]: can likely put this back into preserves
 // @ requires PathPoolMem(s.pathPool, s.pathPoolRaw)
 // @ requires low(s.pathPool == nil)
 // @ ensures  acc(&s.pathPool) && acc(&s.pathPoolRaw)
@@ -519,13 +518,12 @@ func (s *SCION) RecyclePaths() {
 // @ requires  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
 // @ requires  PathPoolMem(s.pathPool, s.pathPoolRaw)
 // @ requires  0 <= pathType && pathType < path.MaxPathType
-// TODO[henri]: too implementation specific (though I would just leave it as is
-// as this otherwise would need IsLow for PathPoolMem???)
 // @ requires  low(s.pathPool == nil)
 // TODO[henri]: I think this is redundant. if s.pathPool == nil, then len is 0
-// @ requires  s.pathPool != nil ==> low(len(s.pathPool)) &&
-// @ 	(pathType < len(s.pathPool) ==> low(typeOf(s.GetPathPoolPath(pathType))))
-// @ requires  low(pathType)
+//  requires  s.pathPool != nil ==> low(len(s.pathPool)) &&
+//  	(pathType < len(s.pathPool) ==> low(typeOf(s.GetPathPoolPath(pathType))))
+// @ requires  low(len(s.pathPool)) && low(pathType)
+// @ requires  pathType < len(s.pathPool) ==> low(typeOf(s.GetPathPoolPath(pathType)))
 // @ requires  low(typeOf(s.pathPoolRaw))
 // @ ensures   acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
 // @ ensures   err == nil ==> res != nil
@@ -790,15 +788,13 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 		verScionTmp := &net.IPAddr{IP: net.IP(raw)}
 		// @ unfold acc(sl.Bytes(raw, 0, len(raw)), R15)
 		// @ fold acc(verScionTmp.Mem(), R15)
-		// TODO[henri]: Test if this still needs to be uncommented. if so, 
-		// write comment referencing todo
+		// TODO: Once Gobra issue #946 is resolved, uncomment this.
 		//  package (acc((net.Addr)(verScionTmp).Mem(), R15) --* acc(sl.Bytes(raw, 0, len(raw)), R15)) {
 		//  	assert acc(&verScionTmp.IP, R50) && verScionTmp.IP === raw
 		//  	unfold acc(verScionTmp.Mem(), R15)
 		//  	fold acc(sl.Bytes(raw, 0, len(raw)), R15)
 		//  }
-		// TODO[henri]: If we keep assume, replace by exhale/inhale
-		// @ assume (acc((net.Addr)(verScionTmp).Mem(), R15) --* acc(sl.Bytes(raw, 0, len(raw)), R15))
+		// @ inhale (acc((net.Addr)(verScionTmp).Mem(), R15) --* acc(sl.Bytes(raw, 0, len(raw)), R15))
 		return verScionTmp, nil
 	case T4Svc:
 		// @ unfold acc(sl.Bytes(raw, 0, len(raw)), R15)
@@ -811,15 +807,13 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 		verScionTmp := &net.IPAddr{IP: net.IP(raw)}
 		// @ unfold acc(sl.Bytes(raw, 0, len(raw)), R15)
 		// @ fold acc(verScionTmp.Mem(), R15)
-		// TODO[henri]: Test if this still needs to be uncommented. if so, 
-		// write comment referencing todo
+		// TODO: Once Gobra issue #946 is resolved, uncomment this.
 		//  package (acc((net.Addr)(verScionTmp).Mem(), R15) --* acc(sl.Bytes(raw, 0, len(raw)), R15)) {
 		//  	assert acc(&verScionTmp.IP, R50) && verScionTmp.IP === raw
 		//  	unfold acc(verScionTmp.Mem(), R15)
 		//  	fold acc(sl.Bytes(raw, 0, len(raw)), R15)
 		//  }
-		// TODO[henri]: If we keep assume, replace by exhale/inhale
-		// @ assume (acc((net.Addr)(verScionTmp).Mem(), R15) --* acc(sl.Bytes(raw, 0, len(raw)), R15))
+		// @ inhale (acc((net.Addr)(verScionTmp).Mem(), R15) --* acc(sl.Bytes(raw, 0, len(raw)), R15))
 		return verScionTmp, nil
 	}
 	return nil, serrors.New("unsupported address type/length combination",
@@ -875,14 +869,13 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 			// @ 	fold acc(sl.Bytes(ip, 0, len(ip)), _)
 			// @ } else {
 			// @ 	fold acc(sl.Bytes(ip, 0, len(ip)), R20)
-			// TODO[henri]: try if this still needs to be like this
 			// TODO: Once Gobra issue #946 is resolved, uncomment this.
 			//  	package acc(sl.Bytes(ip, 0, len(ip)), R20) --* acc(hostAddr.Mem(), R20) {
 			//  		unfold acc(sl.Bytes(ip, 0, len(ip)), R20)
 			//  		fold acc(hostAddr.Mem(), R20)
 			//  	}
-			// TODO[henri]: if still needed, replace by exhale/inhale
-			// @ 	assume acc(sl.Bytes(ip, 0, len(ip)), R20) --* acc(hostAddr.Mem(), R20)
+			// @ 	exhale acc(a, R20)
+			// @ 	inhale acc(sl.Bytes(ip, 0, len(ip)), R20) --* acc(hostAddr.Mem(), R20)
 			// @ }
 			return T4Ip, ip, nil
 		}
@@ -892,14 +885,13 @@ func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType
 		// @ 	fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), _)
 		// @ } else {
 		// @ 	fold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
-		// TODO[henri]: try if this still needs to be like this
 		// TODO: Once Gobra issue #946 is resolved, uncomment this.
 		//  	package acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20) {
 		//  		unfold acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20)
 		//  		fold acc(hostAddr.Mem(), R20)
 		//  	}
-		// TODO[henri]: if still needed, replace by exhale/inhale
-		// @	assume acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20)
+		// @ 	exhale acc(a, R20)
+		// @	inhale acc(sl.Bytes(verScionTmp, 0, len(verScionTmp)), R20) --* acc(hostAddr.Mem(), R20)
 		// @ }
 		return T16Ip, verScionTmp, nil
 	case addr.HostSVC:
@@ -948,7 +940,6 @@ func (s *SCION) AddrHdrLen( /*@ ghost ubuf []byte, ghost insideSlayers bool @*/ 
 // buffer. The caller must ensure that the correct address types and lengths are set in the SCION
 // layer, otherwise the results of this method are undefined.
 // @ requires  acc(s.HeaderMem(ubuf), R10)
-// TODO[henri]: IsLow? Though probably not bc. we would need one for HeaderMem...
 // @ requires  low(s.GetSrcAddrType(ubuf, true)) && low(s.GetDstAddrType(ubuf, true))
 // @ requires  low(len(buf))
 // @ preserves sl.Bytes(buf, 0, len(buf))
