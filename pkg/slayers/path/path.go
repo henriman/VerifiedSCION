@@ -96,14 +96,18 @@ type Path interface {
 	// DecodesFromBytes decodes the path from the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface (e.g., scion.Raw) that
 	// store b and use it as internal data.
-	//@ requires  NonInitMem()
-	//@ requires  low(len(b))
-	//@ preserves acc(sl.Bytes(b, 0, len(b)), R42)
-	//@ ensures   err == nil ==> Mem(b)
-	//@ ensures   err == nil ==> IsValidResultOfDecoding(b)
-	//@ ensures   err != nil ==> err.ErrorMem()
-	//@ ensures   err != nil ==> NonInitMem()
-	//@ ensures   low(err != nil)
+	//@ requires NonInitMem()
+	//@ requires acc(sl.Bytes(b, 0, len(b)), R42)
+	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+	//@ requires low(len(b)) &&
+	//@ 	forall i int :: { sl.GetByte(b, 0, len(b), i) } 0 <= i && i < len(b) &&
+	//@ 		low(i) ==> low(sl.GetByte(b, 0, len(b), i))
+	//@ ensures  acc(sl.Bytes(b, 0, len(b)), R42)
+	//@ ensures  err == nil ==> Mem(b) && IsLow(b)
+	//@ ensures  err == nil ==> IsValidResultOfDecoding(b)
+	//@ ensures  err != nil ==> err.ErrorMem()
+	//@ ensures  err != nil ==> NonInitMem()
+	//@ ensures  low(err != nil)
 	//@ decreases
 	DecodeFromBytes(b []byte) (err error)
 	//@ ghost
@@ -258,14 +262,16 @@ func (p *rawPath) SerializeTo(b []byte /*@, ghost ub []byte @*/) (e error) {
 }
 
 // @ requires  p.NonInitMem()
+// @ requires  low(len(b))
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
-// @ ensures   p.Mem(b)
+// @ ensures   p.Mem(b) && p.IsLow(b)
 // @ ensures   e == nil
 // @ decreases
 func (p *rawPath) DecodeFromBytes(b []byte) (e error) {
 	//@ unfold p.NonInitMem()
 	p.raw = b
 	//@ fold p.Mem(b)
+	//@ p.AssertIsLow(b, HalfPerm)
 	return nil
 }
 

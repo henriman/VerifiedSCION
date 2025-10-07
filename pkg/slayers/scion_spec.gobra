@@ -328,6 +328,15 @@ func (s *SCION) RevealIsLow(init bool, ghost ub []byte, p perm)
 ghost
 trusted
 requires p > 0
+requires init ==> acc(s.Mem(ub), p) &&
+	low(s.GetNextHdr(ub)) &&
+	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
+	// TODO[henri]: Might want to instead mark HdrLen as low
+	low(s.PathEndIdx(ub)) &&
+	low(s.GetPathType(ub)) &&
+	s.PathIsLow(ub) &&
+	// TODO[henri]: consider replacing this by low(getpathpool() == nil)
+	low(s.PathPoolInitializedMem(ub))
 requires !init ==> acc(s.NonInitMem(), p) &&
 	// TODO[henri]: could replace this by low(GetPathPool != nil) (see above)
 	low(s.PathPoolInitializedNonInitMem()) &&
@@ -335,7 +344,9 @@ requires !init ==> acc(s.NonInitMem(), p) &&
 		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool()) &&
 			low(t) ==> low(typeOf(s.GetPathPoolPathNonInit(t)))) &&
 	low(typeOf(s.GetPathPoolRaw()))
-ensures  !init ==> acc(s.NonInitMem(), p) && s.IsLowDecodingLayer(false, nil)
+ensures   init ==> acc(s.Mem(ub), p)
+ensures  !init ==> acc(s.NonInitMem(), p)
+ensures  s.IsLowDecodingLayer(init, ub)
 decreases
 func (s *SCION) AssertIsLow(init bool, ghost ub []byte, p perm)
 

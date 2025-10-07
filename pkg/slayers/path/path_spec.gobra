@@ -44,6 +44,7 @@ requires r.Mem(ub)
 decreases
 pure func (r *rawPath) IsLow(ub []byte) bool
 
+// "Reveal the body" of `s.IsLow` (necessary bc. we can't implement `r.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, actually implement this.
 ghost
 trusted
@@ -52,6 +53,16 @@ requires acc(r.Mem(ub), p) && r.IsLow(ub)
 ensures  acc(r.Mem(ub), p) && low(r.GetRawLen(ub))
 decreases
 func (r *rawPath) RevealIsLow(ub []byte, p perm)
+
+// Assert `r.IsLow` (necessary bc. we can't implement `r.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, actually implement this.
+ghost
+trusted
+requires p > 0
+requires acc(r.Mem(ub), p) && low(r.GetRawLen(ub))
+ensures  acc(r.Mem(ub), p) && r.IsLow(ub)
+decreases
+func (r *rawPath) AssertIsLow(ub []byte, p perm)
 
 ghost
 requires p.Mem(buf)

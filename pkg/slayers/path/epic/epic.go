@@ -143,7 +143,7 @@ func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 // @ requires  low(len(b))
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 // @ ensures   len(b) < MetadataLen ==> r != nil
-// @ ensures   r == nil ==> p.Mem(b)
+// @ ensures   r == nil ==> p.Mem(b) && p.IsLow(b)
 // @ ensures   r != nil ==> p.NonInitMem() && r.ErrorMem()
 // @ ensures   low(r != nil)
 // @ decreases
@@ -176,6 +176,7 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 	ret := p.ScionPath.DecodeFromBytes(b[MetadataLen:])
 	//@ ghost if ret == nil {
 	//@ 	fold p.Mem(b)
+	//@ 	p.AssertIsLow(b)
 	//@ } else {
 	//@ 	fold p.NonInitMem()
 	//@ }

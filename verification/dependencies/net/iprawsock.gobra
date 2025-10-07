@@ -9,6 +9,8 @@
 
 package net
 
+import . "github.com/scionproto/scion/verification/utils/definitions"
+
 // IPAddr represents the address of an IP end point.
 type IPAddr struct {
 	IP   IP
@@ -20,13 +22,6 @@ pred (a *IPAddr) Mem() {
 	// However, doing this at the moment requires changes in the VerifiedSCION codebase.
 	acc(a) && forall i int :: { &a.IP[i] } 0 <= i && i < len(a.IP) ==> acc(&a.IP[i])
 }
-
-// TODO: Once Gobra issue #846 is resolved, implement this.
-ghost
-trusted
-requires a.Mem()
-decreases
-pure func (a *IPAddr) IsLow() bool
 
 ghost
 requires a.Mem()
@@ -42,6 +37,29 @@ decreases
 pure func (a *IPAddr) GetIPByte(i int) byte {
 	return unfolding a.Mem() in a.IP[i]
 }
+
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires a.Mem()
+decreases
+pure func (a *IPAddr) IsLow() bool
+
+// "Reveal the body" of `a.IsLow` (necessary bc. we can't implement `a.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+// TODO[henri]: Consider giving p perm parameter again s.t. we dont have to import definitions
+ghost
+trusted
+requires  wildcard ==> acc(a.Mem(), _)
+requires !wildcard ==> acc(a.Mem(), R20) 
+requires a.IsLow()
+ensures   wildcard ==> acc(a.Mem(), _)
+ensures  !wildcard ==> acc(a.Mem(), R20)
+ensures  low(a.GetIPLen()) && 
+	forall i int :: { a.GetIPByte(i) } 0 <= i && i < a.GetIPLen() &&
+		low(i) ==> low(a.GetIPByte(i))
+decreases
+func (a *IPAddr) RevealIsLow(wildcard bool)
 
 (*IPAddr) implements Addr {
 	(e *IPAddr) Network() string {

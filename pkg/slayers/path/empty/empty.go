@@ -56,7 +56,7 @@ func RegisterPath() {
 type Path struct{}
 
 // @ requires low(len(r))
-// @ ensures  len(r) == 0 ==> (e == nil && o.Mem(r))
+// @ ensures  len(r) == 0 ==> (e == nil && o.Mem(r) && o.IsLow(r))
 // @ ensures  len(r) != 0 ==> (e != nil && e.ErrorMem() && o.NonInitMem())
 // @ decreases
 func (o Path) DecodeFromBytes(r []byte) (e error) {

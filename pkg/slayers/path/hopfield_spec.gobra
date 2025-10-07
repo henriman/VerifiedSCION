@@ -41,6 +41,13 @@ pure func (h *HopField) GetIngressRouterAlert() bool {
 	return unfolding h.Mem() in h.IngressRouterAlert
 }
 
+ghost
+requires h.Mem()
+decreases
+pure func (h *HopField) GetConsIngress() uint16 {
+	return unfolding h.Mem() in h.ConsIngress
+}
+
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
@@ -58,6 +65,17 @@ ensures  acc(h.Mem(), p)
 ensures  low(h.GetEgressRouterAlert()) && low(h.GetIngressRouterAlert())
 decreases
 func (h *HopField) RevealIsLow(p perm)
+
+// Assert `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires acc(h.Mem(), p)
+requires low(h.GetEgressRouterAlert()) && low(h.GetIngressRouterAlert())
+ensures  acc(h.Mem(), p) && h.IsLow()
+decreases
+func (h *HopField) AssertIsLow(p perm)
 
 ghost
 decreases

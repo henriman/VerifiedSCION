@@ -135,7 +135,6 @@ requires s.IsLowDecodingLayer(init, ub)
 ensures   init ==> acc(s.Mem(ub), p)
 ensures  !init ==> acc(s.NonInitMem(), p)
 ensures  low(s.GetTypeCode(init, ub)) && low(s.GetScn(init, ub) != nil)
-// TODO[henri]: could make these more general
 ensures  init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawSrcAddrLen(ub)) &&
 	forall i int :: { s.GetScnRawSrcAddrByte(ub, i) } 0 <= i && i < s.GetScnRawSrcAddrLen(ub) &&
 		low(i) ==> low(s.GetScnRawSrcAddrByte(ub, i))

@@ -182,8 +182,8 @@ func (s *SCION) CanDecode() (res gopacket.LayerClass) {
 	return res
 }
 
-// @ requires  acc(s.Mem(ub), R20) && s.IsLowDecodingLayer(true, ub)
-// @ ensures   acc(s.Mem(ub), R20)
+// @ requires acc(s.Mem(ub), R20) && s.IsLowDecodingLayer(true, ub)
+// @ ensures  acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCION) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 	// @ s.RevealIsLow(true, ub, R20)
@@ -349,8 +349,7 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 // @ ensures   res == nil ==> s.EqPathType(data)
 // @ ensures   res != nil ==> s.NonInitMem() && res.ErrorMem()
 // @ ensures   low(res != nil)
-// TODO[henri]: IsLow?
-// @ ensures   res == nil ==> low(s.GetNextHdr(data))
+// @ ensures   res == nil ==> s.IsLowDecodingLayer(true, data)
 // @ decreases
 func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	// @ s.RevealIsLow(false, nil, R1)
@@ -481,6 +480,7 @@ func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res er
 	// @ assert typeOf(s.GetPath(data)) == *scion.Raw ==> s.EqAbsHeader(data) && s.ValidScionInitSpec(data)
 	// @ assert reveal s.EqPathType(data)
 	// @ fold acc(s.Mem(data), 1-R54)
+	// @ s.AssertIsLow(true, data, HalfPerm)
 	return nil
 }
 
@@ -516,27 +516,27 @@ func (s *SCION) RecyclePaths() {
 }
 
 // getPath returns a new or recycled path for pathType
-// @ requires acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
-// @ requires PathPoolMem(s.pathPool, s.pathPoolRaw)
-// @ requires 0 <= pathType && pathType < path.MaxPathType
+// @ requires  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
+// @ requires  PathPoolMem(s.pathPool, s.pathPoolRaw)
+// @ requires  0 <= pathType && pathType < path.MaxPathType
 // TODO[henri]: too implementation specific (though I would just leave it as is
 // as this otherwise would need IsLow for PathPoolMem???)
-// @ requires low(s.pathPool == nil)
+// @ requires  low(s.pathPool == nil)
 // TODO[henri]: I think this is redundant. if s.pathPool == nil, then len is 0
-// @ requires s.pathPool != nil ==> low(len(s.pathPool)) &&
+// @ requires  s.pathPool != nil ==> low(len(s.pathPool)) &&
 // @ 	(pathType < len(s.pathPool) ==> low(typeOf(s.GetPathPoolPath(pathType))))
-// @ requires low(pathType)
-// @ requires low(typeOf(s.pathPoolRaw))
-// @ ensures  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
-// @ ensures  err == nil ==> res != nil
-// @ ensures  err == nil ==> res.NonInitMem()
-// @ ensures  (err == nil && !s.pathPoolInitialized()) ==> PathPoolMem(s.pathPool, s.pathPoolRaw)
-// @ ensures  (err == nil && s.pathPoolInitialized())  ==> (
+// @ requires  low(pathType)
+// @ requires  low(typeOf(s.pathPoolRaw))
+// @ ensures   acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
+// @ ensures   err == nil ==> res != nil
+// @ ensures   err == nil ==> res.NonInitMem()
+// @ ensures   (err == nil && !s.pathPoolInitialized()) ==> PathPoolMem(s.pathPool, s.pathPoolRaw)
+// @ ensures   (err == nil && s.pathPoolInitialized())  ==> (
 // @ 	PathPoolMemExceptOne(s.pathPool, s.pathPoolRaw, pathType) &&
 // @    res === s.getPathPure(pathType))
-// @ ensures  err != nil ==> (PathPoolMem(s.pathPool, s.pathPoolRaw) && err.ErrorMem())
-// @ ensures  low(err != nil)
-// @ ensures  low(typeOf(res))
+// @ ensures   err != nil ==> (PathPoolMem(s.pathPool, s.pathPoolRaw) && err.ErrorMem())
+// @ ensures   low(err != nil)
+// @ ensures   low(typeOf(res))
 // @ decreases
 func (s *SCION) getPath(pathType path.Type) (res path.Path, err error) {
 	// @ unfold PathPoolMem(s.pathPool, s.pathPoolRaw)
@@ -582,6 +582,7 @@ func decodeSCION(data []byte, pb gopacket.PacketBuilder) (res error) {
 	}
 	pb.AddLayer(scn)
 	pb.SetNetworkLayer(scn)
+	// @ scn.RevealIsLow(true, data, HalfPerm)
 	nextTmp := scionNextLayerType( /*@ unfolding scn.Mem(data) in @*/ scn.NextHdr)
 	// @ fold nextTmp.Mem()
 	return pb.NextDecoder(nextTmp)
@@ -702,12 +703,8 @@ func (s *SCION) SrcAddr() (res net.Addr, err error) {
 // @ requires  acc(&s.DstAddrType)
 // @ requires  wildcard ==> acc(dst.Mem(), _)
 // @ requires  !wildcard ==> acc(dst.Mem(), R18)
-// @ requires  low(wildcard) && low(isIP(dst)) && low(typeOf(dst))
-// TODO[henri]: Now that we introduce (*net.IPAddr).IsLow anyway, could wrap this in there
-// - maybe also parts of what's above
-// @ requires  typeOf(dst) == type[*net.IPAddr] ==> low(dst.(*net.IPAddr).GetIPLen()) && 
-// @ 	forall i int :: { dst.(*net.IPAddr).GetIPByte(i) } 0 <= i && i < dst.(*net.IPAddr).GetIPLen() &&
-// @ 		low(i) ==> low(dst.(*net.IPAddr).GetIPByte(i))
+// @ requires  low(wildcard) && low(typeOf(dst))
+// @ requires  dst != nil && dst.IsLow()
 // @ ensures   isIP(dst) ==> res == nil
 // @ ensures   isHostSVC(dst) ==> res == nil
 // @ ensures   acc(&s.RawDstAddr) && acc(&s.DstAddrType)
@@ -745,12 +742,8 @@ func (s *SCION) SetDstAddr(dst net.Addr /*@ , ghost wildcard bool @*/) (res erro
 // @ requires  acc(&s.SrcAddrType)
 // @ requires  wildcard ==> acc(src.Mem(), _)
 // @ requires  !wildcard ==> acc(src.Mem(), R18)
-// TODO[henri]: Now that we introduce (*net.IPAddr).IsLow anyway, could wrap this in there
-// - maybe also parts of what's above
-// @ requires  low(wildcard) && low(isIP(src)) && low(typeOf(src))
-// @ requires  typeOf(src) == type[*net.IPAddr] ==> low(src.(*net.IPAddr).GetIPLen()) && 
-// @ 	forall i int :: { src.(*net.IPAddr).GetIPByte(i) } 0 <= i && i < src.(*net.IPAddr).GetIPLen() &&
-// @ 		low(i) ==> low(src.(*net.IPAddr).GetIPByte(i))
+// @ requires  low(wildcard) && low(typeOf(src))
+// @ requires  src != nil && src.IsLow()
 // @ ensures   isIP(src) ==> res == nil
 // @ ensures   isHostSVC(src) ==> res == nil
 // @ ensures   acc(&s.RawSrcAddr) && acc(&s.SrcAddrType)
@@ -836,13 +829,7 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 // @ requires  wildcard ==> acc(hostAddr.Mem(), _)
 // @ requires  !wildcard ==> acc(hostAddr.Mem(), R19)
 // @ requires  low(typeOf(hostAddr)) && low(wildcard)
-// TODO[henri]: Now that we introduce (*net.IPAddr).IsLow anyway, could wrap this in there
-// - maybe also parts of what's above
-// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
-// (here and in method body; explain difficulties with this)
-// @ requires  typeOf(hostAddr) == type[*net.IPAddr] ==> low(hostAddr.(*net.IPAddr).GetIPLen()) && 
-// @ 	forall i int :: { hostAddr.(*net.IPAddr).GetIPByte(i) } 0 <= i && i < hostAddr.(*net.IPAddr).GetIPLen() &&
-// @ 		low(i) ==> low(hostAddr.(*net.IPAddr).GetIPByte(i))
+// @ requires  hostAddr != nil && hostAddr.IsLow()
 // @ ensures   !wildcard ==> acc(hostAddr.Mem(), R20)
 // @ ensures   hostAddr === old(hostAddr)
 // @ ensures   isIP(hostAddr) ==> err == nil
@@ -869,6 +856,7 @@ func parseAddr(addrType AddrType, raw []byte) (res net.Addr, err error) {
 func packAddr(hostAddr net.Addr /*@ , ghost wildcard bool @*/) (addrtyp AddrType, b []byte, err error) {
 	switch a := hostAddr.(type) {
 	case *net.IPAddr:
+		// @ a.RevealIsLow(wildcard)
 		// @ ghost if wildcard {
 		// @ 	unfold acc(hostAddr.Mem(), _)
 		// @ } else {

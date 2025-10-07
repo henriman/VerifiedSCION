@@ -111,6 +111,7 @@ requires p.Mem(ub)
 decreases
 pure func (p *Path) IsLow(ub []byte) bool
 
+// "Reveal the body" of `p.IsLow` (necessary bc. we can't implement `p.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, actually implement this.
 ghost
 trusted
@@ -119,3 +120,13 @@ ensures  acc(p.Mem(ub), R2)
 ensures  low(p.getPHVFLen(ub)) && low(p.getLHVFLen(ub))
 decreases
 func (p *Path) RevealIsLow(ub []byte)
+
+// Assert `p.IsLow` (necessary bc. we can't implement `p.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, actually implement this.
+ghost
+trusted
+requires acc(p.Mem(ub), R2)
+requires low(p.getPHVFLen(ub)) && low(p.getLHVFLen(ub))
+ensures  acc(p.Mem(ub), R2) && p.IsLow(ub)
+decreases
+func (p *Path) AssertIsLow(ub []byte)
