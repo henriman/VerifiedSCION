@@ -182,7 +182,7 @@ func (s *SCION) CanDecode() (res gopacket.LayerClass) {
 	return res
 }
 
-// @ requires acc(s.Mem(ub), R20) && s.IsLowDecodingLayer(true, ub)
+// @ requires acc(s.Mem(ub), R20) && s.IsLow(true, ub)
 // @ ensures  acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCION) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
@@ -220,7 +220,7 @@ func (s *SCION) NetworkFlow() (res gopacket.Flow) {
 // @ requires  low(len(ubuf)) && 
 // @ 	forall i int :: { sl.GetByte(ubuf, 0, len(ubuf), i) } 0 <= i && i < len(ubuf) &&
 // @ 		low(i) ==> low(sl.GetByte(ubuf, 0, len(ubuf), i))
-// @ requires  s.IsLow(ubuf)
+// @ requires  s.IsLowSerializableLayer(ubuf)
 // @ ensures   b.Mem()
 // @ ensures   acc(s.Mem(ubuf), R0)
 // @ ensures   sl.Bytes(ubuf, 0, len(ubuf))
@@ -340,7 +340,7 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 // @ requires  low(len(data)) && 
 // @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
 // @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
-// @ requires  s.IsLowDecodingLayer(false, nil)
+// @ requires  s.IsLow(false, nil)
 // @ preserves df != nil && df.Mem()
 // @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
@@ -349,7 +349,7 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 // @ ensures   res == nil ==> s.EqPathType(data)
 // @ ensures   res != nil ==> s.NonInitMem() && res.ErrorMem()
 // @ ensures   low(res != nil)
-// @ ensures   res == nil ==> s.IsLowDecodingLayer(true, data)
+// @ ensures   res == nil ==> s.IsLow(true, data)
 // @ decreases
 func (s *SCION) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	// @ s.RevealIsLow(false, nil, R1)

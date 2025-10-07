@@ -15,16 +15,18 @@ import "verification/utils/seqs"
 type SerializableLayer interface {
 	pred Mem(ubuf []byte)
 
+	// This is called `IsLowSerializableLayer` (instead of just `IsLow`) to
+	// avoid clashing with `DecodingLayer.IsLow`.
 	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
 	ghost
 	requires Mem(ubuf)
 	decreases
-	pure IsLow(ghost ubuf []byte) bool
+	pure IsLowSerializableLayer(ghost ubuf []byte) bool
 
 	requires  !opts.FixLengths
 	requires  b != nil && b.Mem() && b.IsLow()
 	requires  sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
-	requires  Mem(ubuf) && IsLow(ubuf)
+	requires  Mem(ubuf) && IsLowSerializableLayer(ubuf)
 	requires  sl.Bytes(ubuf, 0, len(ubuf))
 	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
 	requires  low(len(b.UBuf())) && 

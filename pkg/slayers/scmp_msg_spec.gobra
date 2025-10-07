@@ -34,7 +34,7 @@ pred (s *SCMPExternalInterfaceDown) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPExternalInterfaceDown) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPExternalInterfaceDown) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 
@@ -73,7 +73,7 @@ pred (s *SCMPInternalConnectivityDown) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPInternalConnectivityDown) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPInternalConnectivityDown) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 
@@ -111,7 +111,7 @@ pred (s *SCMPEcho) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPEcho) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPEcho) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 
@@ -149,7 +149,7 @@ pred (s *SCMPParameterProblem) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPParameterProblem) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPParameterProblem) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 
@@ -191,7 +191,7 @@ pred (s *SCMPTraceroute) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPTraceroute) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPTraceroute) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 
@@ -231,7 +231,7 @@ pred (s *SCMPDestinationUnreachable) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPDestinationUnreachable) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPDestinationUnreachable) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 
@@ -269,7 +269,7 @@ pred (s *SCMPPacketTooBig) Mem(ub []byte) {
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMPPacketTooBig) IsLow(ghost ub []byte) bool {
+pure func (s *SCMPPacketTooBig) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 

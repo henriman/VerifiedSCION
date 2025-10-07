@@ -183,7 +183,7 @@ pred (b *BFD) Mem(ub []byte)
 ghost
 requires b.Mem(ub)
 decreases
-pure func (b *BFD) IsLow(ghost ub []byte) bool {
+pure func (b *BFD) IsLowSerializableLayer(ghost ub []byte) bool {
 	return true
 }
 

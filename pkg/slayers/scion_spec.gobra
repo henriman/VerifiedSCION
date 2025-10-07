@@ -272,38 +272,29 @@ pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
 		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
 }
 
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted
 requires  init ==> s.Mem(ub)
 requires !init ==> s.NonInitMem()
 decreases
-pure func (s *SCION) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+pure func (s *SCION) IsLow(init bool, ghost ub []byte) bool
 
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCION) IsLow(ghost ub []byte) bool {
-	return s.IsLowDecodingLayer(true, ub)
+pure func (s *SCION) IsLowSerializableLayer(ghost ub []byte) bool {
+	return s.IsLow(true, ub)
 }
 
-// "Reveal the body" of `s.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `s.IsLowDecodingLayer` yet).
+// "Reveal the body" of `s.IsLow` (necessary bc. we can't implement `s.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
-// TODO: it would be nicer in a way if we named IsLowDecodingLayer IsLow and
-// IsLow IsLowSerializable..., bc. then here we could require IsLow which
-// would be more consistent
-// TODO[henri]: 
-// - I'm not sure that would work as well for other packages having both
-//   an IsLow and an IsLowDecodingLayer (check, though!)
-//   - somewhere else I have similar comment
-// - might want to rename this to RevealIsLowDecodingLayer (or not)
 ghost
 trusted
 requires p > 0
 requires  init ==> acc(s.Mem(ub), p)
 requires !init ==> acc(s.NonInitMem(), p)
-requires s.IsLowDecodingLayer(init, ub)
+requires s.IsLow(init, ub)
 ensures   init ==> acc(s.Mem(ub), p) &&
 	low(s.GetNextHdr(ub)) &&
 	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
@@ -322,8 +313,7 @@ ensures  !init ==> acc(s.NonInitMem(), p) &&
 decreases
 func (s *SCION) RevealIsLow(init bool, ghost ub []byte, p perm)
 
-// Assert `s.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `s.IsLowDecodingLayer` yet).
+// Assert `s.IsLow` (necessary bc. we can't implement `s.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
@@ -346,7 +336,7 @@ requires !init ==> acc(s.NonInitMem(), p) &&
 	low(typeOf(s.GetPathPoolRaw()))
 ensures   init ==> acc(s.Mem(ub), p)
 ensures  !init ==> acc(s.NonInitMem(), p)
-ensures  s.IsLowDecodingLayer(init, ub)
+ensures  s.IsLow(init, ub)
 decreases
 func (s *SCION) AssertIsLow(init bool, ghost ub []byte, p perm)
 
@@ -386,7 +376,7 @@ pred (s *SCION) HeaderMem(ubuf []byte) {
 }
 
 ghost
-requires s.Mem(ub) && s.IsLowDecodingLayer(true, ub)
+requires s.Mem(ub) && s.IsLow(true, ub)
 ensures  s.NonInitMem()
 decreases
 func (s *SCION) DowngradePerm(ghost ub []byte) {

@@ -84,11 +84,11 @@ func (s *SCMP) CanDecode() (res gopacket.LayerClass) {
 // NextLayerType use the typecode to select the right next decoder.
 // If the SCMP type is unknown, the next layer is gopacket.LayerTypePayload.
 // NextLayerType returns the layer type contained by this DecodingLayer.
-// @ requires acc(s.Mem(ub), R20) && s.IsLowDecodingLayer(true, ub)
+// @ requires acc(s.Mem(ub), R20) && s.IsLow(true, ub)
 // @ ensures  acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
-	// @ s.RevealIsLowDecodingLayer(true, ub, R20)
+	// @ s.RevealIsLow(true, ub, R20)
 	switch /*@unfolding acc(s.Mem(ub), R20) in @*/ s.TypeCode.Type() {
 	case SCMPTypeDestinationUnreachable:
 		return LayerTypeSCMPDestinationUnreachable
@@ -111,7 +111,7 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // SerializeTo writes the serialized form of this layer into the
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
-// @ requires  s.Mem(ubufMem) && s.IsLow(ubufMem)
+// @ requires  s.Mem(ubufMem) && s.IsLowSerializableLayer(ubufMem)
 // @ requires  low(opts.ComputeChecksums)
 // @ requires  b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf())) && b.IsLow()
 // TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
@@ -124,7 +124,7 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOptions /*@, ghost ubufMem []byte @*/) (err error) {
-	// @ s.RevealIsLowDecodingLayer(true, ubufMem, writePerm)
+	// @ s.RevealIsLow(true, ubufMem, writePerm)
 	bytes, err := b.PrependBytes(4)
 	// @ underlyingBufRes := b.UBuf()
 	if err != nil {
@@ -187,7 +187,7 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 }
 
 // DecodeFromBytes decodes the given bytes into this layer.
-// @ requires  s.NonInitMem() && s.IsLowDecodingLayer(false, nil)
+// @ requires  s.NonInitMem() && s.IsLow(false, nil)
 // @ requires  df != nil
 // @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
 // TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
@@ -200,10 +200,10 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
 // @ ensures   res == nil ==> 
-// @ 	old(s.GetScn(false, nil)) == nil ==> s.IsLowDecodingLayer(true, data)
+// @ 	old(s.GetScn(false, nil)) == nil ==> s.IsLow(true, data)
 // @ decreases
 func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
-	// @ s.RevealIsLowDecodingLayer(false, nil, HalfPerm)
+	// @ s.RevealIsLow(false, nil, HalfPerm)
 	if size := len(data); size < 4 {
 		df.SetTruncated()
 		return serrors.New("SCMP layer length is less then 4 bytes", "minimum", 4, "actual", size)

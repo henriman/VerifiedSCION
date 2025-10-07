@@ -57,35 +57,33 @@ pure func (h *HopByHopExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding h.extnBase.Mem(ub) in h.NextHdr
 }
 
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted
 requires  init ==> h.Mem(ub)
 requires !init ==> h.NonInitMem()
 decreases
-pure func (h *HopByHopExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+pure func (h *HopByHopExtn) IsLow(init bool, ghost ub []byte) bool
 
-// "Reveal the body" of `h.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `h.IsLowDecodingLayer` yet).
+// "Reveal the body" of `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
-requires init ==> acc(h.Mem(ub), p) && h.IsLowDecodingLayer(true, ub)
+requires init ==> acc(h.Mem(ub), p) && h.IsLow(true, ub)
 ensures  init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
 decreases
-func (h *HopByHopExtn) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (h *HopByHopExtn) RevealIsLow(init bool, ghost ub []byte, p perm)
 
-// Assert `h.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `h.IsLowDecodingLayer` yet).
+// Assert `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
 requires init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
-ensures  init ==> acc(h.Mem(ub), p) && h.IsLowDecodingLayer(true, ub)
+ensures  init ==> acc(h.Mem(ub), p) && h.IsLow(true, ub)
 decreases
-func (h *HopByHopExtn) AssertIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (h *HopByHopExtn) AssertIsLow(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that HopByHopExtn is "inheriting"
 // the implementation of LayerContents from extnBase.
@@ -127,24 +125,23 @@ pure func (h *HopByHopExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding h.extnBase.Mem(ub) in h.NextHdr
 }
 
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted
 requires  init ==> h.Mem(ub)
 requires !init ==> h.NonInitMem()
 decreases
-pure func (h *HopByHopExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+pure func (h *HopByHopExtnSkipper) IsLow(init bool, ghost ub []byte) bool
 
-// "Reveal the body" of `h.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `h.IsLowDecodingLayer` yet).
+// "Reveal the body" of `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
-requires init ==> acc(h.Mem(ub), p) && h.IsLowDecodingLayer(true, ub)
+requires init ==> acc(h.Mem(ub), p) && h.IsLow(true, ub)
 ensures  init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
 decreases
-func (h *HopByHopExtnSkipper) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (h *HopByHopExtnSkipper) RevealIsLow(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that HopByHopExtnSkipper is "inheriting"
 // the implementation of LayerContents from extnBase.
@@ -208,35 +205,33 @@ pure func (e *EndToEndExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding e.extnBase.Mem(ub) in e.NextHdr
 }
 
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted
 requires  init ==> e.Mem(ub)
 requires !init ==> e.NonInitMem()
 decreases
-pure func (e *EndToEndExtn) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+pure func (e *EndToEndExtn) IsLow(init bool, ghost ub []byte) bool
 
-// "Reveal the body" of `e.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `e.IsLowDecodingLayer` yet).
+// "Reveal the body" of `e.IsLow` (necessary bc. we can't implement `e.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
-requires init ==> acc(e.Mem(ub), p) && e.IsLowDecodingLayer(true, ub)
+requires init ==> acc(e.Mem(ub), p) && e.IsLow(true, ub)
 ensures  init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
 decreases
-func (e *EndToEndExtn) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (e *EndToEndExtn) RevealIsLow(init bool, ghost ub []byte, p perm)
 
-// Assert `e.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `e.IsLowDecodingLayer` yet).
+// Assert `e.IsLow` (necessary bc. we can't implement `e.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
 requires init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
-ensures  init ==> acc(e.Mem(ub), p) && e.IsLowDecodingLayer(true, ub)
+ensures  init ==> acc(e.Mem(ub), p) && e.IsLow(true, ub)
 decreases
-func (e *EndToEndExtn) AssertIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (e *EndToEndExtn) AssertIsLow(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that EndToEndExtn is "inheriting"
 // the implementation of LayerContents from extnBase.
@@ -280,24 +275,23 @@ pure func (e *EndToEndExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
 		unfolding e.extnBase.Mem(ub) in e.NextHdr
 }
 
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted
 requires  init ==> e.Mem(ub)
 requires !init ==> e.NonInitMem()
 decreases
-pure func (e *EndToEndExtnSkipper) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+pure func (e *EndToEndExtnSkipper) IsLow(init bool, ghost ub []byte) bool
 
-// "Reveal the body" of `e.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `e.IsLowDecodingLayer` yet).
+// "Reveal the body" of `e.IsLow` (necessary bc. we can't implement `e.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
-requires init ==> acc(e.Mem(ub), p) && e.IsLowDecodingLayer(true, ub)
+requires init ==> acc(e.Mem(ub), p) && e.IsLow(true, ub)
 ensures  init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
 decreases
-func (e *EndToEndExtnSkipper) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (e *EndToEndExtnSkipper) RevealIsLow(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that EndToEndExtnSkipper is "inheriting"
 // the implementation of LayerContents from extnBase.

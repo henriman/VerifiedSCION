@@ -100,38 +100,29 @@ pure func (s *SCMP) GetScnDstIA(ghost ub []byte) addr.IA {
 		unfolding s.scn.ChecksumMem() in s.scn.DstIA
 }
 
-// NOTE[henri]: We need to define IsLowDecodingLayer (for gopacket.DecodingLayer)
-// /and/ IsLow (for gopacket.SerializableLayer).
-
-// TODO[henri]: might want to instead have IsLow->IsLowSerializableLayer and
-// IsLowDecodingLayer->IsLow bc. for DecodingLayer we have the more modular 
-// version (with init bool) which should be taken as the base.
-// - we have a similar situation in scion_spec oÄ
-
-// TODO: Once Gobra issue #846 is resolved, actually implement `IsLowDecodingLayer`.
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
 ghost
 trusted
 requires  init ==> s.Mem(ub)
 requires !init ==> s.NonInitMem()
 decreases
-pure func (s *SCMP) IsLowDecodingLayer(init bool, ghost ub []byte) bool
+pure func (s *SCMP) IsLow(init bool, ghost ub []byte) bool
 
 ghost
 requires s.Mem(ub)
 decreases
-pure func (s *SCMP) IsLow(ghost ub []byte) bool {
-	return s.IsLowDecodingLayer(true, ub)
+pure func (s *SCMP) IsLowSerializableLayer(ghost ub []byte) bool {
+	return s.IsLow(true, ub)
 }
 
-// "Reveal the body" of `s.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `s.IsLowDecodingLayer` yet).
+// "Reveal the body" of `s.IsLow` (necessary bc. we can't implement `s.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
 requires p > 0
 requires  init ==> acc(s.Mem(ub), p)
 requires !init ==> acc(s.NonInitMem(), p)
-requires s.IsLowDecodingLayer(init, ub)
+requires s.IsLow(init, ub)
 ensures   init ==> acc(s.Mem(ub), p)
 ensures  !init ==> acc(s.NonInitMem(), p)
 ensures  low(s.GetTypeCode(init, ub)) && low(s.GetScn(init, ub) != nil)
@@ -143,10 +134,9 @@ ensures  init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawDstAddrLen(ub)) &
 		low(i) ==> low(s.GetScnRawDstAddrByte(ub, i))
 ensures  init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnSrcIA(ub)) && low(s.GetScnDstIA(ub))
 decreases
-func (s *SCMP) RevealIsLowDecodingLayer(init bool, ghost ub []byte, p perm)
+func (s *SCMP) RevealIsLow(init bool, ghost ub []byte, p perm)
 
-// Assert `s.IsLowDecodingLayer` (necessary bc. we can't implement 
-// `s.IsLowDecodingLayer` yet).
+// Assert `s.IsLow` (necessary bc. we can't implement `s.IsLow` yet).
 // TODO: Once Gobra issue #846 is resolved, implement this.
 ghost
 trusted
@@ -163,7 +153,7 @@ requires init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnRawDstAddrLen(ub)) &
 requires init ==> s.GetScn(true, ub) != nil ==> low(s.GetScnSrcIA(ub)) && low(s.GetScnDstIA(ub))
 ensures   init ==> acc(s.Mem(ub), p)
 ensures  !init ==> acc(s.NonInitMem(), p)
-ensures  s.IsLowDecodingLayer(init, ub)
+ensures  s.IsLow(init, ub)
 decreases
 func (s *SCMP) AssertIsLow(init bool, ghost ub []byte, p perm)
 

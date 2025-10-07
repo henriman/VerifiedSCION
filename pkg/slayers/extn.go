@@ -325,11 +325,11 @@ func (h *HopByHopExtn) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassHopByHopExtn
 }
 
-// @ requires acc(h.Mem(ubuf), R20) && h.IsLowDecodingLayer(true, ubuf)
+// @ requires acc(h.Mem(ubuf), R20) && h.IsLow(true, ubuf)
 // @ ensures  acc(h.Mem(ubuf), R20)
 // @ decreases
 func (h *HopByHopExtn) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
-	// @ h.RevealIsLowDecodingLayer(true, ubuf, R20)
+	// @ h.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterHBH( /*@ unfolding acc(h.Mem(ubuf), R20) in (unfolding acc(h.extnBase.Mem(ubuf), R20) in @*/ h.NextHdr /*@ ) @*/)
 }
 
@@ -383,7 +383,7 @@ func (h *HopByHopExtn) SerializeTo(b gopacket.SerializeBuffer,
 // @ ensures   res == nil ==> h.Mem(data)
 // @ ensures   res != nil ==> (h.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
-// @ ensures   res == nil ==> h.IsLowDecodingLayer(true, data)
+// @ ensures   res == nil ==> h.IsLow(true, data)
 // @ decreases
 func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	var err error
@@ -439,7 +439,7 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ fold h.extnBase.BaseLayer.Mem(data, h.extnBase.ActualLen)
 	// @ fold h.extnBase.Mem(data)
 	// @ fold h.Mem(data)
-	// @ h.AssertIsLowDecodingLayer(true, data, HalfPerm)
+	// @ h.AssertIsLow(true, data, HalfPerm)
 	return nil
 }
 
@@ -460,7 +460,7 @@ func decodeHopByHopExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 	if err != nil {
 		return err
 	}
-	// @ h.RevealIsLowDecodingLayer(true, data, HalfPerm)
+	// @ h.RevealIsLow(true, data, HalfPerm)
 	nextTmp := scionNextLayerTypeAfterHBH(( /*@ unfolding h.Mem(data) in (unfolding h.extnBase.Mem(data) in @*/ h.NextHdr /*@ ) @*/))
 	// @ fold nextTmp.Mem()
 	return p.NextDecoder(nextTmp)
@@ -501,11 +501,11 @@ func (e *EndToEndExtn) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassEndToEndExtn
 }
 
-// @ requires acc(e.Mem(ubuf), R20) && e.IsLowDecodingLayer(true, ubuf)
+// @ requires acc(e.Mem(ubuf), R20) && e.IsLow(true, ubuf)
 // @ ensures  acc(e.Mem(ubuf), R20)
 // @ decreases
 func (e *EndToEndExtn) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
-	// @ e.RevealIsLowDecodingLayer(true, ubuf, R20)
+	// @ e.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterE2E( /*@ unfolding acc(e.Mem(ubuf), R20) in (unfolding acc(e.extnBase.Mem(ubuf), R20) in @*/ e.NextHdr /*@ ) @*/)
 }
 
@@ -542,7 +542,7 @@ func (e *EndToEndExtn) LayerPayload( /*@ ghost ub []byte @*/ ) (res []byte /*@ ,
 // @ ensures   res == nil ==> e.Mem(data)
 // @ ensures   res != nil ==> (e.NonInitMem() && res.ErrorMem())
 // @ ensures   low(res != nil)
-// @ ensures   res == nil ==> e.IsLowDecodingLayer(true, data)
+// @ ensures   res == nil ==> e.IsLow(true, data)
 // @ decreases
 func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	var err error
@@ -598,7 +598,7 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ fold e.extnBase.BaseLayer.Mem(data, e.ActualLen)
 	// @ fold e.extnBase.Mem(data)
 	// @ fold e.Mem(data)
-	// @ e.AssertIsLowDecodingLayer(true, data, HalfPerm)
+	// @ e.AssertIsLow(true, data, HalfPerm)
 	return nil
 }
 
@@ -619,7 +619,7 @@ func decodeEndToEndExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 	if err != nil {
 		return err
 	}
-	// @ e.RevealIsLowDecodingLayer(true, data, HalfPerm)
+	// @ e.RevealIsLow(true, data, HalfPerm)
 	nextTmp := scionNextLayerTypeAfterE2E( /*@ unfolding e.Mem(data) in (unfolding e.extnBase.Mem(data) in @*/ e.NextHdr /*@ ) @*/)
 	// @ fold nextTmp.Mem()
 	return p.NextDecoder(nextTmp)
@@ -721,11 +721,11 @@ func (s *HopByHopExtnSkipper) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassHopByHopExtn
 }
 
-// @ requires acc(h.Mem(ubuf), R20) && h.IsLowDecodingLayer(true, ubuf)
+// @ requires acc(h.Mem(ubuf), R20) && h.IsLow(true, ubuf)
 // @ ensures  acc(h.Mem(ubuf), R20)
 // @ decreases
 func (h *HopByHopExtnSkipper) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
-	// @ h.RevealIsLowDecodingLayer(true, ubuf, R20)
+	// @ h.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterHBH( /*@ unfolding acc(h.Mem(ubuf), R20) in (unfolding acc(h.extnBase.Mem(ubuf), R20) in @*/ h.NextHdr /*@ ) @*/)
 }
 
@@ -783,10 +783,10 @@ func (s *EndToEndExtnSkipper) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassEndToEndExtn
 }
 
-// @ requires acc(e.Mem(ubuf), R20) && e.IsLowDecodingLayer(true, ubuf)
+// @ requires acc(e.Mem(ubuf), R20) && e.IsLow(true, ubuf)
 // @ ensures  acc(e.Mem(ubuf), R20)
 // @ decreases
 func (e *EndToEndExtnSkipper) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
-	// @ e.RevealIsLowDecodingLayer(true, ubuf, R20)
+	// @ e.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterE2E( /*@ unfolding acc(e.Mem(ubuf), R20) in (unfolding acc(e.extnBase.Mem(ubuf), R20) in @*/ e.NextHdr /*@ ) @*/)
 }
