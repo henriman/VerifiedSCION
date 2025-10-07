@@ -82,7 +82,6 @@ preserves forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> acc(&errC
 // requires forall i int :: 0 <= i && i < len(errCtx) ==> IsOfPrimitiveType(errCtx[i])
 ensures res != nil && res.ErrorMem()
 ensures cause != nil ==> (res.ErrorMem() --* cause.ErrorMem())
-ensures (low(msg) && low(cause) && low(len(errCtx)) && forall i int :: { &errCtx[i] } 0 <= i && i < len(errCtx) ==> low(errCtx[i])) ==> low(res)
 decreases
 func WrapStr(msg string, cause error, errCtx ...interface{}) (res error)
 

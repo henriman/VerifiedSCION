@@ -33,6 +33,55 @@ pred (o *Path) Mem(ubuf []byte) {
 }
 
 ghost
+requires o.Mem(ub)
+decreases
+pure func (o *Path) GetSecondHopConsIngress(ghost ub []byte) uint16 {
+	return unfolding o.Mem(ub) in 
+		unfolding o.SecondHop.Mem() in o.SecondHop.ConsIngress
+}
+
+ghost
+requires o.Mem(ub)
+decreases
+pure func (o *Path) GetInfo(ghost ub []byte) path.InfoField {
+	return unfolding o.Mem(ub) in o.Info
+}
+
+ghost
+requires o.Mem(ub)
+decreases
+pure func (o *Path) FirstHopIsLow(ghost ub []byte) bool {
+	return unfolding o.Mem(ub) in o.FirstHop.IsLow()
+}
+
+ghost
+requires o.Mem(ub)
+decreases
+pure func (o *Path) SecondHopIsLow(ghost ub []byte) bool {
+	return unfolding o.Mem(ub) in o.SecondHop.IsLow()
+}
+
+// TODO: Once Gobra issue #846 is resolved, implement `IsLow`.
+ghost
+trusted
+requires o.Mem(ub)
+decreases
+pure func (o *Path) IsLow(ub []byte) bool
+
+// "Reveal the body" of `o.IsLow` (necessary bc. we can't implement `o.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires acc(o.Mem(ub), p) && o.IsLow(ub)
+ensures  acc(o.Mem(ub), p)
+ensures  low(o.GetSecondHopConsIngress(ub)) &&
+	low(o.GetInfo(ub).ConsDir) && low(o.GetInfo(ub).Peer) &&
+	o.FirstHopIsLow(ub) && o.SecondHopIsLow(ub)
+decreases
+func (o *Path) RevealIsLow(ub []byte, p perm)
+
+ghost
 requires p.Mem(buf)
 ensures  p.NonInitMem()
 decreases
@@ -65,22 +114,3 @@ pure func (p *Path) LenSpec(ghost ub []byte) int {
 }
 
 (*Path) implements path.Path
-
-// TODO: Once Gobra issue 883 is removed, this could be removed in favor of 
-// unfolding permissions directly in the contract.
-ghost
-requires o.Mem(ub)
-decreases
-pure func (o *Path) GetSecondHopConsIngress(ghost ub []byte) uint16 {
-	return unfolding o.Mem(ub) in 
-		unfolding o.SecondHop.Mem() in o.SecondHop.ConsIngress
-}
-
-pred (o *Path) LowReverse()
-
-ghost
-requires  o.LowReverse() && p > 0
-preserves acc(o.Mem(ub), p)
-ensures   low(o.GetSecondHopConsIngress(ub) == 0)
-decreases
-func (o *Path) GetLowReverse(ghost ub []byte, ghost p perm)

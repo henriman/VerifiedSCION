@@ -91,7 +91,14 @@ const (
 
 type HostAddr interface {
 	//@ pred Mem()
-	//@ pred LowMem()
+
+	// Return whether all the underlying data that needs to be low for the
+	// computation of `Pack`, `IP`, `String` is low.
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	//@ ghost
+	//@ requires Mem()
+	//@ decreases
+	//@ pure IsLow() bool
 
 	//@ preserves acc(Mem(), R13)
 	//@ decreases
@@ -101,12 +108,12 @@ type HostAddr interface {
 	//@ decreases
 	Type() HostAddrType
 
-	//@ requires acc(Mem(), R13)
+	//@ requires acc(Mem(), R13) && IsLow()
 	//@ ensures forall i int :: { &res[i] } 0 <= i && i < len(res) ==> acc(&res[i], R13)
 	//@ decreases
 	Pack() (res []byte)
 
-	//@ requires acc(Mem(), R13)
+	//@ requires acc(Mem(), R13) && IsLow()
 	//@ ensures forall i int :: { &res[i] } 0 <= i && i < len(res) ==> acc(&res[i], R13)
 	//@ decreases
 	IP() (res net.IP)
@@ -116,10 +123,7 @@ type HostAddr interface {
 	//@ decreases
 	Copy() (res HostAddr)
 
-	// SIF: I wanted to introduce an assertion `LowEqual(HostAddr)`, but that
-	// led to a strange exception. As every implementation of `Equal` needs to
-	// cast `o` anyway, I think it's fine to assert `low(typeOf(o))` directly.
-	//@ requires low(typeOf(o))
+	//@ requires  low(typeOf(o))
 	//@ preserves acc(Mem(), R13) && acc(o.Mem(), R13)
 	//@ decreases
 	Equal(o HostAddr) bool
@@ -129,8 +133,8 @@ type HostAddr interface {
 	// replaced by the String() method which is the one that should be implemented
 	//fmt.Stringer
 
-	//@ requires acc(Mem(), R13/2) && acc(LowMem(), R13/2)
-	//@ ensures acc(Mem(), R13)
+	//@ requires acc(Mem(), R13) && IsLow()
+	//@ ensures  acc(Mem(), R13)
 	//@ decreases
 	String() string
 }
@@ -170,9 +174,9 @@ func (h HostNone) Copy() (res HostAddr) {
 	return tmp
 }
 
-// SIF: The Viper encoding contains a non-low branch condition if not `low(typeOf(o))`
+// The Viper encoding branches on `typeOf(o)`.
 // @ requires low(typeOf(o))
-// @ ensures res == (typeOf(o) == type[HostNone])
+// @ ensures  res == (typeOf(o) == type[HostNone])
 // @ decreases
 func (h HostNone) Equal(o HostAddr) (res bool) {
 	_, ok := o.(HostNone)
@@ -198,21 +202,28 @@ func (h HostIPv4) Type() HostAddrType {
 	return HostTypeIPv4
 }
 
-// @ requires acc(h.Mem(), R13)
+// @ requires acc(h.Mem(), R13) && h.IsLow()
 // @ ensures forall i int :: { &res[i] } 0 <= i && i < len(res) ==> acc(&res[i], R13)
 // @ decreases
 func (h HostIPv4) Pack() (res []byte) {
 	return []byte(h.IP())
 }
 
-// @ requires acc(h.Mem(), R13)
+// @ requires acc(h.Mem(), R13) && h.IsLow()
 // @ ensures forall i int :: { &res[i] }{ &h[i] } 0 <= i && i < len(res) ==> acc(&res[i], R13) && &res[i] == &h[i]
 // @ ensures len(res) == HostLenIPv4
 // @ decreases
 func (h HostIPv4) IP() (res net.IP) {
 	// XXX(kormat): ensure the reply is the 4-byte representation.
-	//@ unfold acc(h.Mem(), R13)
-	//@ unfold acc(sl.Bytes(h, 0, len(h)), R13)
+	//@ h.RevealIsLow(R13)
+	//@ unfold acc(h.Mem(), R13/2)
+	//@ assert forall i int :: { h.GetByte(i) } 0 <= i && i < len(h) ==>
+	//@ 	sl.GetByte(h, 0, len(h), i) == h.GetByte(i)
+	//@ unfold acc(sl.Bytes(h, 0, len(h)), R13/2)
+	//@ assert forall i int :: { &h[i] } 0 <= i && i < len(h) ==> 
+	//@ 	h.GetByte(i) == h[i]
+	//@ unfold acc(h.Mem(), R13/2)
+	//@ unfold acc(sl.Bytes(h, 0, len(h)), R13/2)
 	return net.IP(h).To4( /*@ false @*/ )
 }
 
@@ -230,7 +241,7 @@ func (h HostIPv4) Copy() (res HostAddr) {
 	return tmp
 }
 
-// @ requires low(typeOf(o))
+// @ requires  low(typeOf(o))
 // @ preserves acc(h.Mem(), R13)
 // @ preserves acc(o.Mem(), R13)
 // @ decreases
@@ -243,14 +254,11 @@ func (h HostIPv4) Equal(o HostAddr) bool {
 	return ok && net.IP(h).Equal(net.IP(ha))
 }
 
-// @ requires acc(h.Mem(), R13/2) && acc(h.LowMem(), R13/2)
-// @ ensures acc(h.Mem(), R13)
+// @ requires acc(h.Mem(), R13) && h.IsLow()
+// @ ensures  acc(h.Mem(), R13)
 // @ decreases
 func (h HostIPv4) String() string {
-	//@ assert unfolding acc(h.Mem(), R13/2) in len(h) == HostLenIPv4
-	//@ unfold acc(h.Mem(), R13/2)
-	//@ unfold acc(h.LowMem(), R13/2)
-	//@ fold acc(h.Mem(), R13)
+	//@ assert unfolding acc(h.Mem(), R13) in len(h) == HostLenIPv4
 	//@ ghost defer fold acc(h.Mem(), R13)
 	//@ ghost defer fold acc(sl.Bytes(h, 0, len(h)), R13)
 	return h.IP().String()
@@ -303,7 +311,7 @@ func (h HostIPv6) Copy() (res HostAddr) {
 	return tmp
 }
 
-// @ requires low(typeOf(o))
+// @ requires  low(typeOf(o))
 // @ preserves acc(h.Mem(), R13)
 // @ preserves acc(o.Mem(), R13)
 // @ decreases
@@ -316,14 +324,10 @@ func (h HostIPv6) Equal(o HostAddr) bool {
 	return ok && net.IP(h).Equal(net.IP(ha))
 }
 
-// @ requires acc(h.Mem(), R13/2) && acc(h.LowMem(), R13/2)
-// @ ensures acc(h.Mem(), R13)
+// @ preserves acc(h.Mem(), R13)
 // @ decreases
 func (h HostIPv6) String() string {
-	//@ assert unfolding acc(h.Mem(), R13/2) in len(h) == HostLenIPv6
-	//@ unfold acc(h.Mem(), R13/2)
-	//@ unfold acc(h.LowMem(), R13/2)
-	//@ fold acc(h.Mem(), R13)
+	//@ assert unfolding acc(h.Mem(), R13) in len(h) == HostLenIPv6
 	//@ ghost defer fold acc(h.Mem(), R13)
 	//@ ghost defer fold acc(sl.Bytes(h, 0, len(h)), R13)
 	return h.IP().String()
@@ -424,29 +428,24 @@ func (h HostSVC) Equal(o HostAddr) bool {
 	return ok && h == ha
 }
 
-// @ requires low(h)
+// @ requires acc(h.Mem(), R13) && h.IsLow()
+// @ ensures  acc(h.Mem(), R13)
 // @ decreases
 func (h HostSVC) String() string {
+	//@ h.RevealIsLow(R13)
 	name := h.BaseString()
 	cast := 'A'
 	if h.IsMulticast() {
 		cast = 'M'
 	}
-	// SIF: See Gobra issue #835 for why this assumption is currently necessary
-	//@ assert low(name)
-	//@ assert low(cast)
-	//@ assert low(uint16(h))
-	//@ ghost v := []interface{}{name, cast, uint16(h)}
-	//@ assume forall i int :: { &v[i] } 0 <= i && i < len(v) ==> acc(&v[i]) && low(v[i])
 	return fmt.Sprintf("%v %c (0x%04x)", name, cast, uint16(h))
 }
 
 // BaseString returns the upper case name of the service. For hosts or unrecognized services, it
 // returns UNKNOWN.
 // @ requires low(h)
-// @ ensures low(res)
 // @ decreases
-func (h HostSVC) BaseString() (res string) {
+func (h HostSVC) BaseString() string {
 	switch h.Base() {
 	case SvcDS:
 		return "DS"
@@ -506,10 +505,11 @@ func HostFromRaw(b []byte, htype HostAddrType) (res HostAddr, err error) {
 	}
 }
 
-// @ requires low(len(ip))
 // @ requires acc(ip)
 // @ requires len(ip) == HostLenIPv4 || len(ip) == HostLenIPv6
-// @ ensures res.Mem()
+// @ requires low(len(ip)) && forall i int :: { &ip[i] } 0 <= i && i < len(ip) &&
+// @ 	low(i) ==> low(ip[i])
+// @ ensures  res.Mem()
 // @ decreases
 func HostFromIP(ip net.IP) (res HostAddr) {
 	if ip4 := ip.To4( /*@ false @*/ ); ip4 != nil {
@@ -525,7 +525,7 @@ func HostFromIP(ip net.IP) (res HostAddr) {
 }
 
 // @ requires low(s)
-// @ ensures res.Mem()
+// @ ensures  res.Mem()
 // @ decreases
 func HostFromIPStr(s string) (res HostAddr) {
 	ip := net.ParseIP(s)

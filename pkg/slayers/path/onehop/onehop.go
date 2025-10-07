@@ -64,7 +64,7 @@ type Path struct {
 }
 
 // @ requires  o.NonInitMem()
-// @ requires low(len(data) < PathLen)
+// @ requires  low(len(data))
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R42)
 // @ ensures   (len(data) >= PathLen) == (r == nil)
 // @ ensures   r == nil ==> o.Mem(data)
@@ -99,21 +99,25 @@ func (o *Path) DecodeFromBytes(data []byte) (r error) {
 	return r
 }
 
-// @ requires  low(len(b) < PathLen)
-// @ preserves acc(o.Mem(ubuf), R1)
+// @ requires  low(len(b))
+// @ requires  acc(o.Mem(ubuf), R1) && o.IsLow(ubuf)
 // @ preserves acc(sl.Bytes(ubuf, 0, len(ubuf)), R1)
 // @ preserves sl.Bytes(b, 0, len(b))
+// @ ensures   acc(o.Mem(ubuf), R1)
 // @ ensures   (len(b) >= PathLen) == (err == nil)
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ ensures   err == nil ==> o.LenSpec(ubuf) <= len(b)
 // @ decreases
 func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
+	//@ o.RevealIsLow(ubuf, R1)
 	if len(b) < PathLen {
 		return serrors.New("buffer too short for OneHop path", "expected", int(PathLen), "actual",
 			int(len(b)))
 	}
 	offset := 0
 	//@ unfold acc(o.Mem(ubuf), R1)
+	//@ o.FirstHop.RevealIsLow(R2)
+	//@ o.SecondHop.RevealIsLow(R2)
 	//@ sl.SplitRange_Bytes(b, 0, offset+path.InfoLen, writePerm)
 	if err := o.Info.SerializeTo(b[:offset+path.InfoLen]); err != nil {
 		//@ sl.CombineRange_Bytes(b, 0, offset+path.InfoLen, writePerm)
@@ -138,7 +142,7 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 // ToSCIONDecoded converts the one hop path in to a normal SCION path in the
 // decoded format.
 // @ requires  o.Mem(ubuf)
-// @ requires  low(o.GetSecondHopConsIngress(ubuf) == 0)
+// @ requires  low(o.GetSecondHopConsIngress(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   o.Mem(ubuf)
 // @ ensures   err == nil ==> (sd != nil && sd.Mem(ubuf))
@@ -203,9 +207,7 @@ func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, e
 }
 
 // Reverse a OneHop path that returns a reversed SCION path.
-// @ requires  o.Mem(ubuf)
-//  requires   low(o.GetSecondHopConsIngress(ubuf) == 0)
-// @ requires  o.LowReverse()
+// @ requires  o.Mem(ubuf) && o.IsLow(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   err == nil ==> p != nil
 // @ ensures   err == nil ==> p.Mem(ubuf)
@@ -213,7 +215,7 @@ func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, e
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func (o *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, err error) {
-	// @ o.GetLowReverse(ubuf, 1/2)
+	//@ o.RevealIsLow(ubuf, writePerm)
 	sp, err := o.ToSCIONDecoded( /*@ ubuf @*/ )
 	if err != nil {
 		return nil, serrors.WrapStr("converting to scion path", err)

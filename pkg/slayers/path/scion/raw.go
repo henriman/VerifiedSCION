@@ -120,6 +120,7 @@ func (s *Raw) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 // @ ensures   err == nil ==> p != nil && p != (*Raw)(nil)
 // @ ensures   err == nil ==> p.Mem(ubuf)
 // @ ensures   err != nil ==> err.ErrorMem()
+// @ ensures   low(err != nil)
 // @ decreases
 func (s *Raw) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, err error) {
 	// XXX(shitz): The current implementation is not the most performant, since it parses the entire
