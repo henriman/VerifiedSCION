@@ -85,9 +85,6 @@ requires macFactory != nil                        &&
 	len(*key) > 0                                 &&
 	sl.Bytes(*key, 0, len(*key))                  &&
 	scrypto.ValidKeyForHash(*key)                 &&
-	// TODO[henri]: might want to use asid in place of 1000 as well maybe? and then
-	// no requirement on the contents of asid?
-	// TODO[henri]: try not using gpointer in gobra-felix test
 	acc(asid) && asid.V != 0		              &&
 	macFactory implements MacFactorySpec{key, asid}
 requires metrics != nil && metrics.Mem()
@@ -154,12 +151,9 @@ func testRun(
 			io.Ifs{2}: io.AS{1002},
 			io.Ifs{3}: *asid,
 		},
-		// localIA: io.AS{1000},
 		localIA: *asid,
 		links:  dict[io.AsIfsPair]io.AsIfsPair {
-			// io.AsIfsPair{io.AS{1000}, io.Ifs{1}}: io.AsIfsPair{io.AS{1001}, io.Ifs{7}},
 			io.AsIfsPair{*asid, io.Ifs{1}}: io.AsIfsPair{io.AS{1001}, io.Ifs{7}},
-			// io.AsIfsPair{io.AS{1000}, io.Ifs{2}}: io.AsIfsPair{io.AS{1002}, io.Ifs{8}},
 			io.AsIfsPair{*asid, io.Ifs{2}}: io.AsIfsPair{io.AS{1002}, io.Ifs{8}},
 			io.AsIfsPair{*asid, io.Ifs{3}}: io.AsIfsPair{*asid, io.Ifs{3}},
 			io.AsIfsPair{io.AS{1001}, io.Ifs{7}}: io.AsIfsPair{*asid, io.Ifs{1}},
@@ -223,29 +217,15 @@ func testRun(
 	assert d.mtx.LockP()
 	assert d.mtx.LockInv() == MutexInvariant!<d!>
 
-	// TODO: I can probably work around asid ghost pointer argument by wrapping io.AS{uint(1000)}
-	// (maybe `share asid` or something could also be useful)
 	assert reveal d.PreWellConfigured()
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
-	// TODO: alternatively, I could try to instead apply this "trick" of only
-	// unfolding part of Mem and all of localIA (if no other way, maybe using
-	// an outline block, since I know the required contract) in SetIA and 
-	// requiring Mem() there as usual. However, then I will likely need 
-	// all of the postconditions ensuring that stuff has not changed since from
-	// the caller's view, it has given up all permissions and thus cannot know
-	// whether the data is manipulated or not.
 	unfold acc(d.Mem(), OutMutexPerm/2)
 	d.SetIA(addr.IA(asid.V))
 	fold acc(d.Mem(), OutMutexPerm/2)
+	// TODO: Without establishing that other fields of `d` don't change on call
+	// to `d.SetIA`, assertions such as the following fail.
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
 	assert reveal d.PreWellConfigured()
-	// NOTE: This assertion is the first failing one
-	// Reason: On call to SetIA, we lose all permissions to d.Mem() (the ones
-	// in mutex and the ones in precondition), and consequently we cannot know
-	// whether other things than just the localIA are changed ...
-	// assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
-	// d.macFactory = macFactory
-	// d.key = key
 	unfold acc(d.Mem(), OutMutexPerm/2)
 	if err := d.SetKey(*key); err != nil {
 		return nil
@@ -262,7 +242,6 @@ func testRun(
 	assert reveal d.getDomExternal() intersection d.GetDomInternalNextHops() == set[uint16]{}
 	assert reveal d.PreWellConfigured()
 	assert dp.Asid() == *asid
-	// assert d.localIA == 1000
 
 	assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredNeighborIAs(dp)
 	assert unfolding acc(d.Mem(), _) in d.dpSpecWellConfiguredLinkTypes(dp)
