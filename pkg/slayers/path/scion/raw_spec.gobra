@@ -177,7 +177,9 @@ pure func (r *Raw) GetNumINF(ghost ub []byte) int {
 		(unfolding r.Base.Mem() in r.NumINF)
 }
 
-// TODO: Combine with above eventually maybe (by introducing bool ...)
+// TODO: `GetNumINF` and `GetNumINFNonInit` could be combined into one function,
+// `GetNumINF(init bool)` which requires `Mem` or `NonInitMem` depending on `init`.
+// Same for `GetNumHops`/`GetNumHopsNonInit`.
 ghost
 requires r.NonInitMem()
 decreases
@@ -713,7 +715,6 @@ ghost
 preserves acc(s.Mem(ubuf), R53)
 preserves acc(sl.Bytes(ubuf, 0, len(ubuf)), R53)
 preserves validPktMetaHdr(ubuf)
-// TODO: Maybe only use ensures, but then a lot of these preserves would have to be split up
 preserves len(ubuf) >= MetaLen ==> 
 	low(sl.GetByte(ubuf, 0, len(ubuf), 0)) && low(sl.GetByte(ubuf, 0, len(ubuf), 1)) &&
 	low(sl.GetByte(ubuf, 0, len(ubuf), 2)) && low(sl.GetByte(ubuf, 0, len(ubuf), 3))

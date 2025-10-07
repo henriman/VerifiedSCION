@@ -57,7 +57,7 @@ func (s *Raw) DecodeFromBytes(data []byte) (res error) {
 	}
 	// (VerifiedSCION) Gobra expects a stronger contract for s.Len() when in fact what
 	// happens here is that we just call the same function in s.Base.
-	// TODO: remove assertions
+	// TODO: These assertions might be unnecessary.
 	// @ assert low(s.Base.GetNumINF())
 	// @ assert low(s.Base.GetNumHops())
 	pathLen := s. /*@ Base. @*/ Len()
@@ -203,12 +203,12 @@ func (s *Raw) ToDecoded( /*@ ghost ubuf []byte @*/ ) (d *Decoded, err error) {
 	//@ 	(ubuf[0] == (unfolding acc(sl.Bytes(ubuf, 0, len(ubuf)), _) in ubuf[0]))
 	//@ sl.CombineRange_Bytes(ubuf, 0, MetaLen, HalfPerm)
 	decoded := &Decoded{}
-	// TODO: remove assertions
+	// TODO: These assertions might be unnecessary.
 	//@ assert low(decoded.NumINF)
 	//@ assert low(decoded.NumHops)
 	//@ fold decoded.Base.NonInitMem()
 	//@ fold decoded.NonInitMem()
-	// TODO: remove assertions
+	// TODO: These assertions might be unnecessary.
 	//@ assert low(decoded.GetNumINFNonInit())
 	//@ assert low(decoded.GetNumHopsNonInit())
 	//@ sl.SplitByIndex_Bytes(ubuf, 0, len(ubuf), len(s.Raw), HalfPerm)
@@ -609,15 +609,15 @@ func (s *Raw) SetHopField(hop path.HopField, idx int /*@, ghost ubuf []byte @*/)
 	//@ ghost seg1Len := int(s.PathMeta.SegLen[0])
 	//@ ghost seg2Len := int(s.PathMeta.SegLen[1])
 	//@ ghost seg3Len := int(s.PathMeta.SegLen[2])
-	// TODO: remove assertions
+	// TODO: These assertions might be unnecessary.
 	//@ assert low(seg1Len)
 	//@ assert low(seg2Len)
 	//@ assert low(seg3Len)
 	//@ ghost segLens := io.CombineSegLens(seg1Len, seg2Len, seg3Len)
-	// TODO: remove assertion
+	// TODO: This assertion might be unnecessary.
 	//@ assert low(segLens)
 	//@ ghost segLen := segLens.LengthOfCurrSeg(idx)
-	// TODO: remove assertion
+	// TODO: This assertion might be unnecessary.
 	//@ assert low(segLen)
 	//@ ghost prevSegLen := segLens.LengthOfPrevSeg(idx)
 	//@ ghost offset := HopFieldOffset(s.Base.NumINF, prevSegLen, MetaLen)

@@ -109,6 +109,9 @@ pure func (b Base) NumsCompatibleWithSegLen() bool {
 			b.PathMeta.SegLen[i] == 0)
 }
 
+// TODO: `GetNumINF` and `GetNumINFNonInit` could be combined into one function,
+// `GetNumINF(init bool)` which requires `Mem` or `NonInitMem` depending on `init`.
+// Same for `GetNumHops`/`GetNumHopsNonInit`.
 ghost
 requires b.Mem()
 ensures  0 <= res && res <= 3
@@ -118,7 +121,6 @@ pure func (b *Base) GetNumINF() (res int) {
 		b.NumINF
 }
 
-// TODO: Maybe combine with above eventually
 ghost
 requires b.NonInitMem()
 decreases

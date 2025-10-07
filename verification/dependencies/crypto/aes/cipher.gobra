@@ -15,12 +15,7 @@ import . "github.com/scionproto/scion/verification/utils/definitions"
 // The AES block size in bytes.
 const BlockSize = 16
 
-// TODO: remove this
-// When does `NewCipher` return an error?
-// - From what I can make out, only if len(key) is *not* 16, 24, or 32
-// Other notes:
-// - Uses len(key) in switch / branch condition
-// - Can't check `boring.NewAESCipher(key)` (on my machine at least)
+// TODO: Use annotations from sif-pkg-experimental-epic instead.
 
 // NewCipher creates and returns a new cipher.Block.
 // The key argument should be the AES key,

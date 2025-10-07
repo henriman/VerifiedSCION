@@ -99,7 +99,7 @@ pure func (d *Decoded) Type(ghost ubuf []byte) path.Type {
   * introduced this method which acts as a wrapper.
   */
 requires acc(d.Mem(ubuf), R19)
-requires low(d.GetBase(ubuf).PathMeta.CurrHF)  // TODO: Maybe introduce function for this
+requires low(d.GetBase(ubuf).PathMeta.CurrHF)
 requires low(d.GetNumHops(ubuf))
 requires low(d.GetBase(ubuf).PathMeta.SegLen[0]) && low(d.GetBase(ubuf).PathMeta.SegLen[1])
 ensures  acc(d.Mem(ubuf), R19)
@@ -147,7 +147,9 @@ pure func (d *Decoded) GetNumINF(ub []byte) int {
 		d.Base.GetNumINF()
 }
 
-// TODO: combine with above eventually maybe
+// TODO: `GetNumINF` and `GetNumINFNonInit` could be combined into one function,
+// `GetNumINF(init bool)` which requires `Mem` or `NonInitMem` depending on `init`.
+// Same for `GetNumHops`/`GetNumHopsNonInit`.
 ghost
 requires d.NonInitMem()
 decreases

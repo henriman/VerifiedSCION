@@ -105,7 +105,7 @@ func (s *Base) DecodeFromBytes(data []byte) (r error) {
 	}
 	s.NumINF = 0
 	s.NumHops = 0
-	// TODO: remove assertions
+	// TODO: These might be unnecessary.
 	//@ assert low(s.PathMeta.SegLen[0])
 	//@ assert low(s.PathMeta.SegLen[1])
 	//@ assert low(s.PathMeta.SegLen[2])
@@ -207,8 +207,8 @@ func (s *Base) IncPath() (e error) {
 
 // IsXover returns whether we are at a crossover point.
 // @ requires acc(s.Mem(), R45)
-// SIF: `low(s.GetNumHops())` is necessary due to "implicit" non-low branch condition
-// introduced by short-circuit evaluation.
+// `low(s.GetNumHops())` is necessary due to the "implicit" non-low branch 
+// condition introduced by short-circuit evaluation.
 // @ requires low(s.GetCurrHF()) && low(s.GetNumHops())
 // @ requires low(s.GetMetaHdr().SegLen[0]) && low(s.GetMetaHdr().SegLen[1])
 // @ ensures  acc(s.Mem(), R45)
@@ -292,7 +292,7 @@ type MetaHdr struct {
 // @ ensures   e == nil ==> m.DecodeFromBytesSpec(raw)
 // @ ensures   e != nil ==> e.ErrorMem()
 // @ ensures   low(e != nil)
-// TODO: Once Gobra issue 891 is resolved, change to low(m.SegLen)
+// TODO: Once Gobra issue #891 is resolved, replace by `low(m.SegLen)`.
 // @ ensures   low(m.SegLen[0]) && low(m.SegLen[1]) && low(m.SegLen[2])
 // @ decreases
 func (m *MetaHdr) DecodeFromBytes(raw []byte) (e error) {
@@ -302,14 +302,14 @@ func (m *MetaHdr) DecodeFromBytes(raw []byte) (e error) {
 	}
 	//@ unfold acc(sl.Bytes(raw, 0, len(raw)), R50)
 	line := binary.BigEndian.Uint32(raw)
-	// TODO: remove assertion
+	// TODO: This assertion might be unnecessary.
 	// @ assert low(line)
 	m.CurrINF = uint8(line >> 30)
 	m.CurrHF = uint8(line>>24) & 0x3F
 	//@ bit.Shift30LessThan4(line)
 	//@ bit.And3fAtMost64(uint8(line>>24))
 	m.SegLen[0] = uint8(line>>12) & 0x3F
-	// TODO: remove assertion
+	// TODO: This assertion might be unnecessary.
 	// @ assert low(m.SegLen[0])
 	m.SegLen[1] = uint8(line>>6) & 0x3F
 	m.SegLen[2] = uint8(line) & 0x3F

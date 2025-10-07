@@ -68,7 +68,7 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	}
 	// (VerifiedSCION) Gobra expects a stronger contract for s.Len() when in fact
 	// what happens here is that we just call the same function in s.Base.
-	// TODO: remove assertions
+	// TODO: These assertions might be unnecessary.
 	// @ assert low(s.Base.GetNumINF())
 	// @ assert low(s.Base.GetNumHops())
 	if minLen := s. /*@ Base. @*/ Len(); len(data) < minLen {
@@ -81,7 +81,7 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	//@ assert len(data) >= MetaLen + s.Base.GetNumINF() * path.InfoLen + s.Base.GetNumHops() * path.HopLen
 	//@ sl.SplitByIndex_Bytes(data, 0, len(data), offset, R43)
 
-	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	// TODO: Once Gobra issue #888 is resolved, move back into loop condition.
 	numInf := /*@ unfolding acc(s.Base.Mem(), _) in @*/ s.NumINF
 
 	//@ invariant acc(&s.InfoFields)
@@ -110,7 +110,7 @@ func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 		offset += path.InfoLen
 	}
 
-	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	// TODO: Once Gobra issue #888 is resolved, move back into loop condition.
 	numHops := /*@ unfolding acc(s.Base.Mem(), R2) in @*/ s.NumHops
 
 	s.HopFields = make([]path.HopField, ( /*@ unfolding s.Base.Mem() in @*/ s.NumHops))
@@ -173,7 +173,7 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 		// @ Unreachable()
 		return err
 	}
-	// TODO: remove assertion
+	// TODO: This assertion might be unnecessary.
 	// @ assert   len(b) >= MetaLen ==>
 	// @ 	low(sl.GetByte(b, 0, len(b), 0)) && low(sl.GetByte(b, 0, len(b), 1)) &&
 	// @ 	low(sl.GetByte(b, 0, len(b), 2)) && low(sl.GetByte(b, 0, len(b), 3))
@@ -184,7 +184,7 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 	//@ fold acc(s.Mem(ubuf), R1)
 	offset := MetaLen
 
-	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	// TODO: Once Gobra issue #888 is resolved, move back into loop condition.
 	lenInfoFields := /*@ unfolding acc(s.Mem(ubuf), _) in @*/ len(s.InfoFields)
 	//@ assert low(lenInfoFields)
 
@@ -203,7 +203,7 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 	for i := 0; i < lenInfoFields; i++ {
 		//@ unfold acc(s.Mem(ubuf), R1)
 		info := &s.InfoFields[i]
-		// TODO: remove assertion
+		// TODO: This assertion might be unnecessary.
 		//@ assert acc(info, R10)
 		//@ sl.SplitByIndex_Bytes(b, 0, len(b), offset, writePerm)
 		//@ sl.SplitByIndex_Bytes(b, offset, len(b), offset + path.InfoLen, writePerm)
@@ -220,12 +220,12 @@ func (s *Decoded) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 		offset += path.InfoLen
 	}
 
-	// TODO: remove assertion
+	// TODO: This assertion might be unnecessary.
 	// @ assert   len(b) >= MetaLen ==>
 	// @ 	low(sl.GetByte(b, 0, len(b), 0)) && low(sl.GetByte(b, 0, len(b), 1)) &&
 	// @ 	low(sl.GetByte(b, 0, len(b), 2)) && low(sl.GetByte(b, 0, len(b), 3))
 
-	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	// TODO: Once Gobra issue #888 is resolved, move back into loop condition.
 	lenHopFields := /*@ unfolding acc(s.Mem(ubuf), _) in @*/ len(s.HopFields)
 	//@ assert low(lenHopFields)
 
@@ -300,7 +300,7 @@ func (s *Decoded) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, r error) {
 		s.PathMeta.SegLen[0], s.PathMeta.SegLen[lastIdx] = s.PathMeta.SegLen[lastIdx], s.PathMeta.SegLen[0]
 	}
 	//@ fold s.Base.Mem()
-	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	// TODO: Once Gobra issue #888 is resolved, move back into loop condition.
 	numInf := /*@ unfolding acc(s.Base.Mem(), R11) in @*/ s.NumINF
 	//@ invariant acc(s.Base.Mem(), R10)
 	//@ invariant 0 <= i && i <= s.Base.GetNumINF()
@@ -318,7 +318,7 @@ func (s *Decoded) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, r error) {
 	}
 	//@ fold s.Mem(ubuf)
 
-	// TODO: Once Gobra issue 888 is resolved, move back into loop condition.
+	// TODO: Once Gobra issue #888 is resolved, move back into loop condition.
 	numHops := /*@ unfolding s.Mem(ubuf) in unfolding s.Base.Mem() in @*/ s.NumHops
 
 	// Reverse order of hop fields

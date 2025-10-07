@@ -15,8 +15,9 @@ ensures  acc(b, p) && low(string(b))
 decreases
 func AssumeLowSliceToLowString(b []byte, p perm)
 
-// We need this assumption due to a combination of problems.
-// TODO: Explain
+// TODO: This is a remnant of the old attempt at verifying `pkg/experimental/epic`.
+// Using the annotations of `subtle.ConstantTimeCompare` from 
+// sif-pkg-experimental-epic one should be able to remove this assumption.
 ghost
 requires p > 0 && acc(sl.Bytes(x, 0, len(x)), p) && acc(sl.Bytes(y, 0, len(y)), p)
 requires low(len(x)) && low(len(y))

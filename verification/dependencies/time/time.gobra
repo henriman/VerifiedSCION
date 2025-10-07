@@ -15,6 +15,11 @@ type Time struct {
     privateFields def.PrivateField
 }
 
+// TODO: The annotations in here are a remnant of the old attempt to verify
+// `pkg/experimental/epic`. These should all be replaced in favor of the 
+// annotations in sif-pkg-experimental-epic. (E.g., `low(t)` for `t Time`
+// does not make sense since `Time` contains pointers.)
+
 // After reports whether the time instant t is after u.
 ensures low(t) && low(u) ==> low(res)
 decreases
@@ -194,7 +199,6 @@ decreases
 func (t Time) Add(d Duration) (res Time)
 
 // Sub returns the duration t-u.
-// TODO: could potentially made pure?
 ensures low(t) && low(u) ==> low(res)
 decreases
 func (t Time) Sub(u Time) (res Duration)
