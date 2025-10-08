@@ -64,8 +64,6 @@ pred PathPoolMem(pathPool []path.Path, pathPoolRaw path.Path) {
 		pathPoolRaw.NonInitMem()))
 }
 
-// TODO[henri]: merge this and the following into one GetPathPoolPath with
-// init parameter.
 ghost
 requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
 requires PathPoolMem(s.pathPool, s.pathPoolRaw)
@@ -80,7 +78,7 @@ pure func (s *SCION) GetPathPoolPath(pathType path.Type) path.Path {
 ghost
 requires s.NonInitMem()
 requires s.PathPoolInitializedNonInitMem()
-requires 0 <= pathType && pathType < len(s.GetPathPool())
+requires 0 <= pathType && pathType < len(s.GetPathPool(false, nil))
 decreases
 pure func (s *SCION) GetPathPoolPathNonInit(pathType path.Type) path.Path {
 	return unfolding s.NonInitMem() in 
@@ -134,13 +132,12 @@ pure func (s *SCION) PathPoolInitializedNonInitMem() bool {
 		s.pathPool != nil
 }
 
-// TOOD[henri]: merge with above pathpoolinitializednoninitmem and use init parameter
-ghost
-requires s.Mem(ub)
-decreases
-pure func (s *SCION) PathPoolInitializedMem(ghost ub []byte) bool {
-	return unfolding s.Mem(ub) in s.pathPool != nil
-}
+// ghost
+// requires s.Mem(ub)
+// decreases
+// pure func (s *SCION) PathPoolInitializedMem(ghost ub []byte) bool {
+// 	return unfolding s.Mem(ub) in s.pathPool != nil
+// }
 
 ghost
 requires 0 <= pathType && pathType < path.MaxPathType
@@ -230,6 +227,12 @@ pure func (s *SCION) GetPathType(ghost ub []byte) path.Type {
 	return unfolding s.Mem(ub) in s.PathType
 }
 
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetHdrLen(ghost ub []byte) uint8 {
+	return unfolding s.Mem(ub) in s.HdrLen
+}
+
 ghost
 requires s.Mem(ub)
 decreases
@@ -238,10 +241,14 @@ pure func (s *SCION) PathIsLow(ghost ub []byte) bool {
 		s.Path.IsLow(ub[CmnHdrLen+s.AddrHdrLenSpecInternal() : s.HdrLen*LineLen])
 }
 
-requires s.NonInitMem()
+ghost
+requires  init ==> s.Mem(ub)
+requires !init ==> s.NonInitMem()
 decreases
-pure func (s *SCION) GetPathPool() []path.Path {
-	return unfolding s.NonInitMem() in s.pathPool
+pure func (s *SCION) GetPathPool(init bool, ghost ub []byte) []path.Path {
+	return init ? (
+		unfolding s.Mem(ub) in s.pathPool) : (
+		unfolding s.NonInitMem() in s.pathPool)
 }
 
 requires s.NonInitMem()
@@ -256,8 +263,7 @@ requires  headerMem ==> s.HeaderMem(ubuf)
 decreases
 pure func (s *SCION) GetSrcAddrType(ubuf []byte, headerMem bool) AddrType {
 	return !headerMem ? (
-		// TODO[henri]: Try if I can access s.SrcAddrType without unfolding HeaderMem
-		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.SrcAddrType) : (
+		unfolding s.Mem(ubuf) in s.SrcAddrType) : (
 		unfolding s.HeaderMem(ubuf) in s.SrcAddrType)
 }
 
@@ -267,8 +273,7 @@ requires  headerMem ==> s.HeaderMem(ubuf)
 decreases
 pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
 	return !headerMem ? (
-		// TODO[henri]: Try if I can access s.SrcAddrType without unfolding HeaderMem
-		unfolding s.Mem(ubuf) in unfolding s.HeaderMem(ubuf[CmnHdrLen:]) in s.DstAddrType) : (
+		unfolding s.Mem(ubuf) in s.DstAddrType) : (
 		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
 }
 
@@ -298,16 +303,14 @@ requires s.IsLow(init, ub)
 ensures   init ==> acc(s.Mem(ub), p) &&
 	low(s.GetNextHdr(ub)) &&
 	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
-	// TODO[henri]: Might want to instead mark HdrLen as low
-	low(s.PathEndIdx(ub)) &&
+	low(s.GetHdrLen(ub)) &&
 	low(s.GetPathType(ub)) &&
 	s.PathIsLow(ub) &&
-	// TODO[henri]: consider replacing this by low(getpathpool() == nil)
-	low(s.PathPoolInitializedMem(ub))
+	low(s.GetPathPool(true, ub) != nil)
 ensures  !init ==> acc(s.NonInitMem(), p) &&
-	low(s.PathPoolInitializedNonInitMem()) &&
-	(s.GetPathPool() != nil ==> low(len(s.GetPathPool())) &&
-		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool()) &&
+	low(s.GetPathPool(false, nil) != nil) &&
+	(s.GetPathPool(false, nil) != nil ==> low(len(s.GetPathPool(false, nil))) &&
+		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool(false, nil)) &&
 			low(t) ==> low(typeOf(s.GetPathPoolPathNonInit(t)))) &&
 	low(typeOf(s.GetPathPoolRaw()))
 decreases
@@ -321,17 +324,14 @@ requires p > 0
 requires init ==> acc(s.Mem(ub), p) &&
 	low(s.GetNextHdr(ub)) &&
 	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
-	// TODO[henri]: Might want to instead mark HdrLen as low
-	low(s.PathEndIdx(ub)) &&
+	low(s.GetHdrLen(ub)) &&
 	low(s.GetPathType(ub)) &&
 	s.PathIsLow(ub) &&
-	// TODO[henri]: consider replacing this by low(getpathpool() == nil)
-	low(s.PathPoolInitializedMem(ub))
+	low(s.GetPathPool(true, ub) != nil)
 requires !init ==> acc(s.NonInitMem(), p) &&
-	// TODO[henri]: could replace this by low(GetPathPool != nil) (see above)
-	low(s.PathPoolInitializedNonInitMem()) &&
-	(s.GetPathPool() != nil ==> low(len(s.GetPathPool())) &&
-		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool()) &&
+	low(s.GetPathPool(false, nil) != nil) &&
+	(s.GetPathPool(false, nil) != nil ==> low(len(s.GetPathPool(false, nil))) &&
+		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool(false, nil)) &&
 			low(t) ==> low(typeOf(s.GetPathPoolPathNonInit(t)))) &&
 	low(typeOf(s.GetPathPoolRaw()))
 ensures   init ==> acc(s.Mem(ub), p)
@@ -443,8 +443,7 @@ func (s *SCION) ExtractAcc(ghost ub []byte) (start, end int) {
 	start = CmnHdrLen+2*addr.IABytes
 	end = CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
 	assert s.RawDstAddr === ub[start:end]
-	// TODO[henri]: add proper comment here
-	// cf. #946
+	// TODO: Once Gobra issue #946 is resolved, uncomment this.
 	// package acc(s, R16) --* acc(s.Mem(ub), R15) {
 	// 	unfold acc(s.Mem(ub), R16)
 	// 	unfold acc(s.HeaderMem(ub[CmnHdrLen:]), R16)
@@ -452,6 +451,10 @@ func (s *SCION) ExtractAcc(ghost ub []byte) (start, end int) {
 	// 	fold acc(s.Mem(ub), R15)
 	// }
 	exhale acc(s.Mem(ub), R16)
+	// TODO: To accurately model the effect of the `package` clause, we would
+	// need to exhale many more permissions (all permissions in `Mem` and 
+	// `HeaderMem` that are considered part of the footprint of the magic wand).
+	// As this is just a workaround to an issue, we did not do this here (yet).
 	inhale acc(s, R16) --* acc(s.Mem(ub), R15)
 	return start, end
 }

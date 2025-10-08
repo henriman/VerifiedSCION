@@ -519,9 +519,6 @@ func (s *SCION) RecyclePaths() {
 // @ requires  PathPoolMem(s.pathPool, s.pathPoolRaw)
 // @ requires  0 <= pathType && pathType < path.MaxPathType
 // @ requires  low(s.pathPool == nil)
-// TODO[henri]: I think this is redundant. if s.pathPool == nil, then len is 0
-//  requires  s.pathPool != nil ==> low(len(s.pathPool)) &&
-//  	(pathType < len(s.pathPool) ==> low(typeOf(s.GetPathPoolPath(pathType))))
 // @ requires  low(len(s.pathPool)) && low(pathType)
 // @ requires  pathType < len(s.pathPool) ==> low(typeOf(s.GetPathPoolPath(pathType)))
 // @ requires  low(typeOf(s.pathPoolRaw))
