@@ -61,17 +61,24 @@ type InfoField struct {
 // DecodeFromBytes populates the fields from a raw buffer. The buffer must be of length >=
 // path.InfoLen.
 // @ requires  len(raw) >= InfoLen
+// @ requires  acc(slices.Bytes(raw, 0, len(raw)), R45)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(raw)) &&
+// @ 	forall i int :: { slices.GetByte(raw, 0, len(raw), i) } 0 <= i && i < len(raw) &&
+// @ 		low(i) ==> low(slices.GetByte(raw, 0, len(raw), i))
 // @ preserves acc(inf)
-// @ preserves acc(slices.Bytes(raw, 0, len(raw)), R45)
+// @ ensures   acc(slices.Bytes(raw, 0, len(raw)), R45)
 // @ ensures   err == nil
 // @ ensures   BytesToAbsInfoField(raw, 0) ==
 // @	inf.ToAbsInfoField()
+// @ ensures   low(inf.ConsDir) && low(inf.Peer)
 // @ decreases
 func (inf *InfoField) DecodeFromBytes(raw []byte) (err error) {
 	if len(raw) < InfoLen {
 		return serrors.New("InfoField raw too short", "expected", InfoLen, "actual", len(raw))
 	}
 	//@ unfold acc(slices.Bytes(raw, 0, len(raw)), R50)
+	//@ assert raw[0] == slices.GetByte(raw, 0, len(raw), 0)
 	inf.ConsDir = raw[0]&0x1 == 0x1
 	inf.Peer = raw[0]&0x2 == 0x2
 	//@ assert &raw[2:4][0] == &raw[2] && &raw[2:4][1] == &raw[3]

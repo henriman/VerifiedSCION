@@ -32,3 +32,35 @@ func satisfyInitEnsures() int {
 	fold SCMPTypeCodeMem()
 	return 1
 }
+
+ghost
+requires SCMPTypeCodeMem()
+decreases
+pure func GetSCMPTypeCodeInfoAt(t SCMPType) struct { name string; codes map[SCMPCode]string } {
+	return unfolding SCMPTypeCodeMem() in scmpTypeCodeInfo[t]
+}
+
+ghost
+requires SCMPTypeCodeMem()
+decreases
+pure func ElemSCMPTypeCodeInfo(t SCMPType) bool {
+	return unfolding SCMPTypeCodeMem() in (t elem domain(scmpTypeCodeInfo))
+}
+
+ghost
+requires SCMPTypeCodeMem()
+requires ElemSCMPTypeCodeInfo(t)
+decreases
+pure func SCMPTypeCodeInfoCodes(t SCMPType) map[SCMPCode]string {
+	return unfolding SCMPTypeCodeMem() in scmpTypeCodeInfo[t].codes
+}
+
+ghost
+requires SCMPTypeCodeMem()
+requires ElemSCMPTypeCodeInfo(t)
+requires SCMPTypeCodeInfoCodes(t) != nil
+decreases
+pure func ElemSCMPTypeCodeInfoCodes(t SCMPType, c SCMPCode) bool {
+	return unfolding SCMPTypeCodeMem() in 
+		(c elem domain(scmpTypeCodeInfo[t].codes))
+}

@@ -86,7 +86,7 @@ type Path interface {
 	// structure when serializing (e.g. scion.Raw)
 	//@ requires  low(len(b))
 	//@ requires  acc(Mem(ub), R1)
-	//@ requires  IsLow(ub)
+	//@ requires  IsLow(ub) && low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ preserves sl.Bytes(b, 0, len(b))
 	//@ ensures   acc(Mem(ub), R1)
@@ -96,13 +96,18 @@ type Path interface {
 	// DecodesFromBytes decodes the path from the provided buffer.
 	// (VerifiedSCION) There are implementations of this interface (e.g., scion.Raw) that
 	// store b and use it as internal data.
-	//@ requires  NonInitMem()
-	//@ requires  low(len(b))
-	//@ preserves acc(sl.Bytes(b, 0, len(b)), R42)
-	//@ ensures   err == nil ==> Mem(b)
-	//@ ensures   err == nil ==> IsValidResultOfDecoding(b)
-	//@ ensures   err != nil ==> err.ErrorMem()
-	//@ ensures   err != nil ==> NonInitMem()
+	//@ requires NonInitMem()
+	//@ requires acc(sl.Bytes(b, 0, len(b)), R42)
+	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+	//@ requires low(len(b)) &&
+	//@ 	forall i int :: { sl.GetByte(b, 0, len(b), i) } 0 <= i && i < len(b) &&
+	//@ 		low(i) ==> low(sl.GetByte(b, 0, len(b), i))
+	//@ ensures  acc(sl.Bytes(b, 0, len(b)), R42)
+	//@ ensures  err == nil ==> Mem(b) && IsLow(b)
+	//@ ensures  err == nil ==> IsValidResultOfDecoding(b)
+	//@ ensures  err != nil ==> err.ErrorMem()
+	//@ ensures  err != nil ==> NonInitMem()
+	//@ ensures  low(err != nil)
 	//@ decreases
 	DecodeFromBytes(b []byte) (err error)
 	//@ ghost
@@ -114,6 +119,7 @@ type Path interface {
 	// Reverse reverses a path such that it can be used in the reversed direction.
 	// XXX(shitz): This method should possibly be moved to a higher-level path manipulation package.
 	//@ requires  Mem(ub) && IsLow(ub)
+	//@ requires  low(len(ub))
 	//@ preserves sl.Bytes(ub, 0, len(ub))
 	//@ ensures   e == nil ==> p != nil
 	//@ ensures   e == nil ==> p.Mem(ub)
@@ -128,8 +134,10 @@ type Path interface {
 	//@ LenSpec(ghost ub []byte) (l int)
 
 	// Len returns the length of a path in bytes.
-	//@ preserves acc(Mem(ub), R50)
-	//@ ensures   l == LenSpec(ub)
+	//@ requires acc(Mem(ub), R50) && IsLow(ub)
+	//@ ensures  acc(Mem(ub), R50)
+	//@ ensures  l == LenSpec(ub)
+	//@ ensures  low(l)
 	//@ decreases
 	Len( /*@ ghost ub []byte @*/ ) (l int)
 	// Type returns the type of a path.
@@ -165,6 +173,7 @@ type Metadata struct {
 // @ requires PkgMem()
 // @ requires RegisteredTypes().DoesNotContain(int64(pathMeta.Type))
 // @ requires pathMeta.New implements NewPathSpec
+// @ requires low(pathMeta.Type)
 // @ ensures  PkgMem()
 // @ ensures  RegisteredTypes().Contains(int64(pathMeta.Type))
 // @ decreases
@@ -189,7 +198,7 @@ func RegisterPath(pathMeta Metadata) {
 // Strict parsing is enabled by default.
 //
 // Experimental: This function is experimental and might be subject to change.
-// @ requires PkgMem()
+// @ requires PkgMem() && low(strict)
 // @ ensures  PkgMem()
 // @ decreases
 func StrictDecoding(strict bool) {
@@ -201,9 +210,11 @@ func StrictDecoding(strict bool) {
 // NewPath returns a new path object of pathType.
 // @ requires 0 <= pathType && pathType < maxPathType
 // @ requires acc(PkgMem(), _)
-// @ requires low(Registered(pathType)) && low(IsStrictDecoding())
+// @ requires low(pathType)
 // @ ensures  e != nil ==> e.ErrorMem()
 // @ ensures  e == nil ==> p != nil && p.NonInitMem()
+// @ ensures  low(e != nil)
+// @ ensures  low(typeOf(p))
 // @ decreases
 func NewPath(pathType Type) (p Path, e error) {
 	//@ unfold acc(PkgMem(), _)
@@ -251,14 +262,16 @@ func (p *rawPath) SerializeTo(b []byte /*@, ghost ub []byte @*/) (e error) {
 }
 
 // @ requires  p.NonInitMem()
+// @ requires  low(len(b))
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
-// @ ensures   p.Mem(b)
+// @ ensures   p.Mem(b) && p.IsLow(b)
 // @ ensures   e == nil
 // @ decreases
 func (p *rawPath) DecodeFromBytes(b []byte) (e error) {
 	//@ unfold p.NonInitMem()
 	p.raw = b
 	//@ fold p.Mem(b)
+	//@ p.AssertIsLow(b, HalfPerm)
 	return nil
 }
 
@@ -268,10 +281,13 @@ func (p *rawPath) Reverse( /*@ ghost ub []byte @*/ ) (r Path, e error) {
 	return nil, serrors.New("not supported")
 }
 
-// @ preserves acc(p.Mem(ub), R50)
-// @ ensures   l == p.LenSpec(ub)
+// @ requires acc(p.Mem(ub), R50) && p.IsLow(ub)
+// @ ensures  acc(p.Mem(ub), R50)
+// @ ensures  l == p.LenSpec(ub)
+// @ ensures  low(l)
 // @ decreases
 func (p *rawPath) Len( /*@ ghost ub []byte @*/ ) (l int) {
+	//@ p.RevealIsLow(ub, R50)
 	return /*@ unfolding acc(p.Mem(ub), R50) in @*/ len(p.raw)
 }
 

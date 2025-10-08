@@ -196,6 +196,11 @@ func (e bigEndian) PutUint32(b []byte, v uint32) {
 	b[3] = byte(v)
 }
 
+decreases
+pure func (e bigEndian) Uint64Spec(b0, b1, b2, b3, b4, b5, b6, b7 byte) (res uint64) {
+	return uint64(b7) | uint64(b6)<<8 | uint64(b5)<<16 | uint64(b4)<<24 | uint64(b3)<<32 | uint64(b2)<<40 | uint64(b1)<<48 | uint64(b0)<<56
+}
+
 trusted // related to https://github.com/viperproject/gobra/issues/192
 requires acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 requires acc(&b[4]) && acc(&b[5]) && acc(&b[6]) && acc(&b[7])
@@ -206,8 +211,25 @@ pure func (e bigEndian) Uint64(b []byte) (res uint64) {
 		uint64(b[3])<<32 | uint64(b[2])<<40 | uint64(b[1])<<48 | uint64(b[0])<<56
 }
 
+decreases
+pure func (e bigEndian) PutUint64Spec(b0, b1, b2, b3, b4, b5, b6, b7 byte, v uint64) bool {
+	return b0 == byte(v >> 56) &&
+		b1 == byte(v >> 48)    &&
+		b2 == byte(v >> 40)    &&
+		b3 == byte(v >> 32)    &&
+		b4 == byte(v >> 24)    &&
+		b5 == byte(v >> 16)    &&
+		b6 == byte(v >> 8)     &&
+		b7 == byte(v)
+}
+
+// TODO: This should be proven in verification/utils/bitwise/proofs.dfy as well.
+// This should be analogous to the proofs for `PutUint16` and `PutUint32`.
+trusted
 preserves acc(&b[0]) && acc(&b[1]) && acc(&b[2]) && acc(&b[3])
 preserves acc(&b[4]) && acc(&b[5]) && acc(&b[6]) && acc(&b[7])
+ensures   BigEndian.PutUint64Spec(b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], v)
+ensures   BigEndian.Uint64Spec(b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]) == v
 decreases
 func (e bigEndian) PutUint64(b []byte, v uint64) {
 	b[0] = byte(v >> 56)

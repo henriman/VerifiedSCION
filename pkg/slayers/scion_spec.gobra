@@ -64,6 +64,28 @@ pred PathPoolMem(pathPool []path.Path, pathPoolRaw path.Path) {
 		pathPoolRaw.NonInitMem()))
 }
 
+ghost
+requires acc(&s.pathPool) && acc(&s.pathPoolRaw)
+requires PathPoolMem(s.pathPool, s.pathPoolRaw)
+requires s.pathPool != nil
+requires 0 <= pathType && pathType < len(s.pathPool)
+decreases
+pure func (s *SCION) GetPathPoolPath(pathType path.Type) path.Path {
+	return unfolding PathPoolMem(s.pathPool, s.pathPoolRaw) in
+		s.pathPool[pathType]
+}
+
+ghost
+requires s.NonInitMem()
+requires s.PathPoolInitializedNonInitMem()
+requires 0 <= pathType && pathType < len(s.GetPathPool(false, nil))
+decreases
+pure func (s *SCION) GetPathPoolPathNonInit(pathType path.Type) path.Path {
+	return unfolding s.NonInitMem() in 
+		unfolding PathPoolMem(s.pathPool, s.pathPoolRaw) in
+			s.pathPool[pathType]
+}
+
 // Captures the same obligations as PathPoolMem. Initially, I tried using a magic wand
 // but they cause loads of additional problems (e.g., storing in a predicate is not possible)
 pred PathPoolMemExceptOne(pathPool []path.Path, pathPoolRaw path.Path, pathType path.Type) {
@@ -109,6 +131,13 @@ pure func (s *SCION) PathPoolInitializedNonInitMem() bool {
 	return unfolding s.NonInitMem() in
 		s.pathPool != nil
 }
+
+// ghost
+// requires s.Mem(ub)
+// decreases
+// pure func (s *SCION) PathPoolInitializedMem(ghost ub []byte) bool {
+// 	return unfolding s.Mem(ub) in s.pathPool != nil
+// }
 
 ghost
 requires 0 <= pathType && pathType < path.MaxPathType
@@ -186,6 +215,131 @@ pred (s *SCION) Mem(ubuf []byte) {
 		s.ValidSizeOhpUbOpenInv(ubuf))
 }
 
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding s.Mem(ub) in s.NextHdr
+}
+
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetPathType(ghost ub []byte) path.Type {
+	return unfolding s.Mem(ub) in s.PathType
+}
+
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) GetHdrLen(ghost ub []byte) uint8 {
+	return unfolding s.Mem(ub) in s.HdrLen
+}
+
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) PathIsLow(ghost ub []byte) bool {
+	return unfolding s.Mem(ub) in 
+		s.Path.IsLow(ub[CmnHdrLen+s.AddrHdrLenSpecInternal() : s.HdrLen*LineLen])
+}
+
+ghost
+requires  init ==> s.Mem(ub)
+requires !init ==> s.NonInitMem()
+decreases
+pure func (s *SCION) GetPathPool(init bool, ghost ub []byte) []path.Path {
+	return init ? (
+		unfolding s.Mem(ub) in s.pathPool) : (
+		unfolding s.NonInitMem() in s.pathPool)
+}
+
+requires s.NonInitMem()
+decreases
+pure func (s *SCION) GetPathPoolRaw() path.Path {
+	return unfolding s.NonInitMem() in s.pathPoolRaw
+}
+
+ghost
+requires !headerMem ==> s.Mem(ubuf)
+requires  headerMem ==> s.HeaderMem(ubuf)
+decreases
+pure func (s *SCION) GetSrcAddrType(ubuf []byte, headerMem bool) AddrType {
+	return !headerMem ? (
+		unfolding s.Mem(ubuf) in s.SrcAddrType) : (
+		unfolding s.HeaderMem(ubuf) in s.SrcAddrType)
+}
+
+ghost
+requires !headerMem ==> s.Mem(ubuf)
+requires  headerMem ==> s.HeaderMem(ubuf)
+decreases
+pure func (s *SCION) GetDstAddrType(ubuf []byte, headerMem bool) AddrType {
+	return !headerMem ? (
+		unfolding s.Mem(ubuf) in s.DstAddrType) : (
+		unfolding s.HeaderMem(ubuf) in s.DstAddrType)
+}
+
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires  init ==> s.Mem(ub)
+requires !init ==> s.NonInitMem()
+decreases
+pure func (s *SCION) IsLow(init bool, ghost ub []byte) bool
+
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCION) IsLowSerializableLayer(ghost ub []byte) bool {
+	return s.IsLow(true, ub)
+}
+
+// "Reveal the body" of `s.IsLow` (necessary bc. we can't implement `s.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires  init ==> acc(s.Mem(ub), p)
+requires !init ==> acc(s.NonInitMem(), p)
+requires s.IsLow(init, ub)
+ensures   init ==> acc(s.Mem(ub), p) &&
+	low(s.GetNextHdr(ub)) &&
+	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
+	low(s.GetHdrLen(ub)) &&
+	low(s.GetPathType(ub)) &&
+	s.PathIsLow(ub) &&
+	low(s.GetPathPool(true, ub) != nil)
+ensures  !init ==> acc(s.NonInitMem(), p) &&
+	low(s.GetPathPool(false, nil) != nil) &&
+	(s.GetPathPool(false, nil) != nil ==> low(len(s.GetPathPool(false, nil))) &&
+		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool(false, nil)) &&
+			low(t) ==> low(typeOf(s.GetPathPoolPathNonInit(t)))) &&
+	low(typeOf(s.GetPathPoolRaw()))
+decreases
+func (s *SCION) RevealIsLow(init bool, ghost ub []byte, p perm)
+
+// Assert `s.IsLow` (necessary bc. we can't implement `s.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(s.Mem(ub), p) &&
+	low(s.GetNextHdr(ub)) &&
+	low(s.GetSrcAddrType(ub, false)) && low(s.GetDstAddrType(ub, false)) &&
+	low(s.GetHdrLen(ub)) &&
+	low(s.GetPathType(ub)) &&
+	s.PathIsLow(ub) &&
+	low(s.GetPathPool(true, ub) != nil)
+requires !init ==> acc(s.NonInitMem(), p) &&
+	low(s.GetPathPool(false, nil) != nil) &&
+	(s.GetPathPool(false, nil) != nil ==> low(len(s.GetPathPool(false, nil))) &&
+		forall t path.Type :: { s.GetPathPoolPathNonInit(t) } 0 <= t && t < len(s.GetPathPool(false, nil)) &&
+			low(t) ==> low(typeOf(s.GetPathPoolPathNonInit(t)))) &&
+	low(typeOf(s.GetPathPoolRaw()))
+ensures   init ==> acc(s.Mem(ub), p)
+ensures  !init ==> acc(s.NonInitMem(), p)
+ensures  s.IsLow(init, ub)
+decreases
+func (s *SCION) AssertIsLow(init bool, ghost ub []byte, p perm)
+
 ghost
 requires s.Mem(ub)
 decreases
@@ -222,10 +376,11 @@ pred (s *SCION) HeaderMem(ubuf []byte) {
 }
 
 ghost
-requires s.Mem(ub)
+requires s.Mem(ub) && s.IsLow(true, ub)
 ensures  s.NonInitMem()
 decreases
 func (s *SCION) DowngradePerm(ghost ub []byte) {
+	s.RevealIsLow(true, ub, HalfPerm)
 	unfold s.Mem(ub)
 	unfold s.HeaderMem(ub[CmnHdrLen:])
 	s.Path.DowngradePerm(ub[CmnHdrLen+s.AddrHdrLenSpecInternal() : s.HdrLen*LineLen])
@@ -239,6 +394,32 @@ pred (s *SCION) ChecksumMem() {
 	acc(&s.SrcIA) && acc(&s.DstIA) &&
 	sl.Bytes(s.RawSrcAddr, 0, len(s.RawSrcAddr)) &&
 	sl.Bytes(s.RawDstAddr, 0, len(s.RawDstAddr))
+}
+
+requires s.ChecksumMem()
+decreases
+pure func (s *SCION) GetRawSrcAddrLen() int {
+	return unfolding s.ChecksumMem() in len(s.RawSrcAddr)
+}
+
+requires s.ChecksumMem()
+requires 0 <= i && i < s.GetRawSrcAddrLen()
+decreases
+pure func (s *SCION) GetRawSrcAddrByte(i int) byte {
+	return unfolding s.ChecksumMem() in sl.GetByte(s.RawSrcAddr, 0, len(s.RawSrcAddr), i)
+}
+
+requires s.ChecksumMem()
+decreases
+pure func (s *SCION) GetRawDstAddrLen() int {
+	return unfolding s.ChecksumMem() in len(s.RawDstAddr)
+}
+
+requires s.ChecksumMem()
+requires 0 <= i && i < s.GetRawDstAddrLen()
+decreases
+pure func (s *SCION) GetRawDstAddrByte(i int) byte {
+	return unfolding s.ChecksumMem() in sl.GetByte(s.RawDstAddr, 0, len(s.RawDstAddr), i)
 }
 
 pred (b *BaseLayer) Mem(ghost ub []byte, ghost breakPoint int) {
@@ -262,12 +443,19 @@ func (s *SCION) ExtractAcc(ghost ub []byte) (start, end int) {
 	start = CmnHdrLen+2*addr.IABytes
 	end = CmnHdrLen+2*addr.IABytes+s.DstAddrType.Length()
 	assert s.RawDstAddr === ub[start:end]
-	package acc(s, R16) --* acc(s.Mem(ub), R15) {
-		unfold acc(s.Mem(ub), R16)
-		unfold acc(s.HeaderMem(ub[CmnHdrLen:]), R16)
-		fold acc(s.HeaderMem(ub[CmnHdrLen:]), R15)
-		fold acc(s.Mem(ub), R15)
-	}
+	// TODO: Once Gobra issue #946 is resolved, uncomment this.
+	// package acc(s, R16) --* acc(s.Mem(ub), R15) {
+	// 	unfold acc(s.Mem(ub), R16)
+	// 	unfold acc(s.HeaderMem(ub[CmnHdrLen:]), R16)
+	// 	fold acc(s.HeaderMem(ub[CmnHdrLen:]), R15)
+	// 	fold acc(s.Mem(ub), R15)
+	// }
+	exhale acc(s.Mem(ub), R16)
+	// TODO: To accurately model the effect of the `package` clause, we would
+	// need to exhale many more permissions (all permissions in `Mem` and 
+	// `HeaderMem` that are considered part of the footprint of the magic wand).
+	// As this is just a workaround to an issue, we did not do this here (yet).
+	inhale acc(s, R16) --* acc(s.Mem(ub), R15)
 	return start, end
 }
 
@@ -695,6 +883,7 @@ requires  s.pathPoolInitialized() ==> (
 	PathPoolMemExceptOne(s.pathPool, s.pathPoolRaw, pathType) &&
 	p === s.getPathPure(pathType))
 requires !s.pathPoolInitialized() ==> PathPoolMem(s.pathPool, s.pathPoolRaw)
+requires low(s.pathPoolInitialized())
 ensures  acc(&s.pathPool, R20) && acc(&s.pathPoolRaw, R20)
 ensures  PathPoolMem(s.pathPool, s.pathPoolRaw)
 decreases

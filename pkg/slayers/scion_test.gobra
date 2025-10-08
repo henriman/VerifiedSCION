@@ -25,7 +25,7 @@ import (
 // These tests show the behavior of SetSrcAddr when an IPAddr is passed
 requires acc(&s.RawSrcAddr)
 requires acc(&s.SrcAddrType)
-requires acc(src.Mem())
+requires acc(src.Mem()) && src.IsLow()
 func testSrcSetter(s *SCION, src *net.IPAddr) {
 	res := s.SetSrcAddr(src, false)
 	// unfolding src.Mem() grants us permission to s.RawSrcAddr since they are aliased
@@ -35,7 +35,7 @@ func testSrcSetter(s *SCION, src *net.IPAddr) {
 
 requires acc(&s.RawSrcAddr)
 requires acc(&s.SrcAddrType)
-requires acc(src.Mem(), _)
+requires acc(src.Mem(), _) && src.IsLow()
 func testSrcSetterWildcard(s *SCION, src *net.IPAddr) {
 	res := s.SetSrcAddr(src, true)
 	// in the wildcard case we have wildcard access to the address in the SCION struct
@@ -45,7 +45,7 @@ func testSrcSetterWildcard(s *SCION, src *net.IPAddr) {
 // These tests show the behavior of SetSrcAddr when an HostSVC is passed
 requires acc(&s.RawSrcAddr)
 requires acc(&s.SrcAddrType)
-requires acc(src.Mem())
+requires acc(src.Mem()) && src.IsLow()
 func testSrcSetterSVC(s *SCION, src addr.HostSVC) {
 	res := s.SetSrcAddr(src, false)
 	assert src.Mem()
@@ -56,7 +56,7 @@ func testSrcSetterSVC(s *SCION, src addr.HostSVC) {
 
 requires acc(&s.RawSrcAddr)
 requires acc(&s.SrcAddrType)
-requires acc(src.Mem(), _)
+requires acc(src.Mem(), _) && src.IsLow()
 func testSrcSetterSVCWildcard(s *SCION, src addr.HostSVC) {
 	res := s.SetSrcAddr(src, true)
 	// if the address is HostSVC we have the whole permission anyway in a slice predicate
@@ -68,7 +68,7 @@ func testSrcSetterSVCWildcard(s *SCION, src addr.HostSVC) {
 // These tests show the behavior of SetDstAddr when an IPAddr is passed
 requires acc(&s.RawDstAddr)
 requires acc(&s.DstAddrType)
-requires acc(dst.Mem())
+requires acc(dst.Mem()) && dst.IsLow()
 func testDstSetter(s *SCION, dst *net.IPAddr) {
 	res := s.SetDstAddr(dst, false)
 	// unfolding dst.Mem() grants us permission to s.RawDstAddr since they are aliased
@@ -78,7 +78,7 @@ func testDstSetter(s *SCION, dst *net.IPAddr) {
 
 requires acc(&s.RawDstAddr)
 requires acc(&s.DstAddrType)
-requires acc(dst.Mem(), _)
+requires acc(dst.Mem(), _) && dst.IsLow()
 func testDstSetterWildcard(s *SCION, dst *net.IPAddr) {
 	res := s.SetDstAddr(dst, true)
 	// in the wildcard case we have wildcard access to the address in the SCION struct
@@ -88,7 +88,7 @@ func testDstSetterWildcard(s *SCION, dst *net.IPAddr) {
 // These tests show the behavior of SetDstAddr when an HostSVC is passed
 requires acc(&s.RawDstAddr)
 requires acc(&s.DstAddrType)
-requires acc(dst.Mem())
+requires acc(dst.Mem()) && dst.IsLow()
 func testDstSetterSVC(s *SCION, dst addr.HostSVC) {
 	res := s.SetDstAddr(dst, false)
 	assert dst.Mem()
@@ -99,7 +99,7 @@ func testDstSetterSVC(s *SCION, dst addr.HostSVC) {
 
 requires acc(&s.RawDstAddr)
 requires acc(&s.DstAddrType)
-requires acc(dst.Mem(), _)
+requires acc(dst.Mem(), _) && dst.IsLow()
 func testDstSetterSVCWildcard(s *SCION, dst addr.HostSVC) {
 	res := s.SetDstAddr(dst, true)
 	// if the address is HostSVC we have the whole permission anyway in a slice predicate

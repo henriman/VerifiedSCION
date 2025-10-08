@@ -40,7 +40,7 @@ func RegisterPath() {
 		Desc: "OneHop",
 		New:
 		//@ ensures p.NonInitMem()
-		//@ ensures p != nil
+		//@ ensures p != nil && low(typeOf(p))
 		//@ decreases
 		func /*@ newPath @*/ () (p path.Path) {
 			onehopTmp := &Path{}
@@ -64,10 +64,14 @@ type Path struct {
 }
 
 // @ requires  o.NonInitMem()
-// @ requires  low(len(data))
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R42)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R42)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) &&
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R42)
 // @ ensures   (len(data) >= PathLen) == (r == nil)
-// @ ensures   r == nil ==> o.Mem(data)
+// @ ensures   r == nil ==> o.Mem(data) && o.IsLow(data)
 // @ ensures   r != nil ==> o.NonInitMem()
 // @ ensures   r != nil ==> r.ErrorMem()
 // @ decreases
@@ -78,24 +82,29 @@ func (o *Path) DecodeFromBytes(data []byte) (r error) {
 	}
 	offset := 0
 	//@ unfold o.NonInitMem()
-	//@ sl.SplitRange_Bytes(data, 0, path.InfoLen, R42)
+	//@ sl.SplitRange_Bytes(data, 0, path.InfoLen, R43)
 	if err := o.Info.DecodeFromBytes(data[:path.InfoLen]); err != nil {
 		// @ Unreachable()
 		return err
 	}
-	//@ sl.CombineRange_Bytes(data,0,  path.InfoLen, R42)
+	//@ sl.CombineRange_Bytes(data, 0, path.InfoLen, R43)
 	offset += path.InfoLen
-	//@ sl.SplitRange_Bytes(data, offset, offset+path.HopLen, R42)
+	//@ sl.SplitRange_Bytes(data, offset, offset+path.HopLen, R43)
 	if err := o.FirstHop.DecodeFromBytes(data[offset : offset+path.HopLen]); err != nil {
 		// @ Unreachable()
 		return err
 	}
-	//@ sl.CombineRange_Bytes(data, offset, offset+path.HopLen, R42)
+	//@ sl.CombineRange_Bytes(data, offset, offset+path.HopLen, R43)
 	offset += path.HopLen
 	//@ sl.SplitRange_Bytes(data, offset, offset+path.HopLen, R42)
 	r = o.SecondHop.DecodeFromBytes(data[offset : offset+path.HopLen])
 	//@ sl.CombineRange_Bytes(data, offset, offset+path.HopLen, R42)
-	//@ ghost if r == nil { fold o.Mem(data) } else { fold o.NonInitMem() }
+	//@ ghost if r == nil { 
+	//@ 	fold o.Mem(data) 
+	//@ 	o.AssertIsLow(data, HalfPerm)
+	//@ } else { 
+	//@ 	fold o.NonInitMem() 
+	//@ }
 	return r
 }
 
@@ -141,8 +150,7 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 
 // ToSCIONDecoded converts the one hop path in to a normal SCION path in the
 // decoded format.
-// @ requires  o.Mem(ubuf)
-// @ requires  low(o.GetSecondHopConsIngress(ubuf))
+// @ requires  o.Mem(ubuf) && o.IsLow(ubuf)
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures   o.Mem(ubuf)
 // @ ensures   err == nil ==> (sd != nil && sd.Mem(ubuf))
@@ -150,7 +158,9 @@ func (o *Path) SerializeTo(b []byte /*@, ubuf []byte @*/) (err error) {
 // @ ensures   low(err != nil)
 // @ decreases
 func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, err error) {
+	//@ o.RevealIsLow(ubuf, HalfPerm)
 	//@ unfold acc(o.Mem(ubuf), R1)
+	//@ o.SecondHop.RevealIsLow(R2)
 	//@ unfold acc(o.SecondHop.Mem(), R10)
 	if o.SecondHop.ConsIngress == 0 {
 		//@ fold acc(o.SecondHop.Mem(), R10)
@@ -215,7 +225,6 @@ func (o *Path) ToSCIONDecoded( /*@ ghost ubuf []byte @*/ ) (sd *scion.Decoded, e
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func (o *Path) Reverse( /*@ ghost ubuf []byte @*/ ) (p path.Path, err error) {
-	//@ o.RevealIsLow(ubuf, writePerm)
 	sp, err := o.ToSCIONDecoded( /*@ ubuf @*/ )
 	if err != nil {
 		return nil, serrors.WrapStr("converting to scion path", err)

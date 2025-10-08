@@ -50,6 +50,41 @@ pred (h *HopByHopExtn) Mem(ubuf []byte) {
 		(acc(&h.Options[i]) && h.Options[i].Mem(i))
 }
 
+requires h.Mem(ub)
+decreases
+pure func (h *HopByHopExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding h.Mem(ub) in
+		unfolding h.extnBase.Mem(ub) in h.NextHdr
+}
+
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires  init ==> h.Mem(ub)
+requires !init ==> h.NonInitMem()
+decreases
+pure func (h *HopByHopExtn) IsLow(init bool, ghost ub []byte) bool
+
+// "Reveal the body" of `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(h.Mem(ub), p) && h.IsLow(true, ub)
+ensures  init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
+decreases
+func (h *HopByHopExtn) RevealIsLow(init bool, ghost ub []byte, p perm)
+
+// Assert `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
+ensures  init ==> acc(h.Mem(ub), p) && h.IsLow(true, ub)
+decreases
+func (h *HopByHopExtn) AssertIsLow(init bool, ghost ub []byte, p perm)
+
 // Gobra is not able to infer that HopByHopExtn is "inheriting"
 // the implementation of LayerContents from extnBase.
 requires false
@@ -82,6 +117,31 @@ pred (h *HopByHopExtnSkipper) NonInitMem() {
 pred (h *HopByHopExtnSkipper) Mem(ubuf []byte) {
 	h.extnBase.Mem(ubuf)
 }
+
+requires h.Mem(ub)
+decreases
+pure func (h *HopByHopExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding h.Mem(ub) in
+		unfolding h.extnBase.Mem(ub) in h.NextHdr
+}
+
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires  init ==> h.Mem(ub)
+requires !init ==> h.NonInitMem()
+decreases
+pure func (h *HopByHopExtnSkipper) IsLow(init bool, ghost ub []byte) bool
+
+// "Reveal the body" of `h.IsLow` (necessary bc. we can't implement `h.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(h.Mem(ub), p) && h.IsLow(true, ub)
+ensures  init ==> acc(h.Mem(ub), p) && low(h.GetNextHdr(ub))
+decreases
+func (h *HopByHopExtnSkipper) RevealIsLow(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that HopByHopExtnSkipper is "inheriting"
 // the implementation of LayerContents from extnBase.
@@ -138,6 +198,41 @@ pred (e *EndToEndExtn) Mem(ubuf []byte) {
 		(acc(&e.Options[i]) && e.Options[i].Mem(i))
 }
 
+requires e.Mem(ub)
+decreases
+pure func (e *EndToEndExtn) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding e.Mem(ub) in
+		unfolding e.extnBase.Mem(ub) in e.NextHdr
+}
+
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires  init ==> e.Mem(ub)
+requires !init ==> e.NonInitMem()
+decreases
+pure func (e *EndToEndExtn) IsLow(init bool, ghost ub []byte) bool
+
+// "Reveal the body" of `e.IsLow` (necessary bc. we can't implement `e.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(e.Mem(ub), p) && e.IsLow(true, ub)
+ensures  init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
+decreases
+func (e *EndToEndExtn) RevealIsLow(init bool, ghost ub []byte, p perm)
+
+// Assert `e.IsLow` (necessary bc. we can't implement `e.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
+ensures  init ==> acc(e.Mem(ub), p) && e.IsLow(true, ub)
+decreases
+func (e *EndToEndExtn) AssertIsLow(init bool, ghost ub []byte, p perm)
+
 // Gobra is not able to infer that EndToEndExtn is "inheriting"
 // the implementation of LayerContents from extnBase.
 requires false
@@ -172,6 +267,31 @@ pred (e *EndToEndExtnSkipper) NonInitMem() {
 pred (e *EndToEndExtnSkipper) Mem(ubuf []byte)  {
 	e.extnBase.Mem(ubuf)
 }
+
+requires e.Mem(ub)
+decreases
+pure func (e *EndToEndExtnSkipper) GetNextHdr(ghost ub []byte) L4ProtocolType {
+	return unfolding e.Mem(ub) in
+		unfolding e.extnBase.Mem(ub) in e.NextHdr
+}
+
+// TODO: Once Gobra issue #846 is resolved, actually implement `IsLow`.
+ghost
+trusted
+requires  init ==> e.Mem(ub)
+requires !init ==> e.NonInitMem()
+decreases
+pure func (e *EndToEndExtnSkipper) IsLow(init bool, ghost ub []byte) bool
+
+// "Reveal the body" of `e.IsLow` (necessary bc. we can't implement `e.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires p > 0
+requires init ==> acc(e.Mem(ub), p) && e.IsLow(true, ub)
+ensures  init ==> acc(e.Mem(ub), p) && low(e.GetNextHdr(ub))
+decreases
+func (e *EndToEndExtnSkipper) RevealIsLow(init bool, ghost ub []byte, p perm)
 
 // Gobra is not able to infer that EndToEndExtnSkipper is "inheriting"
 // the implementation of LayerContents from extnBase.

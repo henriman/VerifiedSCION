@@ -74,23 +74,31 @@ type HopField struct {
 
 // DecodeFromBytes populates the fields from a raw buffer. The buffer must be of length >=
 // path.HopLen.
-// @ requires  acc(h)
-// @ requires  len(raw) >= HopLen
-// @ preserves acc(sl.Bytes(raw, 0, HopLen), R45)
-// @ ensures   h.Mem()
-// @ ensures   err == nil
-// @ ensures   BytesToIO_HF(raw, 0, 0, HopLen) ==
+// @ requires acc(h)
+// @ requires len(raw) >= HopLen
+// @ requires acc(sl.Bytes(raw, 0, HopLen), R45)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires forall i int :: { sl.GetByte(raw, 0, HopLen, i) } 0 <= i && i < HopLen &&
+// @ 	low(i) ==> low(sl.GetByte(raw, 0, HopLen, i))
+// @ ensures  acc(sl.Bytes(raw, 0, HopLen), R45)
+// @ ensures  h.Mem()
+// @ ensures  err == nil
+// @ ensures  BytesToIO_HF(raw, 0, 0, HopLen) ==
 // @ 	unfolding acc(h.Mem(), R10) in h.Abs()
+// @ ensures  h.IsLow()
 // @ decreases
 func (h *HopField) DecodeFromBytes(raw []byte) (err error) {
 	if len(raw) < HopLen {
 		return serrors.New("HopField raw too short", "expected", HopLen, "actual", len(raw))
 	}
 	//@ unfold acc(sl.Bytes(raw, 0, HopLen), R46)
+	//@ assert raw[0] == sl.GetByte(raw, 0, HopLen, 0)
 	h.EgressRouterAlert = raw[0]&0x1 == 0x1
 	h.IngressRouterAlert = raw[0]&0x2 == 0x2
 	h.ExpTime = raw[1]
 	//@ assert &raw[2:4][0] == &raw[2] && &raw[2:4][1] == &raw[3]
+	//@ assert raw[2] == sl.GetByte(raw, 0, HopLen, 2)
+	//@ assert raw[3] == sl.GetByte(raw, 0, HopLen, 3)
 	h.ConsIngress = binary.BigEndian.Uint16(raw[2:4])
 	//@ assert &raw[4:6][0] == &raw[4] && &raw[4:6][1] == &raw[5]
 	h.ConsEgress = binary.BigEndian.Uint16(raw[4:6])
@@ -104,6 +112,7 @@ func (h *HopField) DecodeFromBytes(raw []byte) (err error) {
 	//@ assert BytesToIO_HF(raw, 0, 0, HopLen) == h.Abs()
 	//@ fold acc(sl.Bytes(raw, 0, HopLen), R46)
 	//@ fold h.Mem()
+	//@ h.AssertIsLow(HalfPerm)
 	return nil
 }
 

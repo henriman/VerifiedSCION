@@ -52,7 +52,7 @@ func RegisterPath() {
 		Desc: "Epic",
 		New:
 		//@ ensures p.NonInitMem()
-		//@ ensures p != nil
+		//@ ensures p != nil && low(typeOf(p))
 		//@ decreases
 		func /*@ newPath @*/ () (p path.Path) {
 			epicTmp := &Path{ScionPath: &scion.Raw{}}
@@ -80,7 +80,7 @@ type Path struct {
 // SerializeTo will return nil.
 // @ requires  low(len(b))
 // @ requires  acc(p.Mem(ubuf), R1)
-// @ requires  p.IsLow(ubuf)
+// @ requires  p.IsLow(ubuf) && low(len(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ preserves sl.Bytes(b, 0, len(b))
 // @ ensures   acc(p.Mem(ubuf), R1)
@@ -143,8 +143,9 @@ func (p *Path) SerializeTo(b []byte /*@, ghost ubuf []byte @*/) (r error) {
 // @ requires  low(len(b))
 // @ preserves acc(sl.Bytes(b, 0, len(b)), R42)
 // @ ensures   len(b) < MetadataLen ==> r != nil
-// @ ensures   r == nil ==> p.Mem(b)
+// @ ensures   r == nil ==> p.Mem(b) && p.IsLow(b)
 // @ ensures   r != nil ==> p.NonInitMem() && r.ErrorMem()
+// @ ensures   low(r != nil)
 // @ decreases
 func (p *Path) DecodeFromBytes(b []byte) (r error) {
 	if len(b) < MetadataLen {
@@ -175,6 +176,7 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 	ret := p.ScionPath.DecodeFromBytes(b[MetadataLen:])
 	//@ ghost if ret == nil {
 	//@ 	fold p.Mem(b)
+	//@ 	p.AssertIsLow(b)
 	//@ } else {
 	//@ 	fold p.NonInitMem()
 	//@ }
@@ -185,6 +187,7 @@ func (p *Path) DecodeFromBytes(b []byte) (r error) {
 // Reverse reverses the EPIC path. In particular, this means that the SCION path type subheader
 // is reversed.
 // @ requires p.Mem(ubuf)
+// @ requires low(len(ubuf))
 // @ preserves sl.Bytes(ubuf, 0, len(ubuf))
 // @ ensures  r == nil ==> ret != nil
 // @ ensures  r == nil ==> ret.Mem(ubuf)

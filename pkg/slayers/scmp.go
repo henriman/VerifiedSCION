@@ -84,9 +84,11 @@ func (s *SCMP) CanDecode() (res gopacket.LayerClass) {
 // NextLayerType use the typecode to select the right next decoder.
 // If the SCMP type is unknown, the next layer is gopacket.LayerTypePayload.
 // NextLayerType returns the layer type contained by this DecodingLayer.
-// @ preserves acc(s.Mem(ub), R20)
+// @ requires acc(s.Mem(ub), R20) && s.IsLow(true, ub)
+// @ ensures  acc(s.Mem(ub), R20)
 // @ decreases
 func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
+	// @ s.RevealIsLow(true, ub, R20)
 	switch /*@unfolding acc(s.Mem(ub), R20) in @*/ s.TypeCode.Type() {
 	case SCMPTypeDestinationUnreachable:
 		return LayerTypeSCMPDestinationUnreachable
@@ -109,19 +111,33 @@ func (s *SCMP) NextLayerType( /*@ ghost ub []byte @*/ ) gopacket.LayerType {
 // SerializeTo writes the serialized form of this layer into the
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
-// @ requires  s.Mem(ubufMem)
-// @ preserves b.Mem()
-// @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
+// @ requires  s.Mem(ubufMem) && s.IsLowSerializableLayer(ubufMem)
+// @ requires  low(opts.ComputeChecksums)
+// @ requires  b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf())) && b.IsLow()
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
+// @ requires  low(len(b.UBuf())) && 
+// @ 	forall i int :: { sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i) } 0 <= i && i < len(b.UBuf()) &&
+// @ 		low(i) ==> low(sl.GetByte(b.UBuf(), 0, len(b.UBuf()), i))
+// @ ensures   b.Mem() && sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> s.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOptions /*@, ghost ubufMem []byte @*/) (err error) {
+	// @ s.RevealIsLow(true, ubufMem, writePerm)
 	bytes, err := b.PrependBytes(4)
 	// @ underlyingBufRes := b.UBuf()
 	if err != nil {
 		return err
 	}
-	// @ unfold s.Mem(ubufMem)
+	// @ unfold acc(s.Mem(ubufMem), 1/2)
+	// @ ghost if s.GetScn(true, ubufMem) != nil {
+	// @ 	assert forall i int :: { s.GetScnRawSrcAddrByte(ubufMem, i) }{ s.scn.GetRawSrcAddrByte(i) } 0 <= i && i < s.scn.GetRawSrcAddrLen() ==>
+	// @ 		s.GetScnRawSrcAddrByte(ubufMem, i) == s.scn.GetRawSrcAddrByte(i)
+	// @ 	assert forall i int :: { s.GetScnRawDstAddrByte(ubufMem, i) }{ s.scn.GetRawDstAddrByte(i) } 0 <= i && i < s.scn.GetRawDstAddrLen() ==>
+	// @ 		s.GetScnRawDstAddrByte(ubufMem, i) == s.scn.GetRawDstAddrByte(i)
+	// @ }
+	// @ unfold acc(s.Mem(ubufMem), 1/2)
 	// @ sl.SplitByIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 2, writePerm)
 	// @ unfold sl.Bytes(underlyingBufRes, 0, 2)
 	// @ assert forall i int :: { &bytes[i] } 0 <= i && i < 2 ==> &bytes[i] == &underlyingBufRes[i]
@@ -145,7 +161,12 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 		// @ fold sl.Bytes(underlyingBufRes, 0, 4)
 		// @ sl.CombineAtIndex_Bytes(underlyingBufRes, 0, len(underlyingBufRes), 4, writePerm)
 		verScionTmp := b.Bytes()
-		// @ unfold s.scn.ChecksumMem()
+		// @ unfold acc(s.scn.ChecksumMem(), 1/2)
+		// @ assert forall i int :: { s.scn.GetRawSrcAddrByte(i) }{ sl.GetByte(s.scn.RawSrcAddr, 0, len(s.scn.RawSrcAddr), i) } 0 <= i && i < len(s.scn.RawSrcAddr) ==>
+		// @ 	s.scn.GetRawSrcAddrByte(i) == sl.GetByte(s.scn.RawSrcAddr, 0, len(s.scn.RawSrcAddr), i)
+		// @ assert forall i int :: { s.scn.GetRawDstAddrByte(i) }{ sl.GetByte(s.scn.RawDstAddr, 0, len(s.scn.RawDstAddr), i) } 0 <= i && i < len(s.scn.RawDstAddr) ==>
+		// @ 	s.scn.GetRawDstAddrByte(i) == sl.GetByte(s.scn.RawDstAddr, 0, len(s.scn.RawDstAddr), i)
+		// @ unfold acc(s.scn.ChecksumMem(), 1/2)
 		s.Checksum, err = s.scn.computeChecksum(verScionTmp, uint8(L4SCMP))
 		// @ fold s.scn.ChecksumMem()
 		if err != nil {
@@ -166,14 +187,23 @@ func (s *SCMP) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 }
 
 // DecodeFromBytes decodes the given bytes into this layer.
+// @ requires  s.NonInitMem() && s.IsLow(false, nil)
 // @ requires  df != nil
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
-// @ requires  s.NonInitMem()
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves df.Mem()
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
+// @ ensures   low(res != nil)
+// @ ensures   res == nil ==> 
+// @ 	old(s.GetScn(false, nil)) == nil ==> s.IsLow(true, data)
 // @ decreases
 func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
+	// @ s.RevealIsLow(false, nil, HalfPerm)
 	if size := len(data); size < 4 {
 		df.SetTruncated()
 		return serrors.New("SCMP layer length is less then 4 bytes", "minimum", 4, "actual", size)
@@ -181,16 +211,21 @@ func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res err
 	// @ unfold s.NonInitMem()
 	// @ requires len(data) >= 4
 	// @ requires acc(sl.Bytes(data, 0, len(data)), R40)
+	// @ requires low(sl.GetByte(data, 0, len(data), 0)) && low(sl.GetByte(data, 0, len(data), 1))
 	// @ preserves acc(&s.TypeCode)
 	// @ ensures acc(sl.Bytes(data, 2, len(data)), R40)
 	// @ ensures acc(sl.Bytes(data, 0, 2), R40)
+	// @ ensures low(s.TypeCode)
 	// @ decreases
 	// @ outline (
 	// @ sl.SplitByIndex_Bytes(data, 0, len(data), 2, R40)
-	// @ unfold acc(sl.Bytes(data, 0, 2), R40)
+	// @ unfold acc(sl.Bytes(data, 0, 2), R41)
+	// @ assert sl.GetByte(data, 0, 2, 0) == data[0]
+	// @ assert sl.GetByte(data, 0, 2, 1) == data[1]
 	s.TypeCode = CreateSCMPTypeCode(SCMPType(data[0]), SCMPCode(data[1]))
-	// @ fold acc(sl.Bytes(data, 0, 2), R40)
+	// @ fold acc(sl.Bytes(data, 0, 2), R41)
 	// @ )
+	// @ assert s.scn == old(s.GetScn(false, nil))
 	// @ requires len(data) >= 4
 	// @ requires acc(sl.Bytes(data, 0, 2), R40)
 	// @ requires acc(sl.Bytes(data, 2, len(data)), R40)
@@ -209,6 +244,9 @@ func (s *SCMP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res err
 	s.BaseLayer = BaseLayer{Contents: data[:4], Payload: data[4:]}
 	// @ fold s.BaseLayer.Mem(data, 4)
 	// @ fold s.Mem(data)
+	// @ ghost if s.GetScn(true, data) == nil {
+	// @ 	s.AssertIsLow(true, data, writePerm)
+	// @ }
 	return nil
 }
 
@@ -230,12 +268,17 @@ func (s *SCMP) SetNetworkLayerForChecksum(scn *SCION) {
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves pb.Mem()
 // @ ensures   res != nil ==> res.ErrorMem()
 // @ decreases
 func decodeSCMP(data []byte, pb gopacket.PacketBuilder) (res error) {
 	scmp := &SCMP{}
 	// @ fold scmp.NonInitMem()
+	// @ scmp.AssertIsLow(false, nil, HalfPerm)
 	err := scmp.DecodeFromBytes(data, pb)
 	if err != nil {
 		return err

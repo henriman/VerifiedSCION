@@ -26,10 +26,22 @@ type DecodingLayer interface {
 	pred NonInitMem()
 	pred Mem(ubuf []byte)
 
-	requires  NonInitMem()
+	// TODO: Once Gobra issue #955 is resolved, mark as `hyper`.
+	ghost
+	requires  init ==> Mem(ubuf)
+	requires !init ==> NonInitMem()
+	decreases
+	pure IsLow(ghost init bool, ghost ubuf []byte) bool
+
+	requires  NonInitMem() && IsLow(false, nil)
 	requires  df != nil
-	preserves acc(sl.Bytes(data, 0, len(data)), R40)
+	requires  acc(sl.Bytes(data, 0, len(data)), R40)
+	// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+	requires  low(len(data)) && 
+		forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+			low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 	preserves df.Mem()
+	ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 	ensures   res == nil ==> Mem(data)
 	ensures   res != nil ==> (NonInitMem() && res.ErrorMem())
 	decreases
@@ -40,7 +52,8 @@ type DecodingLayer interface {
 	decreases
 	CanDecode() (res LayerClass)
 
-	preserves acc(Mem(ubuf), R20)
+	requires acc(Mem(ubuf), R20) && IsLow(true, ubuf)
+	ensures  acc(Mem(ubuf), R20)
 	decreases
 	NextLayerType(ghost ubuf []byte) LayerType
 
@@ -53,7 +66,7 @@ type DecodingLayer interface {
 	LayerPayload(ghost ubuf []byte) (res []byte, ghost start int, ghost end int)
 
 	ghost
-	requires Mem(ub)
+	requires Mem(ub) && IsLow(true, ub)
 	ensures  NonInitMem()
 	decreases
 	DowngradePerm(ghost ub []byte)

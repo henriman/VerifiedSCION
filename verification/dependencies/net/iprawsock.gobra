@@ -21,6 +21,43 @@ pred (a *IPAddr) Mem() {
 	acc(a) && forall i int :: { &a.IP[i] } 0 <= i && i < len(a.IP) ==> acc(&a.IP[i])
 }
 
+ghost
+requires a.Mem()
+decreases
+pure func (a *IPAddr) GetIPLen() int {
+	return unfolding a.Mem() in len(a.IP)
+}
+
+ghost
+requires a.Mem()
+requires 0 <= i && i < a.GetIPLen()
+decreases
+pure func (a *IPAddr) GetIPByte(i int) byte {
+	return unfolding a.Mem() in a.IP[i]
+}
+
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires a.Mem()
+decreases
+pure func (a *IPAddr) IsLow() bool
+
+// "Reveal the body" of `a.IsLow` (necessary bc. we can't implement `a.IsLow` yet).
+// TODO: Once Gobra issue #846 is resolved, implement this.
+ghost
+trusted
+requires  wildcard ==> acc(a.Mem(), _)
+requires !wildcard ==> p > 0 && acc(a.Mem(), p) 
+requires a.IsLow()
+ensures   wildcard ==> acc(a.Mem(), _)
+ensures  !wildcard ==> acc(a.Mem(), p)
+ensures  low(a.GetIPLen()) && 
+	forall i int :: { a.GetIPByte(i) } 0 <= i && i < a.GetIPLen() &&
+		low(i) ==> low(a.GetIPByte(i))
+decreases
+func (a *IPAddr) RevealIsLow(wildcard bool, p perm)
+
 (*IPAddr) implements Addr {
 	(e *IPAddr) Network() string {
 		return e.Network()

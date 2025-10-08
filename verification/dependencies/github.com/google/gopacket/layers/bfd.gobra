@@ -30,6 +30,7 @@ const (
 	BFDDiagnosticRevConcatPathDown  BFDDiagnostic = 8 // Reverse Concatenated Path Dow
 )
 
+requires low(bd)
 decreases
 func (bd BFDDiagnostic) String() string {
 	switch bd {
@@ -65,6 +66,7 @@ const (
 	BFDStateUp        BFDState = 3
 )
 
+requires low(s)
 decreases
 func (s BFDState) String() string {
 	switch s {
@@ -98,6 +100,7 @@ const (
 	BFDAuthTypeMeticulousKeyedSHA1 BFDAuthType = 5 // Meticulous Keyed SHA1
 )
 
+requires low(at)
 decreases
 func (at BFDAuthType) String() string {
 	switch at {
@@ -135,7 +138,8 @@ pred (b *BFDAuthHeader) Mem() {
 	acc(b) && sl.Bytes(b.Data, 0, len(b.Data))
 }
 
-preserves acc(h, 1/10000)
+requires acc(h, 1/10000) && low(h.AuthType)
+ensures  acc(h, 1/10000)
 decreases
 func (h *BFDAuthHeader) Length() int {
 	switch h.AuthType {
@@ -175,6 +179,13 @@ pred (b *BFD) NonInitMem() {
 }
 
 pred (b *BFD) Mem(ub []byte)
+
+ghost
+requires b.Mem(ub)
+decreases
+pure func (b *BFD) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
+}
 
 preserves acc(d, 1/10000)
 decreases

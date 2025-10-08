@@ -35,6 +35,13 @@ type Payload []byte
 
 pred (p Payload) Mem(ub []byte) { ub === p }
 
+ghost
+requires p.Mem(ub)
+decreases
+pure func (p Payload) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
+}
+
 decreases
 pure func (p Payload) LayerType() LayerType {
 	return LayerTypePayload

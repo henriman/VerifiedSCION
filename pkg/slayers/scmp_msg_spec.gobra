@@ -31,6 +31,13 @@ pred (s *SCMPExternalInterfaceDown) Mem(ub []byte) {
 	acc(&s.IA) && acc(&s.IfID) && s.BaseLayer.Mem(ub, addr.IABytes+scmpRawInterfaceLen)
 }
 
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPExternalInterfaceDown) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
+}
+
 requires false
 func (b *SCMPExternalInterfaceDown) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -61,6 +68,13 @@ pred (s *SCMPInternalConnectivityDown) NonInitMem() {
 
 pred (s *SCMPInternalConnectivityDown) Mem(ub []byte) {
 	acc(&s.IA) && acc(&s.Ingress) && acc(&s.Egress) && s.BaseLayer.Mem(ub, addr.IABytes+2*scmpRawInterfaceLen)
+}
+
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPInternalConnectivityDown) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
 }
 
 requires false
@@ -94,6 +108,13 @@ pred (s *SCMPEcho) Mem(ub []byte) {
 	acc(&s.Identifier) && acc(&s.SeqNumber) && s.BaseLayer.Mem(ub, 4)
 }
 
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPEcho) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
+}
+
 requires false
 func (b *SCMPEcho) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -123,6 +144,13 @@ pred (s *SCMPParameterProblem) NonInitMem() {
 
 pred (s *SCMPParameterProblem) Mem(ub []byte) {
 	acc(&s.Pointer) && s.BaseLayer.Mem(ub, 4)
+}
+
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPParameterProblem) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
 }
 
 requires false
@@ -160,6 +188,13 @@ pred (s *SCMPTraceroute) Mem(ub []byte) {
 	s.BaseLayer.Mem(ub, 4+addr.IABytes+scmpRawInterfaceLen)
 }
 
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPTraceroute) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
+}
+
 requires false
 decreases
 func (b *SCMPTraceroute) LayerContents() (res []byte) {
@@ -193,6 +228,13 @@ pred (s *SCMPDestinationUnreachable) Mem(ub []byte) {
 	s.BaseLayer.Mem(ub, 4)
 }
 
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPDestinationUnreachable) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
+}
+
 requires false
 func (b *SCMPDestinationUnreachable) LayerContents() (res []byte) {
 	res = b.BaseLayer.LayerContents()
@@ -222,6 +264,13 @@ pred (s *SCMPPacketTooBig) NonInitMem() {
 
 pred (s *SCMPPacketTooBig) Mem(ub []byte) {
 	acc(&s.MTU) && s.BaseLayer.Mem(ub, 4)
+}
+
+ghost
+requires s.Mem(ub)
+decreases
+pure func (s *SCMPPacketTooBig) IsLowSerializableLayer(ghost ub []byte) bool {
+	return true
 }
 
 requires false

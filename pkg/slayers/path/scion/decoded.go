@@ -51,6 +51,7 @@ type Decoded struct {
 // @ 	metaHdr == s.GetMetaHdr(data))
 // @ ensures   r == nil ==> s.GetBase(data).WeaklyValid()
 // @ ensures   r != nil ==> (r.ErrorMem() && s.NonInitMem())
+// @ ensures   low(r != nil)
 // @ decreases
 func (s *Decoded) DecodeFromBytes(data []byte) (r error) {
 	//@ unfold s.NonInitMem()

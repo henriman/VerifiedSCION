@@ -48,7 +48,9 @@ type tlvOption struct {
 	OptAlign     [2]uint8 // Xn+Y = [2]uint8{X, Y}
 }
 
-// @ preserves acc(o, R20)
+// @ requires  acc(o, R20)
+// @ requires  low(o.OptType) && low(fixLengths)
+// @ ensures   acc(o, R20)
 // @ ensures   0 < res
 // @ ensures   o.OptType == OptTypePad1 ==> res == 1
 // @ ensures   o.OptType != OptTypePad1 ==> 2 <= res
@@ -69,8 +71,11 @@ func (o *tlvOption) length(fixLengths bool) (res int) {
 }
 
 // @ requires  2 <= len(data)
-// @ preserves acc(o)
-// @ preserves acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
+// @ requires  acc(o)
+// @ requires  acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
+// @ requires  low(o.OptType) && low(data == nil) && low(fixLengths)
+// @ ensures   acc(o)
+// @ ensures   acc(sl.Bytes(o.OptData, 0, len(o.OptData)), R20)
 // @ preserves sl.Bytes(data, 0, len(data))
 // @ decreases
 func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
@@ -99,16 +104,24 @@ func (o *tlvOption) serializeTo(data []byte, fixLengths bool) {
 }
 
 // @ requires  1 <= len(data)
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R41)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R42)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R42)
 // @ ensures   err == nil ==> acc(res)
 // @ ensures   (err == nil && res.OptType != OptTypePad1) ==> (
 // @ 	2 <= res.ActualLength && res.ActualLength <= len(data) && res.OptData === data[2:res.ActualLength])
 // @ ensures   err == nil ==> 0 < res.ActualLength
 // @ ensures   err != nil ==> err.ErrorMem()
+// @ ensures   err == nil ==> low(res.ActualLength)
+// @ ensures   low(err != nil)
 // @ decreases
 func decodeTLVOption(data []byte) (res *tlvOption, err error) {
-	// @ unfold acc(sl.Bytes(data, 0, len(data)), R41)
-	// @ defer fold acc(sl.Bytes(data, 0, len(data)), R41)
+	// @ unfold acc(sl.Bytes(data, 0, len(data)), R43)
+	// @ defer fold acc(sl.Bytes(data, 0, len(data)), R43)
+	// @ assert sl.GetByte(data, 0, len(data), 0) == data[0]
 	o := &tlvOption{OptType: OptionType(data[0])}
 	if OptionType(data[0]) == OptTypePad1 {
 		o.ActualLength = 1
@@ -117,6 +130,7 @@ func decodeTLVOption(data []byte) (res *tlvOption, err error) {
 	if len(data) < 2 {
 		return nil, serrors.New("buffer too short", "expected", 2, "actual", len(data))
 	}
+	// @ assert sl.GetByte(data, 0, len(data), 1) == data[1]
 	o.OptDataLen = data[1]
 	// (VerifiedSCION) Gobra cannot prove this even though it must hold, given the type of o.OptDataLen
 	// @ assume 0 <= o.OptDataLen
@@ -133,6 +147,7 @@ func decodeTLVOption(data []byte) (res *tlvOption, err error) {
 // serializeTLVOptionPadding adds an appropriate PadN extension.
 // @ requires  padLength == 1 ==> 1 <= len(data)
 // @ requires  1 < padLength  ==> 2 <= len(data)
+// @ requires  low(padLength)
 // @ preserves sl.Bytes(data, 0, len(data))
 // @ decreases
 func serializeTLVOptionPadding(data []byte, padLength int) {
@@ -240,8 +255,13 @@ func (e *extnBase) serializeToWithTLVOptions(b gopacket.SerializeBuffer,
 }
 
 // @ requires  df != nil
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R41)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves df.Mem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R41)
 // @ ensures   resErr != nil ==> resErr.ErrorMem()
 // The following poscondition is more a lot more complicated than it would be if the return type
 // was *extnBase instead of extnBase
@@ -250,6 +270,8 @@ func (e *extnBase) serializeToWithTLVOptions(b gopacket.SerializeBuffer,
 // @ 	0 <= res.ActualLen && res.ActualLen <= len(data) &&
 // @ 	res.BaseLayer.Contents === data[:res.ActualLen] &&
 // @ 	res.BaseLayer.Payload === data[res.ActualLen:])
+// @ ensures   low(resErr != nil)
+// @ ensures   resErr == nil ==> low(res.NextHdr) && low(res.ActualLen)
 // @ decreases
 func decodeExtnBase(data []byte, df gopacket.DecodeFeedback) (res extnBase, resErr error) {
 	e := extnBase{}
@@ -259,11 +281,14 @@ func decodeExtnBase(data []byte, df gopacket.DecodeFeedback) (res extnBase, resE
 			len(data)))
 	}
 
-	// @ unfold acc(sl.Bytes(data, 0, len(data)), R40)
+	// @ unfold acc(sl.Bytes(data, 0, len(data)), R42)
+	// @ assert sl.GetByte(data, 0, len(data), 0) == data[0]
+	// @ assert sl.GetByte(data, 0, len(data), 1) == data[1]
 	e.NextHdr = L4ProtocolType(data[0])
 	e.ExtLen = data[1]
-	// @ fold acc(sl.Bytes(data, 0, len(data)), R40)
+	// @ fold acc(sl.Bytes(data, 0, len(data)), R42)
 	e.ActualLen = (int(e.ExtLen) + 1) * LineLen
+	//  assert low(e.ActualLen)
 	if len(data) < e.ActualLen {
 		return extnBase{}, serrors.New(fmt.Sprintf("invalid extension header. "+
 			"Length %d less than specified length %d", len(data), e.ActualLen))
@@ -300,9 +325,11 @@ func (h *HopByHopExtn) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassHopByHopExtn
 }
 
-// @ preserves acc(h.Mem(ubuf), R20)
+// @ requires acc(h.Mem(ubuf), R20) && h.IsLow(true, ubuf)
+// @ ensures  acc(h.Mem(ubuf), R20)
 // @ decreases
 func (h *HopByHopExtn) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
+	// @ h.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterHBH( /*@ unfolding acc(h.Mem(ubuf), R20) in (unfolding acc(h.extnBase.Mem(ubuf), R20) in @*/ h.NextHdr /*@ ) @*/)
 }
 
@@ -345,10 +372,18 @@ func (h *HopByHopExtn) SerializeTo(b gopacket.SerializeBuffer,
 // DecodeFromBytes implementation according to gopacket.DecodingLayer.
 // @ requires  h.NonInitMem()
 // @ requires  df != nil
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves df.Mem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> h.Mem(data)
 // @ ensures   res != nil ==> (h.NonInitMem() && res.ErrorMem())
+// @ ensures   low(res != nil)
+// @ ensures   res == nil ==> h.IsLow(true, data)
 // @ decreases
 func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	var err error
@@ -367,8 +402,13 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 	// @ ghost lenOptions := 0
 
+	// TODO: Once Gobra issue #888 is resolved, remove `actualLen` and use
+	// `h.ActualLen` directly in loop invariant.
+	actualLen := h.ActualLen
+
 	// @ invariant 2 <= offset
 	// @ invariant acc(h)
+	// @ invariant actualLen == h.ActualLen
 	// @ invariant 0 <= h.ActualLen && h.ActualLen <= len(data)
 	// @ invariant len(h.Options) == lenOptions
 	// @ invariant forall i int :: { &h.Options[i] } 0 <= i && i < lenOptions ==>
@@ -376,11 +416,15 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ invariant acc(sl.Bytes(data, 0, len(data)), R40)
 	// @ invariant h.BaseLayer.Contents === data[:h.ActualLen]
 	// @ invariant h.BaseLayer.Payload === data[h.ActualLen:]
-	// @ decreases h.ActualLen - offset
-	for offset < h.ActualLen {
-		// @ sl.SplitRange_Bytes(data, offset, h.ActualLen, R40)
+	// @ invariant low(offset) && low(h.ActualLen) && low(h.NextHdr)
+	// @ invariant low(len(data)) && 
+	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
+	// @ decreases actualLen - offset
+	for offset < actualLen {
+		// @ sl.SplitRange_Bytes(data, offset, h.ActualLen, R41)
 		opt, err := decodeTLVOption(data[offset:h.ActualLen])
-		// @ sl.CombineRange_Bytes(data, offset, h.ActualLen, R40)
+		// @ sl.CombineRange_Bytes(data, offset, h.ActualLen, R41)
 		if err != nil {
 			// @ fold h.NonInitMem()
 			return err
@@ -395,11 +439,16 @@ func (h *HopByHopExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ fold h.extnBase.BaseLayer.Mem(data, h.extnBase.ActualLen)
 	// @ fold h.extnBase.Mem(data)
 	// @ fold h.Mem(data)
+	// @ h.AssertIsLow(true, data, HalfPerm)
 	return nil
 }
 
 // @ requires  p != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves p.Mem()
 // @ ensures   res != nil ==> res.ErrorMem()
 // @ decreases
@@ -411,13 +460,16 @@ func decodeHopByHopExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 	if err != nil {
 		return err
 	}
+	// @ h.RevealIsLow(true, data, HalfPerm)
 	nextTmp := scionNextLayerTypeAfterHBH(( /*@ unfolding h.Mem(data) in (unfolding h.extnBase.Mem(data) in @*/ h.NextHdr /*@ ) @*/))
 	// @ fold nextTmp.Mem()
 	return p.NextDecoder(nextTmp)
 }
 
-// @ ensures (t == HopByHopClass) == (err != nil)
-// @ ensures err != nil ==> err.ErrorMem()
+// @ requires low(t)
+// @ ensures  (t == HopByHopClass) == (err != nil)
+// @ ensures  err != nil ==> err.ErrorMem()
+// @ ensures  low(err != nil)
 // @ decreases
 func checkHopByHopExtnNextHdr(t L4ProtocolType) (err error) {
 	if t == HopByHopClass {
@@ -449,9 +501,11 @@ func (e *EndToEndExtn) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassEndToEndExtn
 }
 
-// @ preserves acc(e.Mem(ubuf), R20)
+// @ requires acc(e.Mem(ubuf), R20) && e.IsLow(true, ubuf)
+// @ ensures  acc(e.Mem(ubuf), R20)
 // @ decreases
 func (e *EndToEndExtn) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
+	// @ e.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterE2E( /*@ unfolding acc(e.Mem(ubuf), R20) in (unfolding acc(e.extnBase.Mem(ubuf), R20) in @*/ e.NextHdr /*@ ) @*/)
 }
 
@@ -477,10 +531,18 @@ func (e *EndToEndExtn) LayerPayload( /*@ ghost ub []byte @*/ ) (res []byte /*@ ,
 // DecodeFromBytes implementation according to gopacket.DecodingLayer.
 // @ requires  e.NonInitMem()
 // @ requires  df != nil
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function
+// (here and in the method body).
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves df.Mem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> e.Mem(data)
 // @ ensures   res != nil ==> (e.NonInitMem() && res.ErrorMem())
+// @ ensures   low(res != nil)
+// @ ensures   res == nil ==> e.IsLow(true, data)
 // @ decreases
 func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	var err error
@@ -499,8 +561,13 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 
 	// @ ghost lenOptions := 0
 
+	// TODO: Once Gobra issue #888 is resolved, remove `actualLen` and use
+	// `e.ActualLen` directly in loop invariant.
+	actualLen := e.ActualLen
+
 	// @ invariant 2 <= offset
 	// @ invariant acc(e)
+	// @ invariant actualLen == e.ActualLen
 	// @ invariant 0 <= e.ActualLen && e.ActualLen <= len(data)
 	// @ invariant len(e.Options) == lenOptions
 	// @ invariant forall i int :: { &e.Options[i] } 0 <= i && i < lenOptions ==>
@@ -508,11 +575,15 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ invariant acc(sl.Bytes(data, 0, len(data)), R40)
 	// @ invariant e.BaseLayer.Contents === data[:e.ActualLen]
 	// @ invariant e.BaseLayer.Payload === data[e.ActualLen:]
-	// @ decreases e.ActualLen - offset
-	for offset < e.ActualLen {
-		// @ sl.SplitRange_Bytes(data, offset, e.ActualLen, R40)
+	// @ invariant low(offset) && low(e.ActualLen) && low(e.NextHdr)
+	// @ invariant low(len(data)) && 
+	// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+	// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
+	// @ decreases actualLen - offset
+	for offset < actualLen {
+		// @ sl.SplitRange_Bytes(data, offset, e.ActualLen, R41)
 		opt, err := decodeTLVOption(data[offset:e.ActualLen])
-		// @ sl.CombineRange_Bytes(data, offset, e.ActualLen, R40)
+		// @ sl.CombineRange_Bytes(data, offset, e.ActualLen, R41)
 		if err != nil {
 			// @ fold e.NonInitMem()
 			return err
@@ -527,11 +598,16 @@ func (e *EndToEndExtn) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) 
 	// @ fold e.extnBase.BaseLayer.Mem(data, e.ActualLen)
 	// @ fold e.extnBase.Mem(data)
 	// @ fold e.Mem(data)
+	// @ e.AssertIsLow(true, data, HalfPerm)
 	return nil
 }
 
 // @ requires  p != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves p.Mem()
 // @ ensures   res != nil ==> res.ErrorMem()
 // @ decreases
@@ -543,13 +619,15 @@ func decodeEndToEndExtn(data []byte, p gopacket.PacketBuilder) (res error) {
 	if err != nil {
 		return err
 	}
+	// @ e.RevealIsLow(true, data, HalfPerm)
 	nextTmp := scionNextLayerTypeAfterE2E( /*@ unfolding e.Mem(data) in (unfolding e.extnBase.Mem(data) in @*/ e.NextHdr /*@ ) @*/)
 	// @ fold nextTmp.Mem()
 	return p.NextDecoder(nextTmp)
 }
 
-// @ ensures (err != nil) == (t == HopByHopClass || t == End2EndClass)
-// @ ensures err != nil ==> err.ErrorMem()
+// @ requires low(t)
+// @ ensures  (err != nil) == (t == HopByHopClass || t == End2EndClass)
+// @ ensures  err != nil ==> err.ErrorMem()
 // @ decreases
 func checkEndToEndExtnNextHdr(t L4ProtocolType) (err error) {
 	if t == HopByHopClass {
@@ -600,8 +678,13 @@ type HopByHopExtnSkipper struct {
 // DecodeFromBytes implementation according to gopacket.DecodingLayer
 // @ requires  s.NonInitMem()
 // @ requires  df != nil
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves df.Mem()
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
 // @ decreases
@@ -638,9 +721,11 @@ func (s *HopByHopExtnSkipper) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassHopByHopExtn
 }
 
-// @ preserves acc(h.Mem(ubuf), R20)
+// @ requires acc(h.Mem(ubuf), R20) && h.IsLow(true, ubuf)
+// @ ensures  acc(h.Mem(ubuf), R20)
 // @ decreases
 func (h *HopByHopExtnSkipper) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
+	// @ h.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterHBH( /*@ unfolding acc(h.Mem(ubuf), R20) in (unfolding acc(h.extnBase.Mem(ubuf), R20) in @*/ h.NextHdr /*@ ) @*/)
 }
 
@@ -655,8 +740,13 @@ type EndToEndExtnSkipper struct {
 // DecodeFromBytes implementation according to gopacket.DecodingLayer
 // @ requires  s.NonInitMem()
 // @ requires  df != nil
+// @ requires  acc(sl.Bytes(data, 0, len(data)), R40)
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires  low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves df.Mem()
-// @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
+// @ ensures   acc(sl.Bytes(data, 0, len(data)), R40)
 // @ ensures   res == nil ==> s.Mem(data)
 // @ ensures   res != nil ==> (s.NonInitMem() && res.ErrorMem())
 // @ decreases
@@ -693,8 +783,10 @@ func (s *EndToEndExtnSkipper) CanDecode() (res gopacket.LayerClass) {
 	return LayerClassEndToEndExtn
 }
 
-// @ preserves acc(e.Mem(ubuf), R20)
+// @ requires acc(e.Mem(ubuf), R20) && e.IsLow(true, ubuf)
+// @ ensures  acc(e.Mem(ubuf), R20)
 // @ decreases
 func (e *EndToEndExtnSkipper) NextLayerType( /*@ ghost ubuf []byte @*/ ) gopacket.LayerType {
+	// @ e.RevealIsLow(true, ubuf, R20)
 	return scionNextLayerTypeAfterE2E( /*@ unfolding acc(e.Mem(ubuf), R20) in (unfolding acc(e.extnBase.Mem(ubuf), R20) in @*/ e.NextHdr /*@ ) @*/)
 }

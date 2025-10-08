@@ -102,6 +102,7 @@ decreases
 func (h HostSVC) RevealIsLow(p perm)
 
 HostSVC implements HostAddr
+HostSVC implements net.Addr
 
 pred (h *HostSVC) Mem() { acc(h) }
 

@@ -65,10 +65,12 @@ func (i *SCMPExternalInterfaceDown) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPExternalInterfaceDown) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -109,7 +111,7 @@ func (i *SCMPExternalInterfaceDown) DecodeFromBytes(data []byte,
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -144,6 +146,10 @@ func (i *SCMPExternalInterfaceDown) SerializeTo(b gopacket.SerializeBuffer, opts
 // @ requires pb != nil
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures res != nil ==> res.ErrorMem()
 // @ decreases
 func decodeSCMPExternalInterfaceDown(data []byte, pb gopacket.PacketBuilder) (res error) {
@@ -203,10 +209,12 @@ func (*SCMPInternalConnectivityDown) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPInternalConnectivityDown) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -254,7 +262,7 @@ func (i *SCMPInternalConnectivityDown) DecodeFromBytes(data []byte,
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -297,6 +305,10 @@ func (i *SCMPInternalConnectivityDown) SerializeTo(b gopacket.SerializeBuffer, o
 // @ requires pb != nil
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPInternalConnectivityDown(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -343,10 +355,12 @@ func (*SCMPEcho) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPEcho) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 4
@@ -419,7 +433,7 @@ func (i *SCMPEcho) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -454,6 +468,10 @@ func (i *SCMPEcho) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.Seriali
 // @ requires pb != nil
 // @ preserves pb.Mem()
 // @ requires sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPEcho(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -496,10 +514,12 @@ func (*SCMPParameterProblem) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPParameterProblem) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2
@@ -549,7 +569,7 @@ func (i *SCMPParameterProblem) DecodeFromBytes(data []byte, df gopacket.DecodeFe
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -583,6 +603,10 @@ func (i *SCMPParameterProblem) SerializeTo(b gopacket.SerializeBuffer, opts gopa
 // @ requires  pb != nil
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPParameterProblem(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -638,11 +662,13 @@ func (*SCMPTraceroute) NextLayerType() gopacket.LayerType {
 // DecodeFromBytes decodes the given bytes into this layer.
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves acc(sl.Bytes(data, 0, len(data)), R40)
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> i.NonInitMem()
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPTraceroute) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2 + addr.IABytes + scmpRawInterfaceLen
@@ -729,7 +755,7 @@ func (i *SCMPTraceroute) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -783,6 +809,10 @@ func (i *SCMPTraceroute) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.S
 // @ requires  pb != nil
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPTraceroute(data []byte, pb gopacket.PacketBuilder) (err error) {
@@ -827,10 +857,12 @@ func (*SCMPDestinationUnreachable) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  i.NonInitMem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPDestinationUnreachable) DecodeFromBytes(data []byte,
 	df gopacket.DecodeFeedback) (res error) {
@@ -860,7 +892,7 @@ func (i *SCMPDestinationUnreachable) DecodeFromBytes(data []byte,
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -883,6 +915,10 @@ func (i *SCMPDestinationUnreachable) SerializeTo(b gopacket.SerializeBuffer, opt
 
 // @ requires  pb != nil
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ preserves pb.Mem()
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
@@ -927,10 +963,12 @@ func (*SCMPPacketTooBig) NextLayerType() gopacket.LayerType {
 // @ requires  df != nil
 // @ requires  sl.Bytes(data, 0, len(data))
 // @ requires  i.NonInitMem()
+// @ requires  low(len(data))
 // @ preserves df.Mem()
 // @ ensures   res == nil ==> i.Mem(data)
 // @ ensures   res != nil ==> (i.NonInitMem() && sl.Bytes(data, 0, len(data)))
 // @ ensures   res != nil ==> res.ErrorMem()
+// @ ensures   low(res != nil)
 // @ decreases
 func (i *SCMPPacketTooBig) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) (res error) {
 	minLength := 2 + 2
@@ -980,7 +1018,7 @@ func (i *SCMPPacketTooBig) DecodeFromBytes(data []byte, df gopacket.DecodeFeedba
 // SerializationBuffer, implementing gopacket.SerializableLayer.
 // @ requires  b != nil
 // @ requires  i.Mem(ubufMem)
-// @ preserves b.Mem()
+// @ preserves b.Mem() && b.IsLow()
 // @ preserves sl.Bytes(b.UBuf(), 0, len(b.UBuf()))
 // @ ensures   err == nil ==> i.Mem(ubufMem)
 // @ ensures   err != nil ==> err.ErrorMem()
@@ -1014,6 +1052,10 @@ func (i *SCMPPacketTooBig) SerializeTo(b gopacket.SerializeBuffer, opts gopacket
 // @ requires  pb != nil
 // @ preserves pb.Mem()
 // @ requires  sl.Bytes(data, 0, len(data))
+// TODO: Once Gobra issue #846 is resolved, express this using `hyper` function.
+// @ requires low(len(data)) && 
+// @ 	forall i int :: { sl.GetByte(data, 0, len(data), i) } 0 <= i && i < len(data) &&
+// @ 		low(i) ==> low(sl.GetByte(data, 0, len(data), i))
 // @ ensures   err != nil ==> err.ErrorMem()
 // @ decreases
 func decodeSCMPPacketTooBig(data []byte, pb gopacket.PacketBuilder) (err error) {
